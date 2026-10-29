@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Logo } from "@/components/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 p-6">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Team<span className="text-primary">Workout</span></h1>
+        <h1><Logo size={40} wordmarkClassName="text-3xl font-extrabold tracking-tight" /></h1>
         <p className="mt-1 text-sm text-muted">Load management voor je team</p>
       </div>
       <form onSubmit={onSubmit} className="card flex flex-col gap-3">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { LogoMark } from "@/components/Logo";
 import { createTeam, joinTeam, signOut } from "./actions";
 
 export default async function Home() {
@@ -12,7 +13,10 @@ export default async function Home() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-8 p-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Mijn teams</h1>
+        <div className="flex items-center gap-3">
+          <Link href="/" aria-label="TeamWorkout home"><LogoMark size={30} /></Link>
+          <h1 className="text-2xl font-bold">Mijn teams</h1>
+        </div>
         <form action={signOut}><button className="text-sm link">Uitloggen</button></form>
       </header>
 
