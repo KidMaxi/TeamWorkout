@@ -44,20 +44,23 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 p-6">
-      <h1 className="text-2xl font-bold">TeamWorkout</h1>
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Team<span className="text-primary">Workout</span></h1>
+        <p className="mt-1 text-sm text-muted">Load management voor je team</p>
+      </div>
+      <form onSubmit={onSubmit} className="card flex flex-col gap-3">
         {mode === "up" && (
-          <input name="name" required placeholder="Naam" className="rounded border p-2 text-black" />
+          <input name="name" required placeholder="Naam" className="input" />
         )}
-        <input name="email" type="email" required placeholder="E-mail" className="rounded border p-2 text-black" />
-        <input name="password" type="password" required minLength={8} placeholder="Wachtwoord (min. 8)" className="rounded border p-2 text-black" />
-        <button disabled={busy} className="rounded bg-emerald-600 p-2 font-semibold text-white disabled:opacity-50">
+        <input name="email" type="email" required placeholder="E-mail" className="input" />
+        <input name="password" type="password" required minLength={8} placeholder="Wachtwoord (min. 8)" className="input" />
+        <button disabled={busy} className="btn btn-primary">
           {mode === "in" ? "Inloggen" : "Account maken"}
         </button>
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        {info && <p className="text-sm text-emerald-500">{info}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
+        {info && <p className="text-sm text-ok">{info}</p>}
       </form>
-      <button onClick={() => setMode(mode === "in" ? "up" : "in")} className="text-sm underline">
+      <button onClick={() => setMode(mode === "in" ? "up" : "in")} className="text-sm link">
         {mode === "in" ? "Nog geen account? Registreren" : "Al een account? Inloggen"}
       </button>
     </main>

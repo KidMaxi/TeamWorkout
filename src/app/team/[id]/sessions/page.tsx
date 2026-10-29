@@ -21,15 +21,15 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
   return (
     <section className="flex flex-col gap-6">
       {isStaff && (
-        <form action={createSession.bind(null, id)} className="grid grid-cols-2 gap-2 rounded border p-3 text-sm">
-          <select name="type" className="rounded border p-2 text-black">
+        <form action={createSession.bind(null, id)} className="card grid grid-cols-2 gap-2 text-sm">
+          <select name="type" className="input">
             {Object.entries(SESSION_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <input name="title" placeholder="Titel (optioneel)" className="rounded border p-2 text-black" />
-          <input name="starts_at" type="datetime-local" required className="rounded border p-2 text-black" />
-          <input name="planned_duration_min" type="number" min={1} max={600} required placeholder="Minuten" className="rounded border p-2 text-black" />
-          <input name="planned_rpe" type="number" min={1} max={10} placeholder="Geplande RPE (1-10)" className="rounded border p-2 text-black" />
-          <button className="rounded bg-emerald-600 p-2 font-semibold text-white">Plan training</button>
+          <input name="title" placeholder="Titel (optioneel)" className="input" />
+          <input name="starts_at" type="datetime-local" required className="input" />
+          <input name="planned_duration_min" type="number" min={1} max={600} required placeholder="Minuten" className="input" />
+          <input name="planned_rpe" type="number" min={1} max={10} placeholder="Geplande RPE (1-10)" className="input" />
+          <button className="btn btn-primary">Plan training</button>
         </form>
       )}
 
@@ -38,14 +38,14 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
           const past = new Date(s.starts_at).getTime() <= now;
           const log = logBySession.get(s.id);
           return (
-            <li key={s.id} className="rounded border p-3 text-sm">
+            <li key={s.id} className="card text-sm">
               <div className="flex justify-between">
                 <span className="font-semibold">
                   {SESSION_TYPES[s.type as SessionType]} {s.title}
                 </span>
-                <span className="opacity-60">{new Date(s.starts_at).toLocaleString("nl-NL", { dateStyle: "short", timeStyle: "short" })}</span>
+                <span className="text-muted">{new Date(s.starts_at).toLocaleString("nl-NL", { dateStyle: "short", timeStyle: "short" })}</span>
               </div>
-              <p className="opacity-60">
+              <p className="text-muted">
                 Gepland: {s.planned_duration_min} min{s.planned_rpe ? `, RPE ${s.planned_rpe}` : ""}
                 {s.planned_rpe ? ` (load ${s.planned_rpe * s.planned_duration_min} per atleet)` : ""}
               </p>
@@ -54,21 +54,21 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
                   <label className="flex items-center gap-1">
                     <input type="checkbox" name="attended" defaultChecked={log?.attended ?? true} /> Aanwezig
                   </label>
-                  <input name="duration_min" type="number" min={1} max={600} defaultValue={log?.duration_min ?? s.planned_duration_min} className="w-20 rounded border p-1 text-black" />
+                  <input name="duration_min" type="number" min={1} max={600} defaultValue={log?.duration_min ?? s.planned_duration_min} className="input input-sm w-20" />
                   <span>min, RPE</span>
-                  <input name="rpe" type="number" min={1} max={10} defaultValue={log?.rpe ?? s.planned_rpe ?? 5} className="w-16 rounded border p-1 text-black" />
-                  <button className="rounded border px-3 py-1">{log ? `Opgeslagen (${log.load})` : "Opslaan"}</button>
+                  <input name="rpe" type="number" min={1} max={10} defaultValue={log?.rpe ?? s.planned_rpe ?? 5} className="input input-sm w-16" />
+                  <button className="btn">{log ? `Opgeslagen (${log.load})` : "Opslaan"}</button>
                 </form>
               )}
               {isStaff && (
                 <form action={deleteSession.bind(null, id, s.id)} className="mt-2">
-                  <button className="text-xs text-red-500 underline">Verwijderen</button>
+                  <button className="text-xs text-danger underline underline-offset-2">Verwijderen</button>
                 </form>
               )}
             </li>
           );
         })}
-        {!sessions?.length && <li className="opacity-60">Nog geen trainingen gepland.</li>}
+        {!sessions?.length && <li className="text-muted">Nog geen trainingen gepland.</li>}
       </ul>
     </section>
   );

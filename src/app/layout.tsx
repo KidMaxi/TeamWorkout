@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { RegisterSW } from "./register-sw";
@@ -17,6 +17,13 @@ export const metadata: Metadata = {
   title: "TeamWorkout",
   description: "Trainingsload en beschikbaarheid van je team",
   appleWebApp: { capable: true, title: "TeamWorkout" },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a1020" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f6fb" },
+  ],
 };
 
 export default function RootLayout({

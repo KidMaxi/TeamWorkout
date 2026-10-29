@@ -25,15 +25,15 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="rounded border p-3 text-sm">
+      <div className="card text-sm">
         <form action={createInvite.bind(null, id)} className="flex gap-2">
-          <select name="role" className="rounded border p-2 text-black">
+          <select name="role" className="input">
             <option value="athlete">Atleet</option><option value="staff">Staf</option>
           </select>
-          <button className="rounded bg-emerald-600 px-3 font-semibold text-white">Nieuwe uitnodigingscode (14 dagen)</button>
+          <button className="btn btn-primary">Nieuwe uitnodigingscode (14 dagen)</button>
         </form>
         <ul className="mt-2 font-mono">
-          {invites?.map((i) => <li key={i.code}>{i.code} <span className="opacity-60">({i.role})</span></li>)}
+          {invites?.map((i) => <li key={i.code}>{i.code} <span className="text-muted">({i.role})</span></li>)}
         </ul>
       </div>
 
@@ -42,19 +42,19 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
           const p = name.get(m.user_id);
           const a = av.get(m.user_id);
           return (
-            <li key={m.user_id} className="rounded border p-3 text-sm">
-              <p className="font-semibold">{p?.full_name || "Naamloos"} <span className="opacity-60">({m.role === "staff" ? "staf" : "atleet"})</span></p>
+            <li key={m.user_id} className="card text-sm">
+              <p className="font-semibold">{p?.full_name || "Naamloos"} <span className="text-muted">({m.role === "staff" ? "staf" : "atleet"})</span></p>
               {m.role === "athlete" && (
                 <form action={updateMember.bind(null, id, m.user_id)} className="mt-2 flex flex-wrap items-center gap-2">
-                  <select name="status" defaultValue={a?.status ?? "available"} className="rounded border p-1 text-black">
+                  <select name="status" defaultValue={a?.status ?? "available"} className="input input-sm">
                     {Object.entries(AVAILABILITY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
-                  <input name="note" defaultValue={a?.note ?? ""} placeholder="Notitie" className="rounded border p-1 text-black" />
-                  <input name="max_weekly_load" type="number" min={1} defaultValue={lim.get(m.user_id)?.max_weekly_load ?? ""} placeholder="Max weekload" className="w-32 rounded border p-1 text-black" />
+                  <input name="note" defaultValue={a?.note ?? ""} placeholder="Notitie" className="input input-sm" />
+                  <input name="max_weekly_load" type="number" min={1} defaultValue={lim.get(m.user_id)?.max_weekly_load ?? ""} placeholder="Max weekload" className="input input-sm w-32" />
                   <label className="flex items-center gap-1">
                     <input type="checkbox" name="consent" defaultChecked={m.consent_given} /> Toestemming
                   </label>
-                  <button className="rounded border px-3 py-1">Opslaan</button>
+                  <button className="btn">Opslaan</button>
                 </form>
               )}
             </li>

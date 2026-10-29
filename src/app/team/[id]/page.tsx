@@ -2,10 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { acwrSignal, AVAILABILITY, SESSION_TYPES, type Availability, type LoadRow, type SessionType } from "@/lib/load";
 
 const SIGNAL = {
-  none: { label: "Geen baseline", cls: "bg-gray-500/20" },
-  ok: { label: "Normaal", cls: "bg-emerald-500/20" },
-  watch: { label: "Let op", cls: "bg-amber-500/30" },
-  high: { label: "Hoog", cls: "bg-red-500/30" },
+  none: { label: "Geen baseline", cls: "badge badge-none" },
+  ok: { label: "Normaal", cls: "badge badge-ok" },
+  watch: { label: "Let op", cls: "badge badge-watch" },
+  high: { label: "Hoog", cls: "badge badge-high" },
 };
 
 export default async function TeamOverview({ params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +22,7 @@ export default async function TeamOverview({ params }: { params: Promise<{ id: s
     return (
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Teamload</h2>
-        <p className="text-xs opacity-60">
+        <p className="text-xs text-muted">
           Acute load = laatste 7 dagen (RPE &times; minuten). Ratio = acute / gemiddelde weekload over 28 dagen,
           pas na 4 weken data. Een indicatie, geen blessurevoorspelling.
         </p>
@@ -40,16 +40,16 @@ export default async function TeamOverview({ params }: { params: Promise<{ id: s
                   <tr key={r.user_id} className="border-b">
                     <td className="p-2">{r.full_name || "Naamloos"}</td>
                     <td className="p-2">{AVAILABILITY[(r.availability ?? "available") as Availability]}</td>
-                    <td className={`p-2 ${r.over_limit ? "font-bold text-red-500" : ""}`}>{r.acute_load}</td>
+                    <td className={`p-2 ${r.over_limit ? "font-bold text-danger" : ""}`}>{r.acute_load}</td>
                     <td className="p-2">{r.chronic_weekly_avg}</td>
-                    <td className="p-2"><span className={`rounded px-2 py-0.5 ${sig.cls}`}>{r.acwr ?? "-"} {sig.label}</span></td>
+                    <td className="p-2"><span className={sig.cls}>{r.acwr ?? "-"} {sig.label}</span></td>
                     <td className="p-2">{r.max_weekly_load ?? "-"}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          {!rows?.length && <p className="p-2 opacity-60">Nog geen atleten. Maak een uitnodiging bij Leden.</p>}
+          {!rows?.length && <p className="p-2 text-muted">Nog geen atleten. Maak een uitnodiging bij Leden.</p>}
         </div>
       </section>
     );
@@ -69,7 +69,7 @@ export default async function TeamOverview({ params }: { params: Promise<{ id: s
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">Mijn load</h2>
-      <p className="text-3xl font-bold">{weekLoad} <span className="text-sm font-normal opacity-60">laatste 7 dagen</span></p>
+      <p className="text-3xl font-bold">{weekLoad} <span className="text-sm font-normal text-muted">laatste 7 dagen</span></p>
       <ul className="flex flex-col gap-1 text-sm">
         {logs?.map((l, i) => {
           const s = l.sessions as unknown as { title: string; type: SessionType; starts_at: string };
