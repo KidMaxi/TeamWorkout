@@ -94,3 +94,13 @@
   .badge-watch { background: var(--warn-bg); color: var(--warn); }
   .badge-high { background: var(--danger-bg); color: var(--danger); }
 }
+
+@layer components {
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+  .btn-danger:hover { border-color: var(--danger); }
+  dialog.confirm {
+    background: var(--surface); color: var(--foreground); border: 1px solid var(--line);
+    border-radius: 0.75rem; padding: 1rem; width: min(92vw, 26rem); margin: auto;
+  }
+  dialog.confirm::backdrop { background: rgb(0 0 0 / 0.6); }
+}

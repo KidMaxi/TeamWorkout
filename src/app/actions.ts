@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { MessageKey } from "@/lib/i18n";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -109,4 +110,69 @@ export async function setLocale(locale: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (user) await supabase.from("profiles").update({ locale }).eq("id", user.id);
   revalidatePath("/", "layout");
+}
+
+// ---- Deleting things ----------------------------------------------------
+
+export type DangerResult = { error?: MessageKey };
+
+function dbError(message: string): MessageKey {
+  if (message.includes("sole_staff")) return "danger.error.soleStaff";
+  if (message.includes("last_staff")) return "danger.error.lastStaff";
+  if (message.includes("not allowed")) return "danger.error.notAllowed";
+  return "danger.error.generic";
+}
+
+const same = (a: FormDataEntryValue | null, b: string) =>
+  String(a ?? "").trim().toLowerCase() === b.trim().toLowerCase();
+
+export async function deleteTeam(teamId: string, formData: FormData): Promise<DangerResult> {
+  const supabase = await createClient();
+  const { data: team } = await supabase.from("teams").select("name").eq("id", teamId).single();
+  if (!team) return { error: "danger.error.notAllowed" };
+  if (!same(formData.get("confirm"), team.name)) return { error: "danger.error.mismatch" };
+  // RLS only lets the owner delete; zero affected rows means not allowed.
+  const { data, error } = await supabase.from("teams").delete().eq("id", teamId).select("id");
+  if (error) return { error: dbError(error.message) };
+  if (!data?.length) return { error: "danger.error.notAllowed" };
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+export async function removeMember(teamId: string, userId: string): Promise<DangerResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.rpc("remove_member", { _team: teamId, _user: userId });
+  if (error) return { error: dbError(error.message) };
+  revalidatePath("/", "layout");
+  if (user?.id === userId) redirect("/");
+  return {};
+}
+
+export async function deleteInvite(teamId: string, code: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("team_invites").delete().eq("code", code).eq("team_id", teamId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/team/${teamId}/members`);
+}
+
+export async function deleteMyLog(teamId: string, sessionId: string): Promise<DangerResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const { error } = await supabase.from("session_logs").delete().eq("session_id", sessionId).eq("user_id", user.id);
+  if (error) return { error: dbError(error.message) };
+  revalidatePath(`/team/${teamId}`, "layout");
+  return {};
+}
+
+export async function deleteAccount(formData: FormData): Promise<DangerResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!same(formData.get("confirm"), user.email ?? "")) return { error: "danger.error.mismatch" };
+  const { error } = await supabase.rpc("delete_my_account");
+  if (error) return { error: dbError(error.message) };
+  await supabase.auth.signOut();
+  redirect("/login");
 }

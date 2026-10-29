@@ -7,13 +7,14 @@ import dashboard from "./messages/dashboard";
 import athlete from "./messages/athlete";
 import profile from "./messages/profile";
 import help from "./messages/help";
+import danger from "./messages/danger";
 
 export type Locale = "nl" | "en";
 export const LOCALES: Locale[] = ["nl", "en"];
 export const DEFAULT_LOCALE: Locale = "nl";
 export const LOCALE_COOKIE = "tw_locale";
 
-const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help };
+const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger };
 type Areas = typeof areas;
 
 /** "area.key", e.g. "common.save" or "dashboard.tiles.load" */

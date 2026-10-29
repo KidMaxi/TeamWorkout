@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
 import { LogoMark } from "@/components/Logo";
@@ -33,7 +33,12 @@ export default async function TeamLayout({
           </Link>
           <h1 className="truncate text-lg font-bold">{team.name}</h1>
         </div>
-        <LanguageSwitcher />
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <Link href={`/team/${id}/settings`} aria-label={t("danger.settings.title")} title={t("danger.settings.title")} className="text-muted hover:text-[var(--foreground)]">
+            <Settings size={18} aria-hidden />
+          </Link>
+        </div>
       </header>
       <TeamNav teamId={id} isStaff={me?.role === "staff"} />
       {children}

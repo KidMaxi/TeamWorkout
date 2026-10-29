@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Activity, Calendar, Check, CircleHelp, Clock, Flame, Gauge, Plus, Tag, Trash2, Type, X } from "lucide-react";
+import { Activity, Calendar, Check, CircleHelp, Clock, Flame, Gauge, Plus, Tag, Type, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionType } from "@/lib/load";
 import { SessionTypeIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { SESSION_TYPE_KEY, dateLocale } from "@/lib/i18n";
-import { createSession, deleteSession, logSession } from "@/app/actions";
+import { createSession, deleteMyLog, deleteSession, logSession } from "@/app/actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 const chip = "inline-flex items-center gap-1 rounded-full bg-black/5 px-2 py-0.5 text-xs dark:bg-white/10";
 
@@ -72,9 +73,14 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
                   <span className="truncate">{t(SESSION_TYPE_KEY[s.type as SessionType])}{s.title ? ` · ${s.title}` : ""}</span>
                 </span>
                 {isStaff && (
-                  <form action={deleteSession.bind(null, id, s.id)}>
-                    <button aria-label={t("common.delete")} title={t("common.delete")} className="text-danger p-1"><Trash2 size={16} aria-hidden /></button>
-                  </form>
+                  <ConfirmButton
+                    action={deleteSession.bind(null, id, s.id)}
+                    icon="trash"
+                    iconOnly
+                    label={t("common.delete")}
+                    title={t("danger.session.title")}
+                    body={t("danger.session.body")}
+                  />
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-1.5 text-muted">
@@ -101,6 +107,18 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
                     {log ? <><span className="sr-only">{t("common.saved")}</span><Activity size={14} aria-hidden />{log.load}</> : t("common.save")}
                   </button>
                 </form>
+              )}
+              {past && log && (
+                <div>
+                  <ConfirmButton
+                    action={deleteMyLog.bind(null, id, s.id)}
+                    icon="trash"
+                    label={t("danger.log.label")}
+                    title={t("danger.log.title")}
+                    body={t("danger.log.body")}
+                    className="!px-2 !py-1 text-xs"
+                  />
+                </div>
               )}
             </li>
           );

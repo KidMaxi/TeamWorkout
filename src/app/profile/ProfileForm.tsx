@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { Cake, Check, Languages, LogOut, Mail, Ruler, Scale, ShieldCheck, User } from "lucide-react";
-import { signOut } from "@/app/actions";
+import { deleteAccount, signOut } from "@/app/actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n/client";
 import { updateProfile, type ProfileResult } from "./actions";
@@ -109,6 +110,17 @@ export function ProfileForm({ email, initial }: { email: string; initial: Initia
           {t("common.logout")}
         </button>
       </form>
+      <div className="card flex flex-col gap-2">
+        <ConfirmButton
+          action={deleteAccount}
+          icon="trash"
+          label={t("danger.account.label")}
+          title={t("danger.account.title")}
+          body={t("danger.account.body")}
+          requireText={email}
+          className="self-start"
+        />
+      </div>
     </div>
   );
 }

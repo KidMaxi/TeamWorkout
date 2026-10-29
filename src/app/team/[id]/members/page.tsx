@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { Check, CircleHelp, Copy, Gauge, KeyRound, MessageSquare, Plus, Shield, ShieldCheck, Users } from "lucide-react";
+import { Check, CircleHelp, X, Copy, Gauge, KeyRound, MessageSquare, Plus, Shield, ShieldCheck, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Availability } from "@/lib/load";
 import { AvailabilityIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, ROLE_KEY } from "@/lib/i18n";
-import { createInvite, updateMember } from "@/app/actions";
+import { createInvite, deleteInvite, removeMember, updateMember } from "@/app/actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 export default async function MembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -50,6 +51,9 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                 {i.role === "staff" ? <Shield size={12} aria-hidden /> : <Users size={12} aria-hidden />}
                 {t(ROLE_KEY[i.role as keyof typeof ROLE_KEY])}
               </span>
+              <form action={deleteInvite.bind(null, id, i.code)} className="ml-auto">
+                <button aria-label={t("danger.invite.revoke")} title={t("danger.invite.revoke")} className="p-1 text-danger"><X size={16} aria-hidden /></button>
+              </form>
             </li>
           ))}
         </ul>
@@ -66,6 +70,18 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                 {m.role === "staff" ? <Shield size={16} aria-hidden /> : <Users size={16} aria-hidden />}
                 <span className="truncate">{p?.full_name || t("members.unnamed")}</span>
                 <span className="text-xs font-normal text-muted">{t(ROLE_KEY[m.role as keyof typeof ROLE_KEY])}</span>
+                {m.user_id !== user!.id && (
+                  <span className="ml-auto">
+                    <ConfirmButton
+                      action={removeMember.bind(null, id, m.user_id)}
+                      icon="removeUser"
+                      iconOnly
+                      label={t("danger.member.remove")}
+                      title={t("danger.member.title", { name: p?.full_name || t("members.unnamed") })}
+                      body={t("danger.member.body")}
+                    />
+                  </span>
+                )}
               </p>
               {m.role === "athlete" && (
                 <form action={updateMember.bind(null, id, m.user_id)} className="mt-2 flex flex-wrap items-center gap-2">
