@@ -1,0 +1,38 @@
+import { defineMessages } from "../define";
+
+export default defineMessages(
+  {
+    "status.note": "Geen toelichting",
+    "pending.title": "Nog invullen",
+    "pending.fill": "Invullen",
+    "pending.done": "Alles ingevuld",
+    "tiles.last7": "Load 7d",
+    "tiles.attended": "Trainingen",
+    "tiles.attendedSub": "deze week",
+    "weekly.title": "Load / week",
+    "weekly.aria": "Jouw load per week",
+    "weekly.week": "Week van {date}: load {load}",
+    "weekly.weekCurrent": "Week van {date} (nu): load {load}",
+    "recent.title": "Recent",
+    "recent.empty": "Nog niets ingevuld",
+    "recent.absent": "Afwezig",
+    "recent.calc": "{min} min × RPE {rpe} = {load}",
+  },
+  {
+    "status.note": "No note",
+    "pending.title": "To fill in",
+    "pending.fill": "Fill in",
+    "pending.done": "All filled in",
+    "tiles.last7": "Load 7d",
+    "tiles.attended": "Sessions",
+    "tiles.attendedSub": "this week",
+    "weekly.title": "Load / week",
+    "weekly.aria": "Your load per week",
+    "weekly.week": "Week of {date}: load {load}",
+    "weekly.weekCurrent": "Week of {date} (now): load {load}",
+    "recent.title": "Recent",
+    "recent.empty": "Nothing logged yet",
+    "recent.absent": "Absent",
+    "recent.calc": "{min} min × RPE {rpe} = {load}",
+  },
+);

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -99,4 +100,13 @@ export async function updateMember(teamId: string, userId: string, formData: For
   const failed = results.find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
   revalidatePath(`/team/${teamId}`, "layout");
+}
+
+export async function setLocale(locale: string) {
+  if (locale !== "nl" && locale !== "en") return;
+  (await cookies()).set("tw_locale", locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) await supabase.from("profiles").update({ locale }).eq("id", user.id);
+  revalidatePath("/", "layout");
 }

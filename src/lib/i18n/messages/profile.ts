@@ -1,0 +1,38 @@
+import { defineMessages } from "../define";
+
+export default defineMessages(
+  {
+    title: "Profiel",
+    email: "E-mail",
+    fullName: "Naam",
+    birthDate: "Geboortedatum",
+    height: "Lengte (cm)",
+    weight: "Gewicht (kg)",
+    age: "{n} jaar",
+    language: "Taal",
+    privacy: "Lengte, gewicht en geboortedatum zijn zichtbaar voor de staf van je teams.",
+    "error.name": "Naam is te lang (max. 80 tekens).",
+    "error.birthDate": "Ongeldige geboortedatum.",
+    "error.height": "Lengte moet tussen 100 en 250 cm zijn.",
+    "error.weight": "Gewicht moet tussen 30 en 250 kg zijn.",
+    "error.auth": "Je bent niet ingelogd.",
+    "error.save": "Opslaan mislukt. Probeer het opnieuw.",
+  },
+  {
+    title: "Profile",
+    email: "Email",
+    fullName: "Name",
+    birthDate: "Date of birth",
+    height: "Height (cm)",
+    weight: "Weight (kg)",
+    age: "{n} years old",
+    language: "Language",
+    privacy: "Height, weight and date of birth are visible to staff of your teams.",
+    "error.name": "Name is too long (max. 80 characters).",
+    "error.birthDate": "Invalid date of birth.",
+    "error.height": "Height must be between 100 and 250 cm.",
+    "error.weight": "Weight must be between 30 and 250 kg.",
+    "error.auth": "You are not signed in.",
+    "error.save": "Could not save. Please try again.",
+  },
+);

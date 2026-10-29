@@ -1,18 +1,8 @@
-export const SESSION_TYPES = {
-  academy: "Academy",
-  gym: "Gym",
-  evening: "Avondtraining",
-  match: "Wedstrijd",
-  other: "Overig",
-} as const;
-export type SessionType = keyof typeof SESSION_TYPES;
+export const SESSION_TYPE_LIST = ["academy", "gym", "evening", "match", "other"] as const;
+export type SessionType = (typeof SESSION_TYPE_LIST)[number];
 
-export const AVAILABILITY = {
-  available: "Beschikbaar",
-  limited: "Beperkt",
-  unavailable: "Niet beschikbaar",
-} as const;
-export type Availability = keyof typeof AVAILABILITY;
+export const AVAILABILITY_LIST = ["available", "limited", "unavailable"] as const;
+export type Availability = (typeof AVAILABILITY_LIST)[number];
 
 /** Session load in arbitrary units: RPE (1-10) x minutes. */
 export const sessionLoad = (rpe: number, minutes: number) => rpe * minutes;
