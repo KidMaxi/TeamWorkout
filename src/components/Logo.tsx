@@ -28,7 +28,7 @@ export function LogoMark({ size = 28, className, title }: MarkProps) {
 export function Logo({
   size = 32,
   className = "",
-  wordmarkClassName = "text-3xl font-extrabold tracking-tight",
+  wordmarkClassName = "font-display text-xl font-extrabold uppercase tracking-[0.14em]",
 }: {
   size?: number;
   className?: string;
@@ -38,7 +38,7 @@ export function Logo({
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <LogoMark size={size} />
       <span className={wordmarkClassName}>
-        Team<span className="text-primary">Workout</span>
+        Team<span className="text-accent">Workout</span>
       </span>
     </span>
   );

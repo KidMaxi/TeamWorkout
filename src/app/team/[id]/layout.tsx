@@ -24,14 +24,14 @@ export default async function TeamLayout({
     .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
 
   return (
-    <div className="mx-auto min-h-dvh max-w-3xl p-4 pb-24 md:pb-4">
+    <div className="mx-auto min-h-dvh max-w-3xl px-4 pb-32 pt-5 md:pb-8">
       <header className="mb-4 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <Link href="/" aria-label={t("common.nav.teams")} className="flex items-center gap-1 text-muted hover:text-[var(--foreground)]">
             <ChevronLeft size={18} aria-hidden />
             <LogoMark size={22} />
           </Link>
-          <h1 className="truncate text-lg font-bold">{team.name}</h1>
+          <h1 className="display truncate text-xl">{team.name}</h1>
         </div>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />

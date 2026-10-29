@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 2 56 56">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 6 48 50">
   <style>
-    .b{fill:#047857}
+    .b{fill:#1d6a47}
     @media (prefers-color-scheme: dark){.b{fill:#a3e635}}
   </style>
   <rect class="b" x="8" y="36" width="14" height="20" rx="3" opacity=".5"/>

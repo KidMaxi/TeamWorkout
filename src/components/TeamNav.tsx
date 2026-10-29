@@ -19,7 +19,7 @@ export function TeamNav({ teamId, isStaff }: { teamId: string; isStaff: boolean 
   return (
     <nav
       aria-label="Team"
-      className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t bg-[var(--surface)] pb-[env(safe-area-inset-bottom)] md:static md:mb-6 md:justify-start md:gap-1 md:border-t-0 md:border-b md:bg-transparent md:pb-3"
+      className="glass fixed inset-x-4 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-md justify-around rounded-full p-1.5 md:static md:mb-6 md:inset-auto md:max-w-none md:justify-start md:gap-1 md:rounded-full md:p-1 md:w-fit"
     >
       {items.map(({ href, label, Icon, exact }) => {
         const active = exact ? path === href : path.startsWith(href);
@@ -28,10 +28,15 @@ export function TeamNav({ teamId, isStaff }: { teamId: string; isStaff: boolean 
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex flex-1 flex-col items-center gap-0.5 px-2 py-2 text-[11px] md:flex-none md:flex-row md:gap-2 md:rounded-full md:px-3 md:py-1.5 md:text-sm ${active ? "font-semibold text-primary md:bg-[var(--surface-2)]" : "text-muted hover:text-[var(--foreground)]"}`}
+            className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-full px-2 py-1.5 text-[10px] font-medium tracking-wide transition-colors md:flex-none md:flex-row md:gap-2 md:px-4 md:py-2 md:text-sm ${
+              active
+                ? "bg-[var(--surface-3)] text-[var(--foreground)] shadow-[0_1px_0_rgb(255_255_255/0.08)_inset]"
+                : "text-muted hover:text-[var(--foreground)]"
+            }`}
           >
-            <Icon size={20} aria-hidden />
+            <Icon size={20} aria-hidden className={active ? "text-primary" : ""} />
             <span>{label}</span>
+            {active && <span aria-hidden className="absolute -top-0.5 h-1 w-4 rounded-full bg-[var(--primary)] shadow-[0_0_10px_var(--primary)] md:hidden" />}
           </Link>
         );
       })}
