@@ -38,9 +38,12 @@ export function Dial({
 }) {
   const v = Math.max(0, Math.min(1, value));
   const c = size / 2;
+  // Small dials (roster rows) drop the bezel: a bold arc with room for the number.
+  const mini = size < 100;
+  const stroke = mini ? 5 : 6;
   const tickOuter = c - 2;
   const tickInner = c - 12;
-  const arcR = c - 24;
+  const arcR = mini ? c - stroke : c - 24;
   const len = 2 * Math.PI * arcR;
   const sweep = 0.75; // 270 degrees, gap at the bottom
   const arcLen = len * sweep;
@@ -53,7 +56,7 @@ export function Dial({
     return [c + r * Math.cos(a), c + r * Math.sin(a)] as const;
   };
 
-  const tickEls = Array.from({ length: ticks + 1 }, (_, i) => {
+  const tickEls = mini ? [] : Array.from({ length: ticks + 1 }, (_, i) => {
     const f = i / ticks;
     const angle = startAngle + f * 270;
     const major = i % 5 === 0;
@@ -76,8 +79,8 @@ export function Dial({
   const markerEl = marker !== undefined && (() => {
     const m = Math.max(0, Math.min(1, marker));
     const angle = startAngle + m * 270;
-    const [x1, y1] = pt(angle, tickOuter + 1);
-    const [x2, y2] = pt(angle, arcR - 8);
+    const [x1, y1] = pt(angle, mini ? arcR + stroke : tickOuter + 1);
+    const [x2, y2] = pt(angle, mini ? arcR - stroke : arcR - 8);
     return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--accent)" strokeWidth={2.5} strokeLinecap="round" />;
   })();
 
@@ -87,20 +90,20 @@ export function Dial({
         {tickEls}
         {/* track */}
         <circle
-          cx={c} cy={c} r={arcR} fill="none" stroke="var(--line)" strokeWidth={6} strokeLinecap="round"
+          cx={c} cy={c} r={arcR} fill="none" stroke="var(--line)" strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={`${arcLen} ${len}`} transform={`rotate(${startAngle} ${c} ${c})`}
         />
         {/* progress */}
         <circle
-          cx={c} cy={c} r={arcR} fill="none" stroke={color} strokeWidth={6} strokeLinecap="round"
+          cx={c} cy={c} r={arcR} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={`${arcLen} ${len}`} strokeDashoffset={off}
           transform={`rotate(${startAngle} ${c} ${c})`}
           className="dial-arc"
-          style={{ ["--dial-len" as string]: arcLen, ["--dial-off" as string]: off, filter: `drop-shadow(0 0 6px ${color})` }}
+          style={{ ["--dial-len" as string]: arcLen, ["--dial-off" as string]: off, filter: mini ? undefined : `drop-shadow(0 0 6px ${color})` }}
         />
         {markerEl}
       </svg>
-      <div className="absolute inset-0 grid place-items-center text-center" style={{ padding: size * 0.22 }}>
+      <div className="absolute inset-0 grid place-items-center text-center" style={{ padding: size * (mini ? 0.16 : 0.22) }}>
         {children}
       </div>
     </div>

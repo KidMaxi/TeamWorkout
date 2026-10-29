@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Ban, CalendarCheck, CircleCheck, ClipboardList, Flame, History, Pencil } from "lucide-react";
+import { Ban, CalendarCheck, CircleCheck, Pencil } from "lucide-react";
+import { Dial } from "@/components/Dial";
 import { AvailabilityIcon, SessionTypeIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, SESSION_TYPE_KEY, dateLocale, type Locale, type TFunction } from "@/lib/i18n";
@@ -28,75 +29,101 @@ export type AthleteDashboardProps = {
 const dateFmt = (iso: string, locale: Locale) =>
   new Date(iso).toLocaleDateString(dateLocale(locale), { weekday: "short", day: "numeric", month: "short" });
 
-function Tile({ label, value, sub, icon }: { label: string; value: string | number; sub?: string; icon: React.ReactNode }) {
+const ring = { boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" } as const;
+
+function Hero({
+  last7Load, attendedThisWeek, weekly, t,
+}: { last7Load: number; attendedThisWeek: number; weekly: AthleteDashboardProps["weekly"]; t: TFunction }) {
+  const max = Math.max(...weekly.map((w) => w.total_load), last7Load, 1);
+  const prev = weekly.slice(0, -1);
+  const avg = prev.length ? prev.reduce((s, w) => s + w.total_load, 0) / prev.length : 0;
   return (
-    <div className="card">
-      <p className="flex items-center gap-1.5 text-xs text-muted">{icon} {label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-muted">{sub}</p>}
+    <div className="card card-hero flex flex-col items-center gap-5">
+      <p className="eyebrow self-start">{t("athlete.hero.eyebrow")}</p>
+      <Dial
+        value={last7Load / max}
+        marker={avg > 0 ? avg / max : undefined}
+        size={220}
+        tone="primary"
+        label={t("athlete.hero.aria", { load: last7Load, avg: Math.round(avg) })}
+      >
+        <p className="num" style={{ fontSize: String(last7Load).length > 4 ? "2.25rem" : "3rem" }}>{last7Load}</p>
+      </Dial>
+      <div className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface-2)]/60 px-4 py-2 text-sm">
+        <CalendarCheck size={16} aria-hidden className="text-[var(--accent)]" />
+        <span className="num text-lg">{attendedThisWeek}</span>
+        <span className="text-muted">{t("athlete.tiles.attended")} {t("athlete.tiles.attendedSub")}</span>
+      </div>
     </div>
   );
 }
 
-function AvailabilityBanner({ availability, t }: { availability: AthleteDashboardProps["availability"]; t: TFunction }) {
+function AvailabilityStrip({ availability, t }: { availability: AthleteDashboardProps["availability"]; t: TFunction }) {
   const status = availability?.status ?? "available";
   const note = availability?.note;
-  if (status === "available") {
-    return (
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="badge badge-ok inline-flex items-center gap-1">
-          <AvailabilityIcon status="available" size={14} /> {t(AVAILABILITY_KEY.available)}
-        </span>
-        {note && <span className="text-muted">{note}</span>}
-      </div>
-    );
-  }
-  const limited = status === "limited";
+  const flagged = status !== "available";
+  const color = status === "limited" ? "var(--warn)" : status === "unavailable" ? "var(--danger)" : "var(--accent)";
   return (
     <div
-      className="card flex flex-col gap-1"
-      role="status"
-      style={{
-        background: limited ? "var(--warn-bg)" : "var(--danger-bg)",
-        borderColor: limited ? "var(--warn)" : "var(--danger)",
-      }}
+      className="card flex items-center gap-3 !py-3"
+      role={flagged ? "status" : undefined}
+      style={flagged ? { background: status === "limited" ? "var(--warn-bg)" : "var(--danger-bg)", borderColor: color } : undefined}
     >
-      <p className="flex items-center gap-2 text-lg font-semibold">
-        <AvailabilityIcon status={status} size={20} /> {t(AVAILABILITY_KEY[status])}
-      </p>
-      <p className={`text-sm ${note ? "" : "text-muted"}`}>{note || t("athlete.status.note")}</p>
+      <span
+        className="grid size-10 shrink-0 place-items-center rounded-full"
+        style={{ color, boxShadow: `0 0 0 1px color-mix(in srgb, ${color} 55%, transparent)` }}
+      >
+        <AvailabilityIcon status={status} size={20} />
+      </span>
+      <div className="min-w-0">
+        <p className="font-semibold">{t(AVAILABILITY_KEY[status])}</p>
+        {(note || flagged) && <p className={`text-sm ${note ? "" : "text-muted"}`}>{note || t("athlete.status.note")}</p>}
+      </div>
     </div>
   );
 }
 
 function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDashboardProps["weekly"]; t: TFunction; locale: Locale }) {
   const max = Math.max(...weekly.map((w) => w.total_load), 1);
+  const scale = 84;
+  const labelOf = (iso: string) =>
+    new Date(iso + "T00:00:00Z").toLocaleDateString(dateLocale(locale), { day: "numeric", month: "numeric", timeZone: "UTC" });
   return (
     <div className="card">
-      <h3 className="mb-3 flex items-center gap-1.5 font-semibold">
-        <Flame size={16} aria-hidden /> {t("athlete.weekly.title")}
-      </h3>
-      <ol className="flex h-36 items-end gap-2" aria-label={t("athlete.weekly.aria")}>
+      <h3 className="mb-4 font-semibold">{t("athlete.weekly.title")}</h3>
+      <ol className="flex h-24 items-end gap-1.5" aria-label={t("athlete.weekly.aria")}>
         {weekly.map((w, i) => {
           const current = i === weekly.length - 1;
-          const d = new Date(w.week_start + "T00:00:00Z");
-          const label = d.toLocaleDateString(dateLocale(locale), { day: "numeric", month: "numeric", timeZone: "UTC" });
+          const text = t(current ? "athlete.weekly.weekCurrent" : "athlete.weekly.week", { date: labelOf(w.week_start), load: w.total_load });
           return (
-            <li key={w.week_start} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-              <span className="text-[10px] tabular-nums text-muted">{w.total_load}</span>
+            <li key={w.week_start} className="flex h-full flex-1 items-end justify-center">
               <div
-                className="w-full rounded-t"
+                className="relative w-full max-w-5 rounded-full"
                 style={{
-                  height: `${Math.max((w.total_load / max) * 100, w.total_load ? 4 : 1)}%`,
-                  background: current ? "var(--primary)" : "var(--line)",
+                  height: `${Math.max((w.total_load / max) * scale, w.total_load ? 4 : 1)}%`,
+                  background: current
+                    ? "linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 55%, transparent))"
+                    : "linear-gradient(180deg, color-mix(in srgb, var(--accent) 40%, var(--surface-3)), color-mix(in srgb, var(--accent) 14%, var(--surface-2)))",
+                  boxShadow: current ? "0 0 14px -2px var(--primary)" : undefined,
                 }}
                 role="img"
-                aria-label={t(current ? "athlete.weekly.weekCurrent" : "athlete.weekly.week", { date: label, load: w.total_load })}
-              />
-              <span className={`text-[10px] ${current ? "font-semibold" : "text-muted"}`}>{label}</span>
+                aria-label={text}
+                title={text}
+              >
+                {current && w.total_load > 0 && (
+                  <span className="num absolute -top-4 left-1/2 -translate-x-1/2 text-[11px]">{w.total_load}</span>
+                )}
+              </div>
             </li>
           );
         })}
+      </ol>
+      <ol className="mt-2 flex gap-1.5" aria-hidden>
+        {weekly.map((w, i) => (
+          <li key={w.week_start} className={`flex-1 text-center text-[10px] ${i === weekly.length - 1 ? "font-semibold" : "text-muted"}`}>
+            {labelOf(w.week_start)}
+          </li>
+        ))}
       </ol>
     </div>
   );
@@ -107,53 +134,46 @@ export async function AthleteDashboard({
 }: AthleteDashboardProps) {
   const { t, locale } = await getT();
   return (
-    <section className="flex flex-col gap-4">
-      <AvailabilityBanner availability={availability} t={t} />
+    <section className="stagger flex flex-col gap-5">
+      <Hero last7Load={last7Load} attendedThisWeek={attendedThisWeek} weekly={weekly} t={t} />
 
-      <div className="card flex flex-col gap-3">
-        <h3 className="flex items-center gap-1.5 font-semibold">
-          <ClipboardList size={16} aria-hidden /> {t("athlete.pending.title")}
-        </h3>
-        {pending.length ? (
+      {pending.length ? (
+        <section className="flex flex-col gap-2" aria-label={t("athlete.pending.title")}>
+          <p className="eyebrow px-1">{t("athlete.pending.title")}</p>
           <ul className="flex flex-col gap-2">
             {pending.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-2 text-sm">
-                <div className="flex min-w-0 items-center gap-2">
-                  <SessionTypeIcon type={s.type} size={18} />
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{t(SESSION_TYPE_KEY[s.type])}{s.title ? ` ${s.title}` : ""}</p>
-                    <p className="text-xs text-muted">{dateFmt(s.starts_at, locale)}</p>
-                  </div>
+              <li key={s.id} className="card flex items-center gap-3 !p-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--accent)]" style={ring}>
+                  <SessionTypeIcon type={s.type} size={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{t(SESSION_TYPE_KEY[s.type])}{s.title ? ` ${s.title}` : ""}</p>
+                  <p className="text-xs text-muted">{dateFmt(s.starts_at, locale)}</p>
                 </div>
-                <Link href={`/team/${teamId}/sessions`} className="btn btn-primary">
+                <Link href={`/team/${teamId}/sessions`} className="btn btn-primary inline-flex min-h-10 items-center gap-1.5">
                   <Pencil size={14} aria-hidden /> {t("athlete.pending.fill")}
                 </Link>
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="flex items-center gap-1.5 text-sm text-muted">
-            <CircleCheck size={16} aria-hidden /> {t("athlete.pending.done")}
-          </p>
-        )}
-      </div>
+        </section>
+      ) : (
+        <p className="flex items-center gap-1.5 px-1 text-sm text-muted">
+          <CircleCheck size={16} aria-hidden className="text-[var(--accent)]" /> {t("athlete.pending.done")}
+        </p>
+      )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Tile icon={<Flame size={14} aria-hidden />} label={t("athlete.tiles.last7")} value={last7Load} />
-        <Tile icon={<CalendarCheck size={14} aria-hidden />} label={t("athlete.tiles.attended")} value={attendedThisWeek} sub={t("athlete.tiles.attendedSub")} />
-      </div>
+      <AvailabilityStrip availability={availability} t={t} />
 
       <WeeklyBars weekly={weekly} t={t} locale={locale} />
 
-      <div className="card flex flex-col gap-2">
-        <h3 className="flex items-center gap-1.5 font-semibold">
-          <History size={16} aria-hidden /> {t("athlete.recent.title")}
-        </h3>
+      <section className="flex flex-col gap-1" aria-label={t("athlete.recent.title")}>
+        <p className="eyebrow mb-1 px-1">{t("athlete.recent.title")}</p>
         {recentLogs.length ? (
-          <ul className="flex flex-col text-sm">
+          <ul className="card flex flex-col !py-1 text-sm">
             {recentLogs.map((l, i) => (
-              <li key={i} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-[var(--line)] py-2 last:border-b-0">
-                <span className="flex min-w-0 items-center gap-2">
+              <li key={i} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-[var(--line)] py-2.5 last:border-b-0">
+                <span className={`flex min-w-0 items-center gap-2.5 ${l.attended ? "" : "text-muted"}`}>
                   <SessionTypeIcon type={l.type} />
                   <span className="truncate">
                     <span className="text-muted">{dateFmt(l.starts_at, locale)}</span>{" "}
@@ -161,11 +181,11 @@ export async function AthleteDashboard({
                   </span>
                 </span>
                 {l.attended ? (
-                  <span className="badge badge-none tabular-nums">
+                  <span className="chip tabular-nums">
                     {t("athlete.recent.calc", { min: l.duration_min, rpe: l.rpe, load: l.load })}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-muted">
+                  <span className="inline-flex items-center gap-1 text-xs text-muted">
                     <Ban size={14} aria-hidden /> {t("athlete.recent.absent")}
                   </span>
                 )}
@@ -173,9 +193,9 @@ export async function AthleteDashboard({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted">{t("athlete.recent.empty")}</p>
+          <p className="px-1 text-sm text-muted">{t("athlete.recent.empty")}</p>
         )}
-      </div>
+      </section>
     </section>
   );
 }

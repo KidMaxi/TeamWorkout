@@ -17,6 +17,11 @@ export default defineMessages(
     "error.weight": "Gewicht moet tussen 30 en 250 kg zijn.",
     "error.auth": "Je bent niet ingelogd.",
     "error.save": "Opslaan mislukt. Probeer het opnieuw.",
+    "tile.age": "Leeftijd",
+    "tile.height": "Lengte",
+    "tile.weight": "Gewicht",
+    "section.personal": "Persoonlijk",
+    "section.body": "Lichaam",
   },
   {
     title: "Profile",
@@ -34,5 +39,10 @@ export default defineMessages(
     "error.weight": "Weight must be between 30 and 250 kg.",
     "error.auth": "You are not signed in.",
     "error.save": "Could not save. Please try again.",
+    "tile.age": "Age",
+    "tile.height": "Height",
+    "tile.weight": "Weight",
+    "section.personal": "Personal",
+    "section.body": "Body",
   },
 );

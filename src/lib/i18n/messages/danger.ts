@@ -30,6 +30,7 @@ export default defineMessages(
     "error.mismatch": "De ingevoerde tekst klopt niet.",
     "error.notAllowed": "Je mag dit niet doen.",
     "error.generic": "Er ging iets mis. Probeer het opnieuw.",
+    "zone.body": "Deze acties zijn permanent.",
   },
   {
     confirm: "Are you sure?",
@@ -60,5 +61,6 @@ export default defineMessages(
     "error.mismatch": "The text you entered does not match.",
     "error.notAllowed": "You are not allowed to do this.",
     "error.generic": "Something went wrong. Please try again.",
+    "zone.body": "These actions are permanent.",
   },
 );

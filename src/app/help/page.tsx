@@ -10,11 +10,17 @@ import type { MessageKey } from "@/lib/i18n";
 
 function Section({ id, icon: Icon, title, children }: { id: string; icon: LucideIcon; title: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="card scroll-mt-20 space-y-2">
-      <h2 className="flex items-center gap-2 text-base font-semibold">
-        <Icon size={20} aria-hidden className="shrink-0 text-primary" />
-        {title}
-      </h2>
+    <section id={id} className="card scroll-mt-20 space-y-4">
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[var(--accent)]"
+          style={{ boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)", background: "var(--accent-soft)" }}
+        >
+          <Icon size={18} />
+        </span>
+        <h2 className="display text-lg leading-tight">{title}</h2>
+      </div>
       {children}
     </section>
   );
@@ -22,7 +28,7 @@ function Section({ id, icon: Icon, title, children }: { id: string; icon: Lucide
 
 function Bullets({ items }: { items: string[] }) {
   return (
-    <ul className="list-disc space-y-1 pl-5 text-sm text-muted marker:text-[var(--primary)]">
+    <ul className="list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-muted marker:text-[var(--accent)]">
       {items.map((i) => <li key={i}>{i}</li>)}
     </ul>
   );
@@ -47,23 +53,37 @@ export default async function HelpPage() {
   return (
     <div className="mx-auto w-full max-w-md px-4 pb-10">
       <header className="flex items-center justify-between py-3">
-        <Link href="/" className="inline-flex items-center gap-1.5" aria-label={t("common.back")}>
-          <ChevronLeft size={20} aria-hidden />
+        <Link href="/" className="inline-flex min-h-10 items-center gap-2" aria-label={t("common.back")}>
+          <ChevronLeft size={20} aria-hidden className="text-[var(--accent)]" />
           <LogoMark size={24} />
-          <span className="text-lg font-bold">{t("help.title")}</span>
+          <span className="display text-xl">{t("help.title")}</span>
         </Link>
         <LanguageSwitcher />
       </header>
 
-      <div className="space-y-3">
-        <section className="card">
-          <h2 className="mb-3 text-base font-semibold">{t("help.intro")}</h2>
-          <ol className="grid grid-cols-3 gap-2 text-center">
+      <div className="stagger space-y-4">
+        <section className="card card-hero">
+          <h1 className="display text-2xl">{t("help.intro")}</h1>
+          <ol className="mt-5 space-y-0">
             {steps.map((s, i) => (
-              <li key={s.title} className="rounded-lg bg-[var(--surface-2)] p-2">
-                <s.icon size={22} aria-hidden className="mx-auto text-primary" />
-                <p className="mt-1 text-sm font-semibold">{i + 1}. {t(s.title)}</p>
-                <p className="text-xs text-muted">{t(s.text)}</p>
+              <li key={s.title} className="relative flex gap-4 pb-6 last:pb-0">
+                {i < steps.length - 1 && (
+                  <span aria-hidden className="absolute bottom-0 left-5 top-10 w-px -translate-x-1/2" style={{ background: "linear-gradient(var(--accent), transparent)", opacity: 0.5 }} />
+                )}
+                <span
+                  aria-hidden
+                  className="num relative grid h-10 w-10 shrink-0 place-items-center rounded-full text-base text-[var(--accent)]"
+                  style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}
+                >
+                  {i + 1}
+                </span>
+                <div className="min-w-0 pt-1">
+                  <p className="flex items-center gap-2 font-semibold">
+                    <s.icon size={16} aria-hidden className="text-primary" />
+                    {t(s.title)}
+                  </p>
+                  <p className="mt-1 text-sm text-muted">{t(s.text)}</p>
+                </div>
               </li>
             ))}
           </ol>
@@ -72,12 +92,12 @@ export default async function HelpPage() {
         <Section id="rpe" icon={Gauge} title={t("help.rpe.title")}>
           <Bullets items={[t("help.rpe.b1"), t("help.rpe.b2")]} />
           <div>
-            <div className="grid grid-cols-10 gap-1" aria-hidden>
+            <div className="flex gap-1" aria-hidden>
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                <span key={n} className={`badge ${RPE_BG(n)} justify-center`}>{n}</span>
+                <span key={n} className={`badge ${RPE_BG(n)} min-w-0 flex-1 justify-center px-0 py-1 before:hidden`}>{n}</span>
               ))}
             </div>
-            <div className="mt-1 flex justify-between text-xs text-muted">
+            <div className="mt-2 flex justify-between text-xs text-muted">
               <span>1 {t("help.rpe.easy")}</span>
               <span>10 {t("help.rpe.hard")}</span>
             </div>
@@ -90,7 +110,7 @@ export default async function HelpPage() {
 
         <Section id="ratio" icon={Percent} title={t("help.ratio.title")}>
           <Bullets items={[t("help.ratio.b1"), t("help.ratio.b2"), t("help.ratio.b3")]} />
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {ratioBands.map((b) => (
               <span key={b.range} className={`badge ${b.cls}`}>{b.range} {t(b.label)}</span>
             ))}
@@ -98,7 +118,7 @@ export default async function HelpPage() {
         </Section>
 
         <Section id="availability" icon={HeartPulse} title={t("help.availability.title")}>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             <span className="badge badge-ok">{t("common.availability.available")}</span>
             <span className="badge badge-watch">{t("common.availability.limited")}</span>
             <span className="badge badge-high">{t("common.availability.unavailable")}</span>
@@ -114,11 +134,11 @@ export default async function HelpPage() {
           <Bullets items={[t("help.roles.staff"), t("help.roles.athlete"), t("help.roles.noRatio")]} />
         </Section>
 
-        <p className="flex items-center gap-2 text-xs text-muted">
+        <p className="flex items-center gap-2 px-1 text-xs text-muted">
           <Info size={14} aria-hidden className="shrink-0" />
           {t("help.disclaimer")}
         </p>
-        <Link href="/" className="btn flex w-full items-center justify-center gap-2">
+        <Link href="/" className="btn flex min-h-11 w-full items-center justify-center gap-2">
           <ChevronLeft size={16} aria-hidden />
           {t("help.backToApp")}
         </Link>

@@ -10,6 +10,7 @@ export default defineMessages(
     noAccount: "Nog geen account? Registreren",
     haveAccount: "Al een account? Inloggen",
     checkEmail: "Check je e-mail om te bevestigen.",
+    dialLabel: "Decoratieve belastingmeter",
   },
   {
     name: "Name",
@@ -20,5 +21,6 @@ export default defineMessages(
     noAccount: "No account yet? Sign up",
     haveAccount: "Have an account? Log in",
     checkEmail: "Check your email to confirm.",
+    dialLabel: "Decorative load gauge",
   },
 );

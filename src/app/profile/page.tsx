@@ -21,10 +21,10 @@ export default async function ProfilePage() {
   return (
     <div className="mx-auto w-full max-w-md px-4 pb-10">
       <header className="flex items-center justify-between py-3">
-        <Link href="/" className="inline-flex items-center gap-1.5" aria-label={t("common.back")}>
-          <ChevronLeft size={20} aria-hidden />
+        <Link href="/" className="inline-flex min-h-10 items-center gap-2" aria-label={t("common.back")}>
+          <ChevronLeft size={20} aria-hidden className="text-[var(--accent)]" />
           <LogoMark size={24} />
-          <span className="text-lg font-bold">{t("profile.title")}</span>
+          <span className="display text-xl">{t("profile.title")}</span>
         </Link>
         <LanguageSwitcher />
       </header>

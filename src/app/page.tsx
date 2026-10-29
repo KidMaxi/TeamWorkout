@@ -1,13 +1,19 @@
 import Link from "next/link";
-import { CircleHelp, KeyRound, LogOut, Plus, Shield, User, UserPlus, Users } from "lucide-react";
+import { ChevronRight, CircleHelp, KeyRound, LogOut, Plus, Shield, User, UserPlus, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { LogoMark } from "@/components/Logo";
+import { Avatar } from "@/components/Avatar";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { getT } from "@/lib/i18n/server";
 import { ROLE_KEY } from "@/lib/i18n";
 import { createTeam, joinTeam, signOut } from "./actions";
 
-const iconBtn = "inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:text-[var(--foreground)]";
+const iconBtn =
+  "glass inline-flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:text-[var(--foreground)]";
+
+function InputIcon({ icon: Icon }: { icon: typeof Users }) {
+  return <Icon size={16} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />;
+}
 
 export default async function Home() {
   const { t } = await getT();
@@ -18,13 +24,13 @@ export default async function Home() {
     .order("joined_at");
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-6 p-4 sm:p-6">
+    <main className="stagger mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-4 pb-10 pt-4 sm:px-6">
       <header className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
-          <Link href="/" aria-label={t("common.appName")}><LogoMark size={30} /></Link>
-          <h1 className="truncate text-xl font-bold">{t("home.title")}</h1>
+          <Link href="/" aria-label={t("common.appName")}><LogoMark size={32} /></Link>
+          <h1 className="display truncate text-2xl">{t("home.title")}</h1>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <Link href="/profile" aria-label={t("common.nav.profile")} className={iconBtn}><User size={18} aria-hidden /></Link>
           <Link href="/help" aria-label={t("common.nav.help")} className={iconBtn}><CircleHelp size={18} aria-hidden /></Link>
@@ -34,39 +40,62 @@ export default async function Home() {
         </div>
       </header>
 
-      <ul className="flex flex-col gap-2">
-        {memberships?.map((m) => {
-          const team = m.teams as unknown as { id: string; name: string };
-          const RoleIcon = m.role === "staff" ? Shield : Users;
-          return (
-            <li key={team.id}>
-              <Link href={`/team/${team.id}`} className="card flex items-center justify-between gap-3 hover:border-[var(--primary)]">
-                <span className="flex min-w-0 items-center gap-2">
-                  <RoleIcon size={18} aria-hidden className="shrink-0 text-muted" />
-                  <span className="truncate">{team.name}</span>
-                </span>
-                <span className="text-sm text-muted">{t(ROLE_KEY[m.role as keyof typeof ROLE_KEY])}</span>
-              </Link>
-            </li>
-          );
-        })}
-        {!memberships?.length && <li className="flex items-center gap-2 text-muted"><Users size={16} aria-hidden />{t("home.empty")}</li>}
-      </ul>
+      {memberships?.length ? (
+        <ul className="flex flex-col gap-3">
+          {memberships.map((m) => {
+            const team = m.teams as unknown as { id: string; name: string };
+            const isStaff = m.role === "staff";
+            const RoleIcon = isStaff ? Shield : Users;
+            return (
+              <li key={team.id}>
+                <Link
+                  href={`/team/${team.id}`}
+                  className="card flex min-h-[4.5rem] items-center gap-4 transition-colors hover:border-[var(--accent)]"
+                >
+                  <Avatar name={team.name} size={48} />
+                  <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
+                    <span className="display block w-full truncate text-lg">{team.name}</span>
+                    <span className={`badge ${isStaff ? "badge-ok" : "badge-none"}`}>
+                      <RoleIcon size={12} aria-hidden />
+                      {t(ROLE_KEY[m.role as keyof typeof ROLE_KEY])}
+                    </span>
+                  </span>
+                  <ChevronRight size={20} aria-hidden className="shrink-0 text-[var(--accent)]" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="card flex flex-col items-center gap-2 py-8 text-center">
+          <Users size={28} aria-hidden className="text-[var(--accent)]" />
+          <p className="display text-lg">{t("home.emptyTitle")}</p>
+          <p className="text-sm text-muted">{t("home.emptyHint")}</p>
+        </div>
+      )}
 
-      <form action={createTeam} className="flex gap-2">
-        <div className="relative flex-1">
-          <Users size={16} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input name="name" required placeholder={t("home.newTeam")} aria-label={t("home.newTeam")} className="input w-full pl-9" />
-        </div>
-        <button className="btn btn-primary inline-flex items-center gap-1"><Plus size={16} aria-hidden />{t("home.create")}</button>
-      </form>
-      <form action={joinTeam} className="flex gap-2">
-        <div className="relative flex-1">
-          <KeyRound size={16} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input name="code" required placeholder={t("home.code")} aria-label={t("home.code")} className="input w-full pl-9" />
-        </div>
-        <button className="btn inline-flex items-center gap-1"><UserPlus size={16} aria-hidden />{t("home.join")}</button>
-      </form>
+      <section className="card">
+        <h2 className="display mb-3 text-lg">{t("home.createTitle")}</h2>
+        <form action={createTeam} className="flex gap-2">
+          <div className="relative flex-1">
+            <InputIcon icon={Users} />
+            <input name="name" required placeholder={t("home.newTeam")} aria-label={t("home.newTeam")} className="input min-h-11 w-full pl-10" />
+          </div>
+          <button className="btn btn-primary inline-flex min-h-11 items-center gap-1.5"><Plus size={16} aria-hidden />{t("home.create")}</button>
+        </form>
+      </section>
+
+      <section className="card">
+        <h2 className="display text-lg">{t("home.joinTitle")}</h2>
+        <p className="mb-3 mt-1 text-sm text-muted">{t("home.joinHint")}</p>
+        <form action={joinTeam} className="flex gap-2">
+          <div className="relative flex-1">
+            <InputIcon icon={KeyRound} />
+            <input name="code" required placeholder={t("home.code")} aria-label={t("home.code")} className="input min-h-11 w-full pl-10" />
+          </div>
+          <button className="btn inline-flex min-h-11 items-center gap-1.5"><UserPlus size={16} aria-hidden />{t("home.join")}</button>
+        </form>
+      </section>
     </main>
   );
 }
