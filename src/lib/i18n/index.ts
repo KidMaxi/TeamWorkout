@@ -11,13 +11,15 @@ import danger from "./messages/danger";
 import wellness from "./messages/wellness";
 import detail from "./messages/detail";
 import notify from "./messages/notify";
+import strength from "./messages/strength";
+import exercises from "./messages/exercises";
 
 export type Locale = "nl" | "en";
 export const LOCALES: Locale[] = ["nl", "en"];
 export const DEFAULT_LOCALE: Locale = "nl";
 export const LOCALE_COOKIE = "tw_locale";
 
-const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger, wellness, detail, notify };
+const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger, wellness, detail, notify, strength, exercises };
 type Areas = typeof areas;
 
 /** "area.key", e.g. "common.save" or "dashboard.tiles.load" */
