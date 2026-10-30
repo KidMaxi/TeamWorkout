@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
+import { Hint } from "@/components/Hint";
 import { todayInTeamZone } from "@/lib/wellness";
 import { Avatar } from "@/components/Avatar";
 import { StrengthTabs } from "@/components/StrengthTabs";
@@ -68,6 +69,7 @@ export default async function StrengthPage({
   return (
     <section className="flex flex-col gap-4">
       <StrengthTabs teamId={id} />
+      <Hint id="strength-5rm" text={t("help.hint.strength")} href="/help#gym" linkLabel={t("help.hint.more")} />
 
       {isStaff && athletes.length > 0 && (
         <nav aria-label={t("strength.athlete.label")} className="-mx-4 overflow-x-auto px-4">

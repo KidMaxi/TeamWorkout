@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ClipboardList, Pencil, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
+import { Hint } from "@/components/Hint";
 import { StrengthTabs } from "@/components/StrengthTabs";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { DuplicateWorkoutButton } from "@/components/WorkoutEditor";
@@ -50,6 +51,7 @@ export default async function WorkoutsPage({ params }: { params: Promise<{ id: s
   return (
     <section className="flex flex-col gap-4">
       <StrengthTabs teamId={id} />
+      <Hint id="strength-workouts" text={t("help.hint.workouts")} href="/help#gym" linkLabel={t("help.hint.more")} />
       <div className="flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="display text-2xl">{t("workouts.title")}</h2>

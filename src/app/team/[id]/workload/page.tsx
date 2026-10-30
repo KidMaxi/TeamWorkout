@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
+import { Hint } from "@/components/Hint";
 import { dateLocale, SESSION_TYPE_KEY } from "@/lib/i18n";
 import { WorkloadTabs } from "@/components/WorkloadTabs";
 import { WorkloadBoard, type BoardAthlete, type BoardSession } from "@/components/WorkloadBoard";
@@ -182,6 +183,7 @@ export default async function WorkloadPage({
   return (
     <section className="flex flex-col gap-5">
       <WorkloadTabs teamId={id} />
+      <Hint id="workload-week" text={t("help.hint.workload")} href="/help#week" linkLabel={t("help.hint.more")} />
 
       <nav aria-label={t("workload.week.nav")} className="flex items-center justify-between gap-2">
         <Link href={`${base}?week=${addDays(monday, -7)}`} aria-label={t("workload.week.prev")} title={t("workload.week.prev")} className={nav}>

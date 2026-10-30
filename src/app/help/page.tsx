@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
-  Activity, ChevronLeft, ClipboardCheck, Gauge, HeartPulse, LineChart, CalendarPlus, Info,
-  Percent, ShieldAlert, Users, type LucideIcon,
+  Activity, Bell, CalendarDays, CalendarPlus, ChevronLeft, ClipboardCheck, Dumbbell, Gauge, HeartPulse, Info,
+  LineChart, Lock, Percent, ShieldAlert, SmilePlus, Users, type LucideIcon,
 } from "lucide-react";
 import { getT } from "@/lib/i18n/server";
 import { LogoMark } from "@/components/Logo";
@@ -39,9 +39,24 @@ const RPE_BG = (n: number) => (n <= 3 ? "badge-ok" : n <= 6 ? "badge-none" : n <
 export default async function HelpPage() {
   const { t } = await getT();
   const steps: { icon: LucideIcon; title: MessageKey; text: MessageKey }[] = [
-    { icon: CalendarPlus, title: "help.step.plan", text: "help.step.plan.text" },
-    { icon: ClipboardCheck, title: "help.step.log", text: "help.step.log.text" },
-    { icon: LineChart, title: "help.step.review", text: "help.step.review.text" },
+    { icon: CalendarPlus, title: "help.pipeline.s1", text: "help.pipeline.s1.text" },
+    { icon: ClipboardCheck, title: "help.pipeline.s2", text: "help.pipeline.s2.text" },
+    { icon: SmilePlus, title: "help.pipeline.s3", text: "help.pipeline.s3.text" },
+    { icon: LineChart, title: "help.pipeline.s4", text: "help.pipeline.s4.text" },
+  ];
+  const toc: { id: string; label: MessageKey }[] = [
+    { id: "pipeline", label: "help.pipeline.title" },
+    { id: "checkin", label: "help.checkin.title" },
+    { id: "week", label: "help.week.title" },
+    { id: "gym", label: "help.gym.title" },
+    { id: "rpe", label: "help.rpe.title" },
+    { id: "load", label: "help.load.title" },
+    { id: "ratio", label: "help.ratio.title" },
+    { id: "availability", label: "help.availability.title" },
+    { id: "limits", label: "help.limits.title" },
+    { id: "roles", label: "help.roles.title" },
+    { id: "notifications", label: "help.notifications.title" },
+    { id: "privacy", label: "help.privacy.title" },
   ];
   const ratioBands: { range: string; label: MessageKey; cls: string }[] = [
     { range: "< 0.8", label: "help.ratio.low", cls: "badge-none" },
@@ -62,8 +77,20 @@ export default async function HelpPage() {
       </header>
 
       <div className="stagger space-y-4">
-        <section className="card card-hero">
+        <nav aria-label={t("help.toc.label")} className="-mx-4 overflow-x-auto px-4">
+          <p className="mb-2 px-1 text-xs uppercase tracking-wide text-muted">{t("help.toc")}</p>
+          <ul className="flex gap-2 pb-1">
+            {toc.map((c) => (
+              <li key={c.id} className="shrink-0">
+                <a href={`#${c.id}`} className="chip inline-flex min-h-11 items-center px-4 text-sm">{t(c.label)}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <section id="pipeline" className="card card-hero scroll-mt-20">
           <h1 className="display text-2xl">{t("help.intro")}</h1>
+          <h2 className="mt-1 text-sm text-muted">{t("help.pipeline.title")}</h2>
           <ol className="mt-5 space-y-0">
             {steps.map((s, i) => (
               <li key={s.title} className="relative flex gap-4 pb-6 last:pb-0">
@@ -88,6 +115,18 @@ export default async function HelpPage() {
             ))}
           </ol>
         </section>
+
+        <Section id="checkin" icon={SmilePlus} title={t("help.checkin.title")}>
+          <Bullets items={[t("help.checkin.b1"), t("help.checkin.b2"), t("help.checkin.b3")]} />
+        </Section>
+
+        <Section id="week" icon={CalendarDays} title={t("help.week.title")}>
+          <Bullets items={[t("help.week.b1"), t("help.week.b2"), t("help.week.b3")]} />
+        </Section>
+
+        <Section id="gym" icon={Dumbbell} title={t("help.gym.title")}>
+          <Bullets items={[t("help.gym.b1"), t("help.gym.b2"), t("help.gym.b3"), t("help.gym.b4"), t("help.gym.b5")]} />
+        </Section>
 
         <Section id="rpe" icon={Gauge} title={t("help.rpe.title")}>
           <Bullets items={[t("help.rpe.b1"), t("help.rpe.b2")]} />
@@ -132,6 +171,19 @@ export default async function HelpPage() {
 
         <Section id="roles" icon={Users} title={t("help.roles.title")}>
           <Bullets items={[t("help.roles.staff"), t("help.roles.athlete"), t("help.roles.noRatio")]} />
+        </Section>
+
+        <Section id="notifications" icon={Bell} title={t("help.notifications.title")}>
+          <Bullets items={[t("help.notifications.b1"), t("help.notifications.b2"), t("help.notifications.b3")]} />
+        </Section>
+
+        <Section id="privacy" icon={Lock} title={t("help.privacy.title")}>
+          <Bullets items={[t("help.privacy.b1")]} />
+          <div className="flex flex-wrap gap-2">
+            <Link href="/privacy" className="chip min-h-11 px-4 text-sm">{t("help.privacy.link")}</Link>
+            <Link href="/terms" className="chip min-h-11 px-4 text-sm">{t("help.terms.link")}</Link>
+            <Link href="/cookies" className="chip min-h-11 px-4 text-sm">{t("help.cookies.link")}</Link>
+          </div>
         </Section>
 
         <p className="flex items-center gap-2 px-1 text-xs text-muted">
