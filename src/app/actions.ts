@@ -36,13 +36,28 @@ export async function joinTeam(formData: FormData) {
 export async function createSession(teamId: string, formData: FormData) {
   const supabase = await createClient();
   const rpe = formData.get("planned_rpe");
+  const type = String(formData.get("type"));
+
+  // A workout is only stored on gym sessions and only if it belongs to this team's club.
+  let workoutId: string | null = null;
+  const requested = String(formData.get("workout_id") ?? "");
+  if (type === "gym" && requested) {
+    const { data: team } = await supabase.from("teams").select("club_id").eq("id", teamId).single();
+    if (team?.club_id) {
+      const { data: w } = await supabase
+        .from("workouts").select("id").eq("id", requested).eq("club_id", team.club_id).is("archived_at", null).maybeSingle();
+      workoutId = w?.id ?? null;
+    }
+  }
+
   const { error } = await supabase.from("sessions").insert({
     team_id: teamId,
-    type: String(formData.get("type")),
+    type,
     title: String(formData.get("title") ?? ""),
     starts_at: new Date(String(formData.get("starts_at"))).toISOString(),
     planned_duration_min: Number(formData.get("planned_duration_min")),
     planned_rpe: rpe ? Number(rpe) : null,
+    workout_id: workoutId,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/team/${teamId}`, "layout");

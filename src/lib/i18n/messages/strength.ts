@@ -4,6 +4,7 @@ export default defineMessages(
   {
     "tab.tests": "5RM",
     "tab.library": "Oefeningen",
+    "tab.workouts": "Workouts",
     title: "Kracht",
     "athlete.label": "Atleet",
     "overview.title": "Je 5RM",
@@ -58,6 +59,7 @@ export default defineMessages(
   {
     "tab.tests": "5RM",
     "tab.library": "Exercises",
+    "tab.workouts": "Workouts",
     title: "Strength",
     "athlete.label": "Athlete",
     "overview.title": "Your 5RM",

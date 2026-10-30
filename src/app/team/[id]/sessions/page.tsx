@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calendar, Check, ChevronDown, CircleHelp, Clock, Flame, Gauge, Plus, Tag, Type, X } from "lucide-react";
+import { Calendar, Check, ChevronDown, CircleHelp, ClipboardList, Clock, Flame, Gauge, Play, Plus, Tag, Type, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionType } from "@/lib/load";
 import { SessionTypeIcon } from "@/components/icons";
@@ -28,16 +28,36 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
     .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
   const isStaff = me?.role === "staff";
 
+  const { data: team } = await supabase.from("teams").select("club_id").eq("id", id).single();
   const { data: sessions } = await supabase
     .from("sessions").select("*").eq("team_id", id).order("starts_at", { ascending: false }).limit(60);
   const { data: logs } = await supabase
     .from("session_logs").select("*").eq("user_id", user!.id)
     .in("session_id", (sessions ?? []).map((s) => s.id));
   const logBySession = new Map(logs?.map((l) => [l.session_id, l]));
+
+  // Club workouts: the plan form picks from them, gym session cards show the linked one.
+  const { data: workouts } = team?.club_id
+    ? await supabase.from("workouts").select("id, name").eq("club_id", team.club_id).is("archived_at", null).order("name")
+    : { data: [] };
+  const linkedIds = [...new Set((sessions ?? []).map((s) => s.workout_id as string | null).filter((v): v is string => !!v))];
+  const { data: linked } = linkedIds.length
+    ? await supabase.from("workouts").select("id, name").in("id", linkedIds)
+    : { data: [] };
+  const workoutName = new Map((linked ?? []).map((w) => [w.id as string, w.name as string]));
+
+  // Athletes who are excluded from a session do not get a start link.
+  const isAthlete = me?.role === "athlete";
+  const { data: excl } = isAthlete && linkedIds.length
+    ? await supabase.from("session_exclusions").select("session_id").eq("user_id", user!.id)
+        .in("session_id", (sessions ?? []).map((s) => s.id))
+    : { data: [] };
+  const excluded = new Set((excl ?? []).map((e) => e.session_id as string));
   const now = Date.now();
   const loc = dateLocale(locale);
 
   const all = sessions ?? [];
+  const todayKey = new Date().toDateString();
   const upcoming = all.filter((s) => new Date(s.starts_at).getTime() > now).reverse();
   const past = all.filter((s) => new Date(s.starts_at).getTime() <= now);
 
@@ -45,6 +65,8 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
     const log = logBySession.get(s.id);
     const d = new Date(s.starts_at);
     const typeLabel = t(SESSION_TYPE_KEY[s.type as SessionType]);
+    const wName = s.type === "gym" && s.workout_id ? workoutName.get(s.workout_id) : undefined;
+    const canStart = !!wName && isAthlete && !excluded.has(s.id) && (isPast || d.toDateString() === todayKey);
     return (
       <li key={s.id} className="card flex flex-col gap-3 text-sm">
         <div className="flex items-start gap-3">
@@ -70,7 +92,19 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
                   <Flame size={12} aria-hidden className="text-[var(--accent)]" />{s.planned_rpe * s.planned_duration_min}
                 </span>
               ) : null}
+              {wName && (
+                <span className="chip max-w-full" title={t("sessions.workout")}>
+                  <ClipboardList size={12} aria-hidden className="shrink-0 text-[var(--accent)]" />
+                  <span className="sr-only">{t("sessions.workout")}: </span>
+                  <span className="truncate">{wName}</span>
+                </span>
+              )}
             </div>
+            {canStart && (
+              <Link href={`/team/${id}/workout/${s.id}`} className="btn btn-primary inline-flex min-h-11 w-fit items-center gap-2">
+                <Play size={16} aria-hidden />{t("sessions.startWorkout")}
+              </Link>
+            )}
           </div>
           <div className="flex shrink-0 items-start gap-1">
             <div className="flex w-10 flex-col items-center gap-1 pt-0.5 text-center">
@@ -186,6 +220,16 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
                 <input name="starts_at" type="datetime-local" required className="input min-h-11 w-full" />
               </Field>
             </div>
+            {(workouts ?? []).length > 0 && (
+              <div className="col-span-2">
+                <Field icon={ClipboardList} text={`${t("sessions.workout")} (${t("sessions.workoutHint")})`}>
+                  <select name="workout_id" defaultValue="" className="input min-h-11 w-full">
+                    <option value="">{t("sessions.workoutNone")}</option>
+                    {(workouts ?? []).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  </select>
+                </Field>
+              </div>
+            )}
             <Field icon={Clock} text={t("sessions.minutes")}>
               <input name="planned_duration_min" type="number" inputMode="numeric" min={1} max={600} required className="input min-h-11 w-full" />
             </Field>

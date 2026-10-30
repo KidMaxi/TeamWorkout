@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  Ban, ChevronRight, CircleHelp, ClipboardList, HeartPulse, Lock, TriangleAlert, UserCheck, Users, UserPlus,
+  Ban, ChevronRight, CircleAlert, CircleHelp, ClipboardList, HeartPulse, Lock, TriangleAlert, UserCheck, Users, UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
@@ -224,11 +224,21 @@ function WellnessRow({ entry, consent, t }: { entry: WellnessEntry | null | unde
   const flag = wellnessFlag(entry);
   const avg = wellnessAverage(entry);
   return (
-    <span className="mt-1.5 flex items-center gap-2" aria-label={t("wellness.staff.avg", { avg, flag: t(`wellness.flag.${flag}`) })}>
-      <HeartPulse size={14} aria-hidden className="text-[var(--accent)]" />
-      <span className="num text-sm" aria-hidden>{avg}</span>
-      <span className={FLAG_CLS[flag]} aria-hidden>{t(`wellness.flag.${flag}`)}</span>
-    </span>
+    <>
+      <span className="mt-1.5 flex items-center gap-2" aria-label={t("wellness.staff.avg", { avg, flag: t(`wellness.flag.${flag}`) })}>
+        <HeartPulse size={14} aria-hidden className="text-[var(--accent)]" />
+        <span className="num text-sm" aria-hidden>{avg}</span>
+        <span className={FLAG_CLS[flag]} aria-hidden>{t(`wellness.flag.${flag}`)}</span>
+      </span>
+      {entry.pain && (
+        <span className="mt-1.5 flex w-fit max-w-full items-start gap-1 rounded-xl bg-[var(--danger-bg)] px-2.5 py-1 text-xs font-semibold text-danger">
+          <CircleAlert size={12} aria-hidden className="mt-0.5 shrink-0" />
+          <span className="min-w-0 break-words">
+            {entry.painLocation ? t("wellness.staff.painWhere", { where: entry.painLocation }) : t("wellness.staff.pain")}
+          </span>
+        </span>
+      )}
+    </>
   );
 }
 

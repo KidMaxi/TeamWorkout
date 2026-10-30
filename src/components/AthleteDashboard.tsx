@@ -6,7 +6,7 @@ import { AvailabilityIcon, SessionTypeIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, SESSION_TYPE_KEY, dateLocale, type Locale, type TFunction } from "@/lib/i18n";
 import type { Availability, SessionType } from "@/lib/load";
-import type { WellnessEntry } from "@/lib/wellness";
+import { TEAM_TIME_ZONE, type WellnessEntry } from "@/lib/wellness";
 
 export type AthleteDashboardProps = {
   teamId: string;
@@ -28,6 +28,11 @@ export type AthleteDashboardProps = {
   attendedThisWeek: number;
   /** Own check-ins: today (or null) and the last 7 days, newest first. */
   wellness?: { today: WellnessEntry | null; recent: WellnessEntry[] };
+  /** Team sessions of the current Monday-Sunday week (oldest first) with the athlete's own rest flags, plus simple counts. */
+  week?: {
+    sessions: { id: string; type: SessionType; title: string; starts_at: string; excluded: boolean }[];
+    counts: { training: number; gym: number; match: number; restDays: number };
+  };
 };
 
 const dateFmt = (iso: string, locale: Locale) =>
@@ -133,8 +138,54 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDashboardProps["week
   );
 }
 
+function ThisWeek({ week, t, locale }: { week: NonNullable<AthleteDashboardProps["week"]>; t: TFunction; locale: Locale }) {
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString(dateLocale(locale), { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: TEAM_TIME_ZONE });
+  const c = week.counts;
+  const parts = [
+    c.training > 0 ? (c.training === 1 ? t("athlete.week.trainingOne") : t("athlete.week.training", { n: c.training })) : null,
+    c.gym > 0 ? t("athlete.week.gym", { n: c.gym }) : null,
+    c.match > 0 ? (c.match === 1 ? t("athlete.week.matchOne") : t("athlete.week.match", { n: c.match })) : null,
+    c.restDays === 1 ? t("athlete.week.restDayOne") : t("athlete.week.restDays", { n: c.restDays }),
+  ].filter((x): x is string => !!x);
+  return (
+    <section className="card flex flex-col gap-3" aria-label={t("athlete.week.title")}>
+      <h3 className="font-semibold">{t("athlete.week.title")}</h3>
+      {week.sessions.length ? (
+        <>
+          <ul className="flex flex-col" aria-label={t("athlete.week.aria")}>
+            {week.sessions.map((s) => (
+              <li
+                key={s.id}
+                className={`flex min-h-11 items-center gap-2.5 border-b border-[var(--line)] py-2 text-sm last:border-b-0 ${s.excluded ? "text-muted" : ""}`}
+              >
+                <SessionTypeIcon type={s.type} />
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="text-muted">{when(s.starts_at)}</span>{" "}
+                  <span className={s.excluded ? "line-through decoration-[var(--line)]" : ""}>
+                    {s.title || t(SESSION_TYPE_KEY[s.type])}
+                  </span>
+                </span>
+                {s.excluded && (
+                  <span className="chip shrink-0" title={t("athlete.week.restHint")}>
+                    {t("athlete.week.rest")}
+                    <span className="sr-only">. {t("athlete.week.restHint")}</span>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-muted">{parts.join(" · ")}</p>
+        </>
+      ) : (
+        <p className="text-sm text-muted">{t("athlete.week.empty")}</p>
+      )}
+    </section>
+  );
+}
+
 export async function AthleteDashboard({
-  teamId, availability, pending, weekly, recentLogs, last7Load, attendedThisWeek, wellness,
+  teamId, availability, pending, weekly, recentLogs, last7Load, attendedThisWeek, wellness, week,
 }: AthleteDashboardProps) {
   const { t, locale } = await getT();
   return (
@@ -172,6 +223,8 @@ export async function AthleteDashboard({
       {wellness?.today && <WellnessCard teamId={teamId} today={wellness.today} />}
 
       <AvailabilityStrip availability={availability} t={t} />
+
+      {week && <ThisWeek week={week} t={t} locale={locale} />}
 
       <WeeklyBars weekly={weekly} t={t} locale={locale} />
 

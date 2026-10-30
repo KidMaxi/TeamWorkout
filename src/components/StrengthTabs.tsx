@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
 
-/** Segmented control shared by the 5RM page and the exercise library. */
+/** Segmented control shared by the 5RM page, the exercise library and workouts. */
 export function StrengthTabs({ teamId }: { teamId: string }) {
   const { t } = useT();
   const path = usePathname();
@@ -12,6 +12,7 @@ export function StrengthTabs({ teamId }: { teamId: string }) {
   const tabs = [
     { href: base, label: t("strength.tab.tests"), active: path === base },
     { href: `${base}/exercises`, label: t("strength.tab.library"), active: path.startsWith(`${base}/exercises`) },
+    { href: `${base}/workouts`, label: t("strength.tab.workouts"), active: path.startsWith(`${base}/workouts`) },
   ];
   return (
     <nav className="glass mb-4 flex w-fit gap-1 rounded-full p-1" aria-label={t("strength.title")}>

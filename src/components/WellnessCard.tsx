@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bed, Brain, Check, Dumbbell, Pencil, Smile, Zap, type LucideIcon } from "lucide-react";
+import { Bed, Brain, Check, CircleAlert, Dumbbell, Pencil, Smile, Zap, type LucideIcon } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import type { MessageKey } from "@/lib/i18n";
 import { WELLNESS_ITEMS, wellnessAverage, type WellnessEntry, type WellnessItem } from "@/lib/wellness";
@@ -12,6 +12,9 @@ const ICON: Record<WellnessItem, LucideIcon> = {
 };
 const STEPS = [1, 2, 3, 4, 5] as const;
 type Draft = Partial<Record<WellnessItem, number>>;
+const PAIN_MAX = 60;
+const pickCls =
+  "grid min-h-12 cursor-pointer place-items-center rounded-full border border-[var(--line)] bg-[var(--surface-2)]/60 px-4 text-base font-medium transition-colors hover:border-[var(--accent)] peer-checked:border-transparent peer-checked:bg-[var(--primary)] peer-checked:text-[var(--on-primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]";
 
 export function WellnessCard({ teamId, today }: { teamId: string; today: WellnessEntry | null }) {
   const { t } = useT();
@@ -19,13 +22,17 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
   const entry = saved ?? today;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Draft>({});
+  const [pain, setPain] = useState<boolean | null>(null);
+  const [painWhere, setPainWhere] = useState("");
   const [error, setError] = useState<MessageKey | null>(null);
   const [pending, start] = useTransition();
 
-  const complete = WELLNESS_ITEMS.every((k) => draft[k] !== undefined);
+  const complete = WELLNESS_ITEMS.every((k) => draft[k] !== undefined) && pain !== null;
 
   function open() {
     setDraft(entry ? { sleep: entry.sleep, soreness: entry.soreness, fatigue: entry.fatigue, stress: entry.stress, mood: entry.mood } : {});
+    setPain(entry ? (entry.pain ?? false) : null);
+    setPainWhere(entry?.painLocation ?? "");
     setError(null);
     setEditing(true);
   }
@@ -35,6 +42,9 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
     if (!complete || pending) return;
     const fd = new FormData();
     for (const k of WELLNESS_ITEMS) fd.set(k, String(draft[k]));
+    const where = painWhere.trim();
+    fd.set("pain", pain ? "yes" : "no");
+    if (pain) fd.set("painLocation", where);
     start(async () => {
       let res: Awaited<ReturnType<typeof saveWellness>>;
       try {
@@ -46,7 +56,12 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
         setError(res.error ?? "wellness.error.save");
         return;
       }
-      setSaved({ day: entry?.day ?? "", ...(draft as Record<WellnessItem, number>) });
+      setSaved({
+        day: entry?.day ?? "",
+        ...(draft as Record<WellnessItem, number>),
+        pain: !!pain,
+        painLocation: pain && where ? where : null,
+      });
       setEditing(false);
       setError(null);
     });
@@ -61,6 +76,14 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
             <p className="num text-sm text-muted" aria-label={t("wellness.card.avg", { avg: wellnessAverage(entry) })}>
               {wellnessAverage(entry)}<span className="text-xs"> / 5</span>
             </p>
+            {entry.pain && (
+              <p className="mt-1.5 flex items-start gap-1.5 text-sm text-danger">
+                <CircleAlert size={14} aria-hidden className="mt-0.5 shrink-0" />
+                <span className="min-w-0 break-words">
+                  {entry.painLocation ? t("wellness.pain.markWhere", { where: entry.painLocation }) : t("wellness.pain.mark")}
+                </span>
+              </p>
+            )}
           </div>
           <button type="button" onClick={open} className="btn inline-flex min-h-11 items-center gap-1.5">
             <Pencil size={14} aria-hidden /> {t("wellness.card.edit")}
@@ -129,6 +152,42 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
           <span>1 {t("wellness.scale.1")}</span>
           <span>5 {t("wellness.scale.5")}</span>
         </div>
+        <fieldset className="m-0 min-w-0 border-0 p-0" disabled={pending}>
+          <legend className="mb-2 flex items-center gap-2 p-0 text-sm font-medium">
+            <CircleAlert size={16} aria-hidden className="text-[var(--accent)]" />
+            {t("wellness.pain.legend")}
+          </legend>
+          <div role="radiogroup" aria-label={t("wellness.pain.group")} className="grid grid-cols-2 gap-2">
+            {([[true, "wellness.pain.yes"], [false, "wellness.pain.no"]] as const).map(([val, label]) => (
+              <label key={label} className="relative block">
+                <input
+                  type="radio"
+                  name="pain"
+                  value={val ? "yes" : "no"}
+                  checked={pain === val}
+                  onChange={() => setPain(val)}
+                  className="peer sr-only"
+                />
+                <span className={pickCls}>{t(label)}</span>
+              </label>
+            ))}
+          </div>
+          {pain === true && (
+            <label className="mt-3 block">
+              <span className="mb-1 block text-sm text-muted">{t("wellness.pain.where")}</span>
+              <input
+                type="text"
+                value={painWhere}
+                maxLength={PAIN_MAX}
+                onChange={(e) => setPainWhere(e.target.value)}
+                placeholder={t("wellness.pain.placeholder")}
+                autoComplete="off"
+                enterKeyHint="done"
+                className="input min-h-12 w-full"
+              />
+            </label>
+          )}
+        </fieldset>
       </div>
       {error && <p role="alert" className="text-sm text-danger">{t(error)}</p>}
       <div className="flex gap-2">

@@ -21,6 +21,10 @@ export default defineMessages(
     change: "Wijzig",
     yourLog: "Jouw log",
     help: "Uitleg over RPE",
+    workout: "Workout",
+    workoutNone: "Geen workout",
+    workoutHint: "Alleen voor gymtrainingen",
+    startWorkout: "Start workout",
   },
   {
     plan: "Plan",
@@ -42,5 +46,9 @@ export default defineMessages(
     change: "Edit",
     yourLog: "Your log",
     help: "About RPE",
+    workout: "Workout",
+    workoutNone: "No workout",
+    workoutHint: "Only for gym sessions",
+    startWorkout: "Start workout",
   },
 );

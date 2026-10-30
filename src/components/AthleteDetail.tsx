@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ban, ChevronLeft, CircleHelp, Lock, Pencil, ShieldCheck } from "lucide-react";
+import { Ban, ChevronLeft, CircleAlert, CircleHelp, Lock, Pencil, ShieldCheck } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Dial } from "@/components/Dial";
 import { AvailabilityIcon, SessionTypeIcon } from "@/components/icons";
@@ -234,7 +234,19 @@ function Wellness({
       <div className="flex flex-col gap-2.5">
         <p className="eyebrow">{t("detail.wellness.today")}</p>
         {today ? (
-          WELLNESS_ITEMS.map((k) => <Meter key={k} value={today[k]} label={t(ITEM_KEY[k])} t={t} />)
+          <>
+            {WELLNESS_ITEMS.map((k) => <Meter key={k} value={today[k]} label={t(ITEM_KEY[k])} t={t} />)}
+            {today.pain ? (
+              <p className="mt-1 flex items-start gap-2 rounded-xl bg-[var(--danger-bg)] px-3 py-2 text-sm font-medium text-danger">
+                <CircleAlert size={16} aria-hidden className="mt-0.5 shrink-0" />
+                <span className="min-w-0 break-words">
+                  {today.painLocation ? t("detail.wellness.painWhere", { where: today.painLocation }) : t("detail.wellness.pain")}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-muted">{t("detail.wellness.painNone")}</p>
+            )}
+          </>
         ) : (
           <p className="text-sm text-muted">{t("detail.wellness.todayNone")}</p>
         )}
@@ -245,7 +257,7 @@ function Wellness({
         <ol className="flex h-14 items-end gap-1">
           {days.map((e) => {
             const flag = wellnessFlag(e);
-            const text = t("detail.wellness.day", { date: dayLabel(e.day), avg: fmt1(e.avg), flag: t(FLAG_KEY[flag]) });
+            const text = t(e.pain ? "detail.wellness.dayPain" : "detail.wellness.day", { date: dayLabel(e.day), avg: fmt1(e.avg), flag: t(FLAG_KEY[flag]) });
             return (
               <li key={e.day} className="flex h-full min-w-0 flex-1 items-end">
                 <div
@@ -259,6 +271,20 @@ function Wellness({
             );
           })}
         </ol>
+        {days.some((e) => e.pain) && (
+          <>
+            <ol className="flex gap-1" aria-hidden>
+              {days.map((e) => (
+                <li key={e.day} className="flex min-w-0 flex-1 justify-center">
+                  {e.pain ? <CircleAlert size={12} className="text-danger" /> : <span className="h-3" />}
+                </li>
+              ))}
+            </ol>
+            <p className="flex items-center gap-1.5 text-xs text-muted">
+              <CircleAlert size={12} aria-hidden className="text-danger" /> {t("detail.wellness.pain")}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

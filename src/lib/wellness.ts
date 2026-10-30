@@ -2,7 +2,11 @@
 export const WELLNESS_ITEMS = ["sleep", "soreness", "fatigue", "stress", "mood"] as const;
 export type WellnessItem = (typeof WELLNESS_ITEMS)[number];
 
-export type WellnessEntry = { day: string } & Record<WellnessItem, number>;
+export type WellnessEntry = { day: string } & Record<WellnessItem, number> & {
+  /** Optional pain flag and short free-text location (max 60 chars). */
+  pain?: boolean;
+  painLocation?: string | null;
+};
 
 export const wellnessAverage = (e: Record<WellnessItem, number>): number =>
   Math.round((WELLNESS_ITEMS.reduce((s, k) => s + e[k], 0) / WELLNESS_ITEMS.length) * 10) / 10;

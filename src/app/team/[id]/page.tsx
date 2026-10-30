@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { StaffDashboard } from "@/components/StaffDashboard";
 import { AthleteDashboard } from "@/components/AthleteDashboard";
+import { WorkloadTabs } from "@/components/WorkloadTabs";
+import { countWeek, localDay, weekDays } from "@/lib/workload";
 import { todayInTeamZone, type WellnessEntry } from "@/lib/wellness";
 import {
   athleteLevel,
@@ -29,7 +31,7 @@ export default async function TeamOverview({
       // RLS only returns rows of athletes who gave consent.
       supabase
         .from("wellness_checks")
-        .select("user_id, day, sleep, soreness, fatigue, stress, mood")
+        .select("user_id, day, sleep, soreness, fatigue, stress, mood, pain, pain_location")
         .eq("day", day),
       supabase.from("team_members").select("user_id, consent_given").eq("team_id", id).eq("role", "athlete"),
     ]);
@@ -48,12 +50,20 @@ export default async function TeamOverview({
     for (const r of rows) wellness[r.user_id] = null;
     for (const w of wellnessRes.data ?? []) {
       if (consent[w.user_id as string]) {
-        wellness[w.user_id as string] = { day: w.day, sleep: w.sleep, soreness: w.soreness, fatigue: w.fatigue, stress: w.stress, mood: w.mood };
+        wellness[w.user_id as string] = {
+          day: w.day, sleep: w.sleep, soreness: w.soreness, fatigue: w.fatigue, stress: w.stress, mood: w.mood,
+          pain: !!w.pain, painLocation: w.pain ? (w.pain_location ?? null) : null,
+        };
       }
     }
     const { filter } = await searchParams;
     const f: DashboardFilter = (["alerts", "unavailable", "missing"] as const).find((x) => x === filter) ?? "all";
-    return <StaffDashboard teamId={id} rows={rows} weeks={trend.data as WeekTrendRow[]} filter={f} wellness={wellness} consent={consent} />;
+    return (
+      <>
+        <WorkloadTabs teamId={id} />
+        <StaffDashboard teamId={id} rows={rows} weeks={trend.data as WeekTrendRow[]} filter={f} wellness={wellness} consent={consent} />
+      </>
+    );
   }
 
   const DAY = 86400_000;
@@ -67,7 +77,10 @@ export default async function TeamOverview({
   const firstWeekStart = thisWeekStart - 5 * 7 * DAY;
 
   const today = todayInTeamZone();
-  const [logsRes, sessionsRes, availRes, wellnessRes] = await Promise.all([
+  const weekYmd = weekDays(today);
+  const weekFrom = weekYmd.length ? new Date(Date.parse(`${weekYmd[0]}T00:00:00Z`) - DAY).toISOString() : null;
+  const weekTo = weekYmd.length ? new Date(Date.parse(`${weekYmd[weekYmd.length - 1]}T00:00:00Z`) + 2 * DAY).toISOString() : null;
+  const [logsRes, sessionsRes, availRes, wellnessRes, weekRes] = await Promise.all([
     supabase
       .from("session_logs")
       .select("session_id, load, rpe, duration_min, attended, sessions!inner(title, type, starts_at, team_id)")
@@ -84,13 +97,28 @@ export default async function TeamOverview({
       .from("availability").select("status, note").eq("team_id", id).eq("user_id", user!.id).maybeSingle(),
     supabase
       .from("wellness_checks")
-      .select("day, sleep, soreness, fatigue, stress, mood")
+      .select("day, sleep, soreness, fatigue, stress, mood, pain, pain_location")
       .eq("user_id", user!.id)
       .gte("day", new Date(Date.parse(`${today}T00:00:00Z`) - 6 * DAY).toISOString().slice(0, 10))
       .order("day", { ascending: false }),
+    // Team sessions around the current Monday-Sunday week (trimmed to the exact week in Europe/Amsterdam below).
+    weekFrom && weekTo
+      ? supabase.from("sessions").select("id, title, type, starts_at").eq("team_id", id).gte("starts_at", weekFrom).lte("starts_at", weekTo).order("starts_at")
+      : Promise.resolve({ data: [], error: null }),
   ]);
-  const dbErr = logsRes.error ?? sessionsRes.error ?? availRes.error;
+  const dbErr = logsRes.error ?? sessionsRes.error ?? availRes.error ?? weekRes.error;
   if (dbErr) throw new Error(dbErr.message);
+
+  const weekSet = new Set(weekYmd);
+  const weekSessions = (weekRes.data ?? []).filter((s) => weekSet.has(localDay(s.starts_at as string)));
+
+  // Sessions the coach took this athlete out of (own rows only, enforced by RLS and the user filter).
+  const exclIds = [...new Set([...(sessionsRes.data ?? []).map((s) => s.id as string), ...weekSessions.map((s) => s.id as string)])];
+  const exclRes = exclIds.length
+    ? await supabase.from("session_exclusions").select("session_id").eq("user_id", user!.id).in("session_id", exclIds)
+    : { data: [], error: null };
+  if (exclRes.error) throw new Error(exclRes.error.message);
+  const excluded = new Set((exclRes.data ?? []).map((x) => x.session_id as string));
 
   type Joined = { title: string; type: SessionType; starts_at: string };
   const logs = (logsRes.data ?? []).map((l) => {
@@ -117,7 +145,7 @@ export default async function TeamOverview({
   const pending = (sessionsRes.data ?? [])
     .filter((s) => {
       const end = new Date(s.starts_at).getTime() + s.planned_duration_min * 60_000;
-      return end < now && end >= now - 14 * DAY && !logged.has(s.id);
+      return end < now && end >= now - 14 * DAY && !logged.has(s.id) && !excluded.has(s.id);
     })
     .sort((a, b) => b.starts_at.localeCompare(a.starts_at))
     .map((s) => ({ id: s.id, type: s.type as SessionType, title: s.title ?? "", starts_at: s.starts_at }));
@@ -132,7 +160,18 @@ export default async function TeamOverview({
 
   const recentWellness: WellnessEntry[] = (wellnessRes.data ?? []).map((w) => ({
     day: w.day, sleep: w.sleep, soreness: w.soreness, fatigue: w.fatigue, stress: w.stress, mood: w.mood,
+    pain: !!w.pain, painLocation: w.pain ? (w.pain_location ?? null) : null,
   }));
+
+  const planned = weekSessions.map((s) => ({ id: s.id as string, type: s.type as SessionType, startsAt: s.starts_at as string }));
+  const counts = countWeek(planned, excluded);
+  const week = {
+    sessions: weekSessions.map((s) => ({
+      id: s.id as string, type: s.type as SessionType, title: (s.title as string | null) ?? "",
+      starts_at: s.starts_at as string, excluded: excluded.has(s.id as string),
+    })),
+    counts: { training: counts.training, gym: counts.gym, match: counts.match, restDays: counts.restDays },
+  };
 
   return (
     <AthleteDashboard
@@ -143,6 +182,7 @@ export default async function TeamOverview({
       recentLogs={recentLogs}
       last7Load={last7Load}
       attendedThisWeek={attendedThisWeek}
+      week={week}
       wellness={{ today: recentWellness.find((w) => w.day === today) ?? null, recent: recentWellness }}
     />
   );

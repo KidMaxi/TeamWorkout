@@ -28,7 +28,7 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
     .from("team_members").select("role, consent_given").eq("team_id", id).eq("user_id", userId).maybeSingle();
   if (!member || member.role !== "athlete") notFound();
 
-  const [profileRes, availRes, limitRes, logsRes, sessionsRes, wellnessRes] = await Promise.all([
+  const [profileRes, availRes, limitRes, logsRes, sessionsRes, wellnessRes, exclRes] = await Promise.all([
     supabase.from("profiles").select("full_name, birth_date, height_cm, weight_kg").eq("id", userId).maybeSingle(),
     supabase.from("availability").select("status, note").eq("team_id", id).eq("user_id", userId).maybeSingle(),
     supabase.from("athlete_limits").select("max_weekly_load").eq("team_id", id).eq("user_id", userId).maybeSingle(),
@@ -45,11 +45,13 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
       .gte("starts_at", new Date(now - 15 * DAY).toISOString())
       .lte("starts_at", new Date(now).toISOString()),
     member.consent_given
-      ? supabase.from("wellness_checks").select("day, sleep, soreness, fatigue, stress, mood")
+      ? supabase.from("wellness_checks").select("day, sleep, soreness, fatigue, stress, mood, pain, pain_location")
           .eq("user_id", userId).gte("day", fromDay).order("day", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
+    // Sessions the coach took this athlete out of (rest): no RPE is owed for them.
+    supabase.from("session_exclusions").select("session_id").eq("user_id", userId),
   ]);
-  const dbErr = profileRes.error ?? availRes.error ?? limitRes.error ?? logsRes.error ?? sessionsRes.error ?? wellnessRes.error;
+  const dbErr = profileRes.error ?? availRes.error ?? limitRes.error ?? logsRes.error ?? sessionsRes.error ?? wellnessRes.error ?? exclRes.error;
   if (dbErr) throw new Error(dbErr.message);
 
   type Joined = { title: string | null; type: SessionType; starts_at: string };
@@ -99,9 +101,10 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
   };
 
   const logged = new Set(logs.map((l) => l.session_id));
+  const excluded = new Set((exclRes.data ?? []).map((x) => x.session_id as string));
   const missing = (sessionsRes.data ?? []).filter((s) => {
     const end = new Date(s.starts_at).getTime() + s.planned_duration_min * 60_000;
-    return end < now && end >= now - 14 * DAY && !logged.has(s.id);
+    return end < now && end >= now - 14 * DAY && !logged.has(s.id) && !excluded.has(s.id);
   }).length;
 
   const recent = [...logs]
@@ -113,7 +116,10 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
     }));
 
   const wellness: (WellnessEntry & { avg: number })[] = (wellnessRes.data ?? []).map((w) => {
-    const e = w as unknown as WellnessEntry;
+    const e: WellnessEntry = {
+      day: w.day, sleep: w.sleep, soreness: w.soreness, fatigue: w.fatigue, stress: w.stress, mood: w.mood,
+      pain: !!w.pain, painLocation: w.pain ? (w.pain_location ?? null) : null,
+    };
     return { ...e, avg: wellnessAverage(e) };
   });
 

@@ -22,7 +22,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
 
   const uid = user.id;
-  const [profile, memberships, availability, limits, logs, wellness, strength, subs] = await Promise.all([
+  const [profile, memberships, availability, limits, logs, wellness, strength, subs, exclusions, weekRules, runs] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
     supabase
       .from("team_members")
@@ -34,11 +34,29 @@ export async function GET() {
     supabase.from("wellness_checks").select("*").eq("user_id", uid),
     supabase.from("strength_tests").select("*, exercises(name)").eq("user_id", uid),
     supabase.from("push_subscriptions").select("created_at, user_agent, endpoint").eq("user_id", uid),
+    supabase.from("session_exclusions").select("*").eq("user_id", uid),
+    supabase.from("week_rules").select("*").eq("user_id", uid),
+    supabase.from("workout_runs").select("*").eq("user_id", uid),
   ]);
 
-  const failed = [profile, memberships, availability, limits, logs, wellness, strength, subs].find((r) => r.error);
+  const failed = [profile, memberships, availability, limits, logs, wellness, strength, subs, exclusions, weekRules, runs].find((r) => r.error);
   if (failed?.error) {
     return NextResponse.json({ error: "export_failed" }, { status: 500, headers: NO_STORE });
+  }
+
+  // Sets of the user's own runs, fetched in chunks to keep the request URL short.
+  const runRows = runs.data ?? [];
+  const setRows: Record<string, unknown>[] = [];
+  for (let i = 0; i < runRows.length; i += 100) {
+    const ids = runRows.slice(i, i + 100).map((r) => r.id as string);
+    const { data, error } = await supabase.from("run_sets").select("*").in("run_id", ids);
+    if (error) return NextResponse.json({ error: "export_failed" }, { status: 500, headers: NO_STORE });
+    setRows.push(...((data ?? []) as Record<string, unknown>[]));
+  }
+  const setsByRun = new Map<string, Record<string, unknown>[]>();
+  for (const st of setRows) {
+    const k = st.run_id as string;
+    setsByRun.set(k, [...(setsByRun.get(k) ?? []), st]);
   }
 
   const now = new Date();
@@ -55,6 +73,9 @@ export async function GET() {
     athleteLimits: limits.data ?? [],
     sessionLogs: (logs.data ?? []).map(({ sessions, ...l }) => ({ ...l, session: sessions ?? null })),
     wellnessChecks: wellness.data ?? [],
+    sessionExclusions: exclusions.data ?? [],
+    weekRules: weekRules.data ?? [],
+    workoutRuns: runRows.map((r) => ({ ...r, sets: setsByRun.get(r.id as string) ?? [] })),
     strengthTests: (strength.data ?? []).map(({ exercises, ...s }) => ({
       ...s,
       exerciseName: (exercises as { name?: string } | null)?.name ?? null,

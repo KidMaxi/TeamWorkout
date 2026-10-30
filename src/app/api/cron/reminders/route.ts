@@ -81,6 +81,16 @@ export async function GET(req: Request) {
     const logs = await inChunks("session_logs", "session_id, user_id, attended, load", "session_id", [...sessionById.keys()]);
     const logKey = new Set(logs.map((l) => `${l.session_id}:${l.user_id}`));
 
+    // Coach-excluded athletes (rest) owe no RPE for that session. Only the recent window is relevant.
+    const recentIds = sessions
+      .filter((s) => {
+        const end = new Date(s.starts_at as string).getTime() + Number(s.planned_duration_min ?? 0) * 60_000;
+        return end < nowMs && end >= nowMs - 3 * DAY;
+      })
+      .map((s) => s.id as string);
+    const exclusions = await inChunks("session_exclusions", "session_id, user_id", "session_id", recentIds);
+    const excludedKey = new Set(exclusions.map((x) => `${x.session_id}:${x.user_id}`));
+
     // (a) missing RPE: per athlete, count of sessions ended within last 3 days with no log.
     const missing = new Map<string, number>();
     const firstTeam = new Map<string, string>();
@@ -93,7 +103,7 @@ export async function GET(req: Request) {
         if (!mineIds.has(s.team_id as string)) continue;
         const start = new Date(s.starts_at as string).getTime();
         const end = start + Number(s.planned_duration_min ?? 0) * 60_000;
-        if (end < nowMs && end >= nowMs - 3 * DAY && !logKey.has(`${s.id}:${u}`)) n++;
+        if (end < nowMs && end >= nowMs - 3 * DAY && !logKey.has(`${s.id}:${u}`) && !excludedKey.has(`${s.id}:${u}`)) n++;
       }
       if (n > 0) missing.set(u, n);
     }
