@@ -100,6 +100,12 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
                 </span>
               )}
             </div>
+            {isStaff && wName && s.type === "gym" && (
+              <div className="flex flex-wrap gap-x-4">
+                <Link href={`/team/${id}/kiosk/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("sessions.ipadMode")}</Link>
+                <Link href={`/team/${id}/review/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("sessions.reviewLink")}</Link>
+              </div>
+            )}
             {canStart && (
               <Link href={`/team/${id}/workout/${s.id}`} className="btn btn-primary inline-flex min-h-11 w-fit items-center gap-2">
                 <Play size={16} aria-hidden />{t("sessions.startWorkout")}

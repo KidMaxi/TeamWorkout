@@ -40,6 +40,11 @@ export default async function ProfilePage() {
     .eq("user_id", user.id)
     .eq("role", "athlete")
     .order("joined_at");
+  let hasPin = false;
+  if (athleteRows?.length) {
+    const { data } = await supabase.rpc("has_athlete_pin", { _user: user.id });
+    hasPin = data === true;
+  }
   const age = ageOf(p?.birth_date ?? "");
   const ageState = age === null ? "unknown" : age >= 16 ? "adult" : "minor";
   const fmt = (iso: string | null) =>
@@ -65,6 +70,8 @@ export default async function ProfilePage() {
         }}
         remindersEnabled={p?.notify_reminders ?? true}
         hasSubscription={(subCount ?? 0) > 0}
+        isAthlete={!!athleteRows?.length}
+        hasPin={hasPin}
         consent={
           athleteRows?.length ? (
             <>

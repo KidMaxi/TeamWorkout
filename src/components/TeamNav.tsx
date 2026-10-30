@@ -9,6 +9,7 @@ export function TeamNav({ teamId, isStaff }: { teamId: string; isStaff: boolean 
   const { t } = useT();
   const path = usePathname();
   const base = `/team/${teamId}`;
+  if (path.includes("/kiosk")) return null; // shared iPad: no navigation for athletes
   const items = [
     { href: base, label: t("common.nav.overview"), Icon: LayoutDashboard, exact: true },
     { href: `${base}/sessions`, label: t("common.nav.sessions"), Icon: CalendarDays },

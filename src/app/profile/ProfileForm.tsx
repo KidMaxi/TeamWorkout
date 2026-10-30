@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Cake, Check, Download, Languages, LogOut, Mail, Ruler, Scale, ShieldCheck, User } from "lucide-react";
+import { Cake, Check, Download, KeyRound, Languages, LogOut, Mail, Ruler, Scale, ShieldCheck, User } from "lucide-react";
 import { deleteAccount, signOut } from "@/app/actions";
 import { Avatar } from "@/components/Avatar";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { NotificationsCard } from "@/components/NotificationsCard";
+import { PinDialog } from "@/components/PinDialog";
+import { clearPin, setPin } from "@/app/pin-actions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n/client";
 import { updateProfile, type ProfileResult } from "./actions";
@@ -52,12 +54,16 @@ export function ProfileForm({
   remindersEnabled = false,
   hasSubscription = false,
   consent = null,
+  isAthlete = false,
+  hasPin = false,
 }: {
   email: string;
   initial: Initial;
   remindersEnabled?: boolean;
   hasSubscription?: boolean;
   consent?: React.ReactNode;
+  isAthlete?: boolean;
+  hasPin?: boolean;
 }) {
   const { t } = useT();
   const [state, action, pending] = useActionState<ProfileResult | null, FormData>(updateProfile, null);
@@ -132,6 +138,50 @@ export function ProfileForm({
       </form>
 
       {consent}
+
+      {isAthlete && (
+        <section className="card flex flex-col gap-3" aria-labelledby="my-pin">
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden
+              className="grid size-10 shrink-0 place-items-center rounded-full text-[var(--accent)]"
+              style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent)" }}
+            >
+              <KeyRound size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 id="my-pin" className="display text-lg">{t("pins.self.title")}</h2>
+              <p className="mt-1 text-sm text-muted">{t("pins.self.body")}</p>
+            </div>
+          </div>
+          <p className="text-sm" aria-live="polite">
+            <span className={hasPin ? "text-ok" : "text-muted"}>{hasPin ? t("pins.self.set") : t("pins.self.none")}</span>
+          </p>
+          <p className="text-xs text-muted">{t("pins.guard")}</p>
+          <div className="flex flex-wrap gap-2">
+            <PinDialog
+              twice
+              triggerLabel={hasPin ? t("pins.action.change") : t("pins.action.set")}
+              title={t("pins.dialog.titleSelf")}
+              onSave={(pin) => setPin(null, pin)}
+              className="flex-1"
+            />
+            {hasPin && (
+              <ConfirmButton
+                action={async () => {
+                  const r = await clearPin(null);
+                  return r.ok ? {} : { error: r.error };
+                }}
+                icon="trash"
+                label={t("pins.action.remove")}
+                title={t("pins.remove.title")}
+                body={t("pins.remove.bodySelf")}
+                className="flex-1"
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="card flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-sm font-medium">

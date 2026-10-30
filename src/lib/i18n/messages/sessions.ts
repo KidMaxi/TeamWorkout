@@ -25,6 +25,8 @@ export default defineMessages(
     workoutNone: "Geen workout",
     workoutHint: "Alleen voor gymtrainingen",
     startWorkout: "Start workout",
+    ipadMode: "iPad-modus",
+    reviewLink: "Controleren",
   },
   {
     plan: "Plan",
@@ -50,5 +52,7 @@ export default defineMessages(
     workoutNone: "No workout",
     workoutHint: "Only for gym sessions",
     startWorkout: "Start workout",
+    ipadMode: "iPad mode",
+    reviewLink: "Review",
   },
 );

@@ -8,6 +8,15 @@ import type { MessageKey } from "@/lib/i18n";
 import type { ExerciseKind } from "@/lib/exercises";
 import { roundToStep, weightFor } from "@/lib/strength";
 import { deleteRunSet, finishRun, saveRunSet, startRun } from "@/app/team/[id]/workout/actions";
+import type { RunResult, RunSetPayload, StartResult } from "@/lib/run-writes";
+
+/** Server calls the runner makes. The default is the self-service actions; iPad mode passes its own. */
+export type RunnerApi = {
+  start: () => Promise<StartResult>;
+  saveSet: (payload: RunSetPayload) => Promise<RunResult>;
+  deleteSet: (exerciseId: string, setIndex: number, side: "left" | "right" | null) => Promise<RunResult>;
+  finish: (durationMin: number, rpe: number) => Promise<RunResult>;
+};
 
 export type RunExercise = {
   id: string;
@@ -153,6 +162,7 @@ function CoachNote({ text, label, more, less }: { text: string; label: string; m
 
 export function WorkoutRunner({
   teamId, sessionId, sessionsHref, workoutName, blocks, saved, prev, startedAt: startedAtInit, finished: finishedInit,
+  api: apiProp, onFinished, renderFinished, athleteName, backLabel,
 }: {
   teamId: string;
   sessionId: string;
@@ -163,8 +173,24 @@ export function WorkoutRunner({
   prev: PrevSet[];
   startedAt: string | null;
   finished: FinishedRun | null;
+  /** Optional: replaces the self-service server actions (iPad mode). */
+  api?: RunnerApi;
+  /** Called once after this visit finished the workout. */
+  onFinished?: () => void;
+  /** Optional: replaces the finished screen (iPad mode shows no load numbers). */
+  renderFinished?: (f: FinishedRun) => React.ReactNode;
+  /** Optional: whose workout this is, shown large in the header. */
+  athleteName?: string;
+  /** Label of the back link before the workout starts. */
+  backLabel?: MessageKey;
 }) {
   const { t, locale } = useT();
+  const api: RunnerApi = apiProp ?? {
+    start: () => startRun(teamId, sessionId),
+    saveSet: (p) => saveRunSet(teamId, sessionId, p),
+    deleteSet: (ex, i, side) => deleteRunSet(teamId, sessionId, ex, i, side),
+    finish: (d, r) => finishRun(teamId, sessionId, d, r),
+  };
   const dec = locale === "nl" ? "," : ".";
   const fmt = (n: number) => String(Math.round(n * 100) / 100).replace(".", dec);
 
@@ -333,9 +359,9 @@ export function WorkoutRunner({
     }
 
     patch(d.key, { busy: true, error: null });
-    let res: Awaited<ReturnType<typeof saveRunSet>>;
+    let res: RunResult;
     try {
-      res = await saveRunSet(teamId, sessionId, {
+      res = await api.saveSet({
         exerciseId: d.exerciseId, setId: d.setId, setIndex: d.setIndex, side: d.side, weight, reps, rpe,
         setType: d.extra ? type : undefined,
       });
@@ -360,9 +386,9 @@ export function WorkoutRunner({
     const st = rows[d.key];
     if (!st || st.busy) return;
     patch(d.key, { busy: true, error: null });
-    let res: Awaited<ReturnType<typeof deleteRunSet>>;
+    let res: RunResult;
     try {
-      res = await deleteRunSet(teamId, sessionId, block.exercise.id, d.setIndex, d.side);
+      res = await api.deleteSet(block.exercise.id, d.setIndex, d.side);
     } catch {
       res = { ok: false, error: "run.error.save" };
     }
@@ -373,9 +399,9 @@ export function WorkoutRunner({
     if (starting) return;
     setStarting(true);
     setStartError(null);
-    let res: Awaited<ReturnType<typeof startRun>>;
+    let res: StartResult;
     try {
-      res = await startRun(teamId, sessionId);
+      res = await api.start();
     } catch {
       res = { ok: false, error: "run.error.save" };
     }
@@ -445,9 +471,9 @@ export function WorkoutRunner({
     if (!(r >= 1 && r <= 10)) return setFinishError("run.error.rpeLog");
     setFinishing(true);
     setFinishError(null);
-    let res: Awaited<ReturnType<typeof finishRun>>;
+    let res: RunResult;
     try {
-      res = await finishRun(teamId, sessionId, dur, r);
+      res = await api.finish(dur, r);
     } catch {
       res = { ok: false, error: "run.error.save" };
     }
@@ -455,15 +481,19 @@ export function WorkoutRunner({
     if (!res.ok) return setFinishError(res.error ?? "run.error.save");
     dialogRef.current?.close();
     setFinished({ durationMin: dur, rpe: r, sets: doneSets });
+    onFinished?.();
   }
 
   // ================= render =================
   const header = (
     <div>
-      <p className="eyebrow">{t("run.title")}</p>
-      <h2 className="display mt-1 text-2xl leading-tight">{workoutName || t("run.title")}</h2>
+      {athleteName && <p className="display text-4xl leading-tight">{athleteName}</p>}
+      <p className="eyebrow mt-1">{t("run.title")}</p>
+      <h2 className={`display mt-1 leading-tight ${athleteName ? "text-xl text-muted" : "text-2xl"}`}>{workoutName || t("run.title")}</h2>
     </div>
   );
+
+  if (finished && renderFinished) return <>{renderFinished(finished)}</>;
 
   if (finished) {
     const load = finished.rpe !== null ? finished.durationMin * finished.rpe : null;
@@ -524,7 +554,7 @@ export function WorkoutRunner({
           <button type="button" onClick={begin} disabled={starting || blocks.length === 0} className="btn btn-primary inline-flex min-h-14 items-center justify-center gap-2 text-lg">
             <Play size={20} aria-hidden />{starting ? t("run.saving") : t("run.start.button")}
           </button>
-          <Link href={sessionsHref} className="link inline-flex min-h-11 items-center justify-center">{t("run.back")}</Link>
+          <Link href={sessionsHref} className="link inline-flex min-h-11 items-center justify-center">{t(backLabel ?? "run.back")}</Link>
         </div>
       </section>
     );
