@@ -18,7 +18,13 @@ export type RunSetPayload = {
   weight: number | null;
   reps: number | null;
   rpe: number | null;
+  /** Only used for extra rounds; planned sets always take the type from the plan. */
+  setType?: string;
 };
+
+type SetType = "warmup" | "normal" | "failure" | "drop";
+const SET_TYPES: readonly string[] = ["warmup", "normal", "failure", "drop"];
+const isSetType = (v: unknown): v is SetType => typeof v === "string" && SET_TYPES.includes(v);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_EXTRA_ROUNDS = 30;
@@ -89,20 +95,22 @@ async function loadPlan(c: Ctx) {
   const blockList = blocks ?? [];
   if (!blockList.length) return null;
   const [{ data: sets }, { data: exercises }] = await Promise.all([
-    c.supabase.from("workout_sets").select("id, block_id").in("block_id", blockList.map((b) => b.id)),
+    c.supabase.from("workout_sets").select("id, block_id, set_type").in("block_id", blockList.map((b) => b.id)),
     c.supabase.from("exercises").select("id, kind").in("id", [...new Set(blockList.map((b) => b.exercise_id as string))]),
   ]);
   const exerciseOfBlock = new Map(blockList.map((b) => [b.id as string, b.exercise_id as string]));
   const planned = new Map<string, number>();
   const setExercise = new Map<string, string>();
+  const setTypes = new Map<string, SetType>();
   for (const s of sets ?? []) {
     const ex = exerciseOfBlock.get(s.block_id as string);
     if (!ex) continue;
     planned.set(ex, (planned.get(ex) ?? 0) + 1);
     setExercise.set(s.id as string, ex);
+    setTypes.set(s.id as string, isSetType(s.set_type) ? s.set_type : "normal");
   }
   const kinds = new Map((exercises ?? []).map((e) => [e.id as string, e.kind as ExerciseKind]));
-  return { exerciseIds: new Set(exerciseOfBlock.values()), planned, setExercise, kinds };
+  return { exerciseIds: new Set(exerciseOfBlock.values()), planned, setExercise, setTypes, kinds };
 }
 
 const hasMax2Decimals = (n: number) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6;
@@ -126,6 +134,14 @@ export async function saveRunSet(teamId: string, sessionId: string, payload: Run
   if (p.setId && plan.setExercise.get(p.setId) !== p.exerciseId) return { ok: false, error: "run.error.exercise" };
   const kind = plan.kinds.get(p.exerciseId);
   if (!kind) return { ok: false, error: "run.error.exercise" };
+
+  // Planned sets: the plan decides. Extra rounds: the athlete may choose, but only a known type.
+  let setType: SetType = "normal";
+  if (p.setId) setType = plan.setTypes.get(p.setId) ?? "normal";
+  else if (p.setType != null) {
+    if (!isSetType(p.setType)) return { ok: false, error: "run.error.setType" };
+    setType = p.setType;
+  }
 
   const setIndex = p.setIndex;
   const maxIndex = (plan.planned.get(p.exerciseId) ?? 0) + MAX_EXTRA_ROUNDS;
@@ -155,8 +171,9 @@ export async function saveRunSet(teamId: string, sessionId: string, payload: Run
     weight = null;
   }
   if (kind === "height_cm" || kind === "duration_s") rpe = null;
+  else if (setType === "failure") rpe = 10;
 
-  const values = { weight_kg: weight, reps, rpe, set_id: p.setId ?? null, done_at: new Date().toISOString() };
+  const values = { weight_kg: weight, reps, rpe, set_type: setType, set_id: p.setId ?? null, done_at: new Date().toISOString() };
 
   const find = async () => {
     let q = c.supabase.from("run_sets").select("id")

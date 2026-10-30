@@ -2,15 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BedDouble, ClipboardX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { Hint } from "@/components/Hint";
 import { getT } from "@/lib/i18n/server";
 import type { ExerciseKind } from "@/lib/exercises";
 import {
   WorkoutRunner,
-  type PrevSet, type RunBlock, type RunExercise, type SavedSet,
+  type PrevSet, type RunBlock, type RunExercise, type SavedSet, type SetType,
 } from "@/components/WorkoutRunner";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PREV_RUNS = 30;
+const asSetType = (v: unknown): SetType => (v === "warmup" || v === "failure" || v === "drop" ? v : "normal");
 
 function Calm({ icon: Icon, title, body, href, back }: {
   icon: typeof ClipboardX; title: string; body: string; href: string; back: string;
@@ -58,7 +60,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
 
   const [{ data: workout }, { data: blockRows }, { data: run }] = await Promise.all([
     supabase.from("workouts").select("*").eq("id", session.workout_id).maybeSingle(),
-    supabase.from("workout_blocks").select("id, position, exercise_id").eq("workout_id", session.workout_id).order("position"),
+    supabase.from("workout_blocks").select("id, position, exercise_id, notes").eq("workout_id", session.workout_id).order("position"),
     supabase.from("workout_runs").select("id, started_at, finished_at, active_seconds")
       .eq("session_id", sessionId).eq("user_id", user.id).maybeSingle(),
   ]);
@@ -73,7 +75,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
   const [{ data: setRows }, { data: exerciseRows }, { data: tests }, { data: savedRows }, { data: prevRuns }, { data: log }] =
     await Promise.all([
       blockIds.length
-        ? supabase.from("workout_sets").select("id, block_id, position, reps, target_rpe, fixed_weight_kg, rest_seconds")
+        ? supabase.from("workout_sets").select("id, block_id, position, reps, target_rpe, fixed_weight_kg, rest_seconds, set_type")
             .in("block_id", blockIds).order("position")
         : Promise.resolve({ data: [] }),
       exerciseIds.length
@@ -85,7 +87,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
             .order("tested_at", { ascending: false }).order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
       run
-        ? supabase.from("run_sets").select("exercise_id, set_index, side, set_id, weight_kg, reps, rpe").eq("run_id", run.id)
+        ? supabase.from("run_sets").select("exercise_id, set_index, side, set_id, weight_kg, reps, rpe, set_type").eq("run_id", run.id)
         : Promise.resolve({ data: [] }),
       exerciseIds.length
         ? supabase.from("workout_runs").select("id, finished_at")
@@ -122,6 +124,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
       .filter((s) => s.block_id === b.id)
       .map((s) => ({
         id: s.id as string,
+        setType: asSetType(s.set_type),
         reps: s.reps as number | null,
         targetRpe: s.target_rpe === null || s.target_rpe === undefined ? null : Number(s.target_rpe),
         fixedWeightKg: s.fixed_weight_kg === null || s.fixed_weight_kg === undefined ? null : Number(s.fixed_weight_kg),
@@ -129,7 +132,8 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
       }));
     const offset = planned.get(exercise.id) ?? 0;
     planned.set(exercise.id, offset + sets.length);
-    blocks.push({ id: b.id as string, exercise, sets, indexOffset: offset });
+    const notes = ((b.notes as string | null) ?? "").trim();
+    blocks.push({ id: b.id as string, exercise, sets, indexOffset: offset, notes: notes || null });
   }
 
   const saved: SavedSet[] = (savedRows ?? []).map((r) => ({
@@ -139,6 +143,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
     weightKg: r.weight_kg === null ? null : Number(r.weight_kg),
     reps: r.reps === null ? null : Number(r.reps),
     rpe: r.rpe === null ? null : Number(r.rpe),
+    setType: asSetType(r.set_type),
   }));
 
   // Previous values: per exercise/set/side the value from the most recent earlier finished run that has it.
@@ -146,7 +151,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
   const prevRunIds = (prevRuns ?? []).map((r) => r.id as string);
   if (prevRunIds.length) {
     const { data: prevSets } = await supabase
-      .from("run_sets").select("run_id, exercise_id, set_index, side, weight_kg, reps, rpe")
+      .from("run_sets").select("run_id, exercise_id, set_index, side, weight_kg, reps, rpe, set_type")
       .in("run_id", prevRunIds).in("exercise_id", exerciseIds);
     const rank = new Map(prevRunIds.map((rid, i) => [rid, i]));
     const best = new Map<string, { rank: number; row: PrevSet }>();
@@ -164,6 +169,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
           weightKg: r.weight_kg === null ? null : Number(r.weight_kg),
           reps: r.reps === null ? null : Number(r.reps),
           rpe: r.rpe === null ? null : Number(r.rpe),
+          setType: asSetType(r.set_type),
         },
       });
     }
@@ -174,6 +180,8 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
   const workoutName = (w.name ?? w.title ?? session.title ?? "").toString();
 
   return (
+    <div className="flex flex-col gap-4">
+    <Hint id="workout-run" text={t("run.hint.text")} />
     <WorkoutRunner
       teamId={id}
       sessionId={sessionId}
@@ -188,10 +196,11 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
           ? {
               durationMin: log?.duration_min ?? Math.max(1, Math.round(Number(run.active_seconds ?? 0) / 60)),
               rpe: log?.rpe ?? null,
-              sets: saved.length,
+              sets: saved.filter((s) => s.setType !== "warmup").length,
             }
           : null
       }
     />
+    </div>
   );
 }

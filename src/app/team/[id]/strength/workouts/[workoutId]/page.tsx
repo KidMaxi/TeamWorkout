@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { WorkoutEditor, type EditorExercise, type EditorWorkout } from "@/components/WorkoutEditor";
+import { getT } from "@/lib/i18n/server";
+import { Hint } from "@/components/Hint";
+import { WorkoutEditor, type EditorExercise, type EditorWorkout, type SetType } from "@/components/WorkoutEditor";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -11,8 +13,10 @@ type Raw = {
   workout_blocks: {
     position: number;
     exercise_id: string;
+    notes: string | null;
     workout_sets: {
       position: number;
+      set_type: SetType | null;
       reps: number | null;
       target_rpe: number | string | null;
       fixed_weight_kg: number | string | null;
@@ -41,7 +45,7 @@ export default async function WorkoutEditorPage({ params }: { params: Promise<{ 
   if (!creating) {
     const { data } = await supabase
       .from("workouts")
-      .select("id, name, description, workout_blocks(position, exercise_id, workout_sets(position, reps, target_rpe, fixed_weight_kg, rest_seconds))")
+      .select("id, name, description, workout_blocks(position, exercise_id, notes, workout_sets(position, set_type, reps, target_rpe, fixed_weight_kg, rest_seconds))")
       .eq("id", workoutId).eq("club_id", team.club_id).is("archived_at", null).maybeSingle();
     if (!data) notFound();
     const raw = data as unknown as Raw;
@@ -51,7 +55,9 @@ export default async function WorkoutEditorPage({ params }: { params: Promise<{ 
       description: raw.description ?? "",
       blocks: [...raw.workout_blocks].sort((a, b) => a.position - b.position).map((b) => ({
         exerciseId: b.exercise_id,
+        notes: b.notes ?? "",
         sets: [...b.workout_sets].sort((x, y) => x.position - y.position).map((s) => ({
+          type: s.set_type ?? "normal",
           reps: s.reps,
           rpe: s.target_rpe === null ? null : Number(s.target_rpe),
           weight: s.fixed_weight_kg === null ? null : Number(s.fixed_weight_kg),
@@ -75,5 +81,11 @@ export default async function WorkoutEditorPage({ params }: { params: Promise<{ 
     per_side: !!e.per_side, archived: !!e.archived_at,
   })) as EditorExercise[];
 
-  return <WorkoutEditor teamId={id} workout={workout} exercises={exercises} />;
+  const { t } = await getT();
+  return (
+    <WorkoutEditor
+      teamId={id} workout={workout} exercises={exercises}
+      hint={<Hint id="workout-editor" text={t("workouts.editor.hint")} />}
+    />
+  );
 }

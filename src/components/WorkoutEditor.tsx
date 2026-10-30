@@ -3,13 +3,14 @@
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Copy, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Copy, Dumbbell, Info, Plus, Search, StickyNote, Trash2, X } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import type { MessageKey } from "@/lib/i18n";
 import type { Equipment, ExerciseKind, Muscle } from "@/lib/exercises";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { duplicateWorkout, saveWorkout, type WorkoutPayload } from "@/app/team/[id]/strength/workouts/actions";
 
+export type SetType = "warmup" | "normal" | "failure" | "drop";
 export type EditorExercise = {
   id: string;
   name: string;
@@ -23,7 +24,11 @@ export type EditorWorkout = {
   id: string;
   name: string;
   description: string;
-  blocks: { exerciseId: string; sets: { reps: number | null; rpe: number | null; weight: number | null; rest: number }[] }[];
+  blocks: {
+    exerciseId: string;
+    notes: string;
+    sets: { type: SetType; reps: number | null; rpe: number | null; weight: number | null; rest: number }[];
+  }[];
 };
 
 // Limits mirror the server action (src/app/team/[id]/strength/workouts/actions.ts).
@@ -34,22 +39,44 @@ const RPE_OPTIONS = Array.from({ length: 9 }, (_, i) => String(6 + i / 2));
 const WEIGHT_KINDS: ExerciseKind[] = ["weight_reps", "weighted_bodyweight"];
 const REP_KINDS: ExerciseKind[] = ["weight_reps", "bodyweight_reps", "weighted_bodyweight"];
 
-type SetDraft = { key: string; reps: string; rpe: string; weight: string; rest: string; custom: boolean };
-type BlockDraft = { key: string; exerciseId: string | null; sets: SetDraft[] };
+const SET_TYPES: SetType[] = ["warmup", "normal", "failure", "drop"];
+const MAX_NOTES = 500;
+
+type Field = "reps" | "rpe" | "weight";
+/** `touched` marks fields edited by hand; those no longer follow edits on earlier sets. */
+type SetDraft = {
+  key: string; type: SetType; reps: string; rpe: string; weight: string; rest: string; custom: boolean;
+  touched: Record<Field, boolean>;
+};
+type BlockDraft = { key: string; exerciseId: string | null; notes: string; sets: SetDraft[] };
 
 let seq = 0;
 const nextKey = () => `k${++seq}`;
-const newSet = (): SetDraft => ({ key: nextKey(), reps: "", rpe: "", weight: "", rest: "90", custom: false });
-const newBlock = (): BlockDraft => ({ key: nextKey(), exerciseId: null, sets: [newSet()] });
+const untouched = (): SetDraft["touched"] => ({ reps: false, rpe: false, weight: false });
+const newSet = (): SetDraft => ({ key: nextKey(), type: "normal", reps: "", rpe: "", weight: "", rest: "90", custom: false, touched: untouched() });
+const newBlock = (): BlockDraft => ({ key: nextKey(), exerciseId: null, notes: "", sets: [newSet()] });
+/** Quick fill: a new set copies the previous one; warm-up and failure continue as normal sets. */
+const followUp = (prev: SetDraft): SetDraft => ({
+  ...prev, key: nextKey(), touched: untouched(),
+  type: prev.type === "drop" ? "drop" : "normal",
+});
+/** Warm-ups do not consume a number; every other set counts up. */
+function setNumbers(sets: SetDraft[]): (number | null)[] {
+  let n = 0;
+  return sets.map((s) => (s.type === "warmup" ? null : ++n));
+}
 const letter = (i: number) => String.fromCharCode(65 + i);
 
 function fromWorkout(w: EditorWorkout | null): BlockDraft[] {
-  if (!w) return [newBlock()];
+  if (!w) return [];
   return w.blocks.map((b) => ({
     key: nextKey(),
     exerciseId: b.exerciseId,
+    notes: b.notes,
     sets: b.sets.map((s) => ({
       key: nextKey(),
+      type: s.type,
+      touched: untouched(),
       reps: s.reps === null ? "" : String(s.reps),
       rpe: s.rpe === null ? "" : String(s.rpe),
       weight: s.weight === null ? "" : String(s.weight),
@@ -77,13 +104,15 @@ function validate(name: string, description: string, blocks: BlockDraft[], byId:
     if (!ex) add(`b${bi}.ex`, "workouts.error.exercise", L);
     if (b.sets.length < 1) add(`b${bi}.sets`, "workouts.error.setsRequired", L);
     if (b.sets.length > MAX_SETS) add(`b${bi}.sets`, "workouts.error.tooManySets", L);
+    if (b.notes.trim().length > MAX_NOTES) add(`b${bi}.notes`, "workouts.error.notes", L);
     b.sets.forEach((s, si) => {
       const reps = parseReps(s.reps);
       const needReps = !!ex && REP_KINDS.includes(ex.kind);
       if (Number.isNaN(reps) || (reps !== null && (reps < 1 || reps > 100)) || (reps === null && needReps)) {
         add(`b${bi}.s${si}.reps`, "workouts.error.reps", L, si + 1);
       }
-      if (s.rpe !== "") {
+      if (s.type === "failure" && s.rpe !== "10") add(`b${bi}.s${si}.rpe`, "workouts.error.rpe", L, si + 1);
+      if (s.type !== "warmup" && s.rpe !== "") {
         const r = Number(s.rpe);
         if (!Number.isFinite(r) || r < 5 || r > 10 || (r * 2) % 1 !== 0) add(`b${bi}.s${si}.rpe`, "workouts.error.rpe", L, si + 1);
       }
@@ -106,9 +135,11 @@ function toPayload(name: string, description: string, blocks: BlockDraft[], byId
       const weighted = WEIGHT_KINDS.includes(byId.get(b.exerciseId ?? "")?.kind as ExerciseKind);
       return {
         exercise_id: b.exerciseId ?? "",
+        notes: b.notes.trim() === "" ? null : b.notes.trim(),
         sets: b.sets.map((s) => ({
+          set_type: s.type,
           reps: parseReps(s.reps),
-          target_rpe: s.rpe === "" ? null : Number(s.rpe),
+          target_rpe: s.type === "warmup" ? null : s.type === "failure" ? 10 : s.rpe === "" ? null : Number(s.rpe),
           fixed_weight_kg: weighted ? parseWeight(s.weight) : null,
           rest_seconds: Number(s.rest.trim()),
         })),
@@ -122,7 +153,9 @@ const iconBtn =
   "inline-grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
 const bad = "!border-[var(--danger)]";
 
-export function WorkoutEditor({ teamId, workout, exercises }: { teamId: string; workout: EditorWorkout | null; exercises: EditorExercise[] }) {
+export function WorkoutEditor({
+  teamId, workout, exercises, hint,
+}: { teamId: string; workout: EditorWorkout | null; exercises: EditorExercise[]; hint?: React.ReactNode }) {
   const { t } = useT();
   const router = useRouter();
   const uid = useId();
@@ -142,7 +175,7 @@ export function WorkoutEditor({ teamId, workout, exercises }: { teamId: string; 
 
   // Unsaved-changes guard: compare against what was last saved or loaded.
   const snapshot = useMemo(
-    () => JSON.stringify([name, description, blocks.map((b) => [b.exerciseId, b.sets.map((s) => [s.reps, s.rpe, s.weight, s.rest])])]),
+    () => JSON.stringify([name, description, blocks.map((b) => [b.exerciseId, b.notes, b.sets.map((s) => [s.type, s.reps, s.rpe, s.weight, s.rest])])]),
     [name, description, blocks],
   );
   const baseline = useRef<string | null>(null);
@@ -198,6 +231,8 @@ export function WorkoutEditor({ teamId, workout, exercises }: { teamId: string; 
         return;
       }
       baseline.current = snapshot;
+      // Everything saved counts as "not edited by hand" again.
+      setBlocks((cur) => cur.map((b) => ({ ...b, sets: b.sets.map((s) => ({ ...s, touched: untouched() })) })));
       router.push(listHref);
       router.refresh();
     });
@@ -213,6 +248,7 @@ export function WorkoutEditor({ teamId, workout, exercises }: { teamId: string; 
           <ChevronLeft size={16} aria-hidden />{t("workouts.editor.back")}
         </Link>
         <h2 className="display text-2xl">{workout ? t("workouts.editor.editTitle") : t("workouts.editor.newTitle")}</h2>
+        {hint}
       </div>
 
       <div className="card flex flex-col gap-4 text-sm">
@@ -251,7 +287,24 @@ export function WorkoutEditor({ teamId, workout, exercises }: { teamId: string; 
           </div>
         )}
 
-        {blocks.length === 0 && pickable.length > 0 && <p className="py-4 text-center text-sm text-muted">{t("workouts.editor.noBlocks")}</p>}
+        {blocks.length === 0 && pickable.length > 0 && (
+          <div className="card flex flex-col items-center gap-3 px-5 py-8 text-center text-sm">
+            <span
+              aria-hidden className="grid size-14 place-items-center rounded-full text-[var(--accent)]"
+              style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}
+            >
+              <Dumbbell size={24} />
+            </span>
+            <h4 className="display text-xl">{t("workouts.editor.emptyTitle")}</h4>
+            <p className="max-w-xs text-muted">{t("workouts.editor.emptyBody")}</p>
+            <button
+              type="button" onClick={() => setBlocks((cur) => [...cur, newBlock()])}
+              className="btn btn-primary inline-flex min-h-12 items-center justify-center gap-2 px-5"
+            >
+              <Plus size={18} aria-hidden />{t("workouts.editor.emptyAction")}
+            </button>
+          </div>
+        )}
 
         <ol className="stagger flex flex-col gap-4">
           {blocks.map((b, bi) => (
@@ -263,6 +316,7 @@ export function WorkoutEditor({ teamId, workout, exercises }: { teamId: string; 
           ))}
         </ol>
 
+        {blocks.length > 0 && (
         <button
           type="button" disabled={blocks.length >= MAX_BLOCKS || pickable.length === 0}
           onClick={() => setBlocks((cur) => [...cur, newBlock()])}
@@ -270,6 +324,7 @@ export function WorkoutEditor({ teamId, workout, exercises }: { teamId: string; 
         >
           <Plus size={18} aria-hidden />{t("workouts.editor.addBlock")}
         </button>
+        )}
       </div>
 
       <div className="glass sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 flex items-center gap-3 rounded-2xl p-3 md:bottom-4">
@@ -290,6 +345,13 @@ export function WorkoutEditor({ teamId, workout, exercises }: { teamId: string; 
   );
 }
 
+const TYPE_STYLE: Record<SetType, { color: string; bg: string }> = {
+  warmup: { color: "var(--warn)", bg: "var(--warn-bg)" },
+  normal: { color: "var(--foreground)", bg: "var(--neutral-bg)" },
+  failure: { color: "var(--danger)", bg: "var(--danger-bg)" },
+  drop: { color: "var(--accent)", bg: "var(--accent-soft)" },
+};
+
 function BlockCard({
   uid, index, count, block, exercises, byId, errorIds, onChange, onMove, onRemove,
 }: {
@@ -306,11 +368,23 @@ function BlockCard({
 }) {
   const { t } = useT();
   const [bulk, setBulk] = useState("3");
+  const [sheetFor, setSheetFor] = useState<number | null>(null);
+  const [noteOpen, setNoteOpen] = useState(block.notes !== "");
+  const focusSet = useRef<number | null>(null);
   const L = letter(index);
   const ex = block.exerciseId ? byId.get(block.exerciseId) : undefined;
   const weighted = !!ex && WEIGHT_KINDS.includes(ex.kind);
   const room = MAX_SETS - block.sets.length;
-  const touched = !!ex || block.sets.some((s) => s.reps || s.rpe || s.weight);
+  const touched = !!ex || block.sets.some((s) => s.reps || s.rpe || s.weight) || block.notes !== "";
+  const numbers = setNumbers(block.sets);
+  const noteId = `${uid}-b${index}.notes`;
+
+  // After "Add set", move focus to the reps field of the new set.
+  useEffect(() => {
+    if (focusSet.current === null) return;
+    document.getElementById(`${uid}-b${index}.s${focusSet.current}.reps`)?.focus();
+    focusSet.current = null;
+  });
 
   function setSets(fn: (sets: SetDraft[]) => SetDraft[]) {
     onChange((b) => ({ ...b, sets: fn(b.sets) }));
@@ -318,13 +392,40 @@ function BlockCard({
   function patchSet(si: number, p: Partial<SetDraft>) {
     setSets((sets) => sets.map((s, i) => (i === si ? { ...s, ...p } : s)));
   }
+  /** Edit one field and carry it to later normal sets that still match and were not edited by hand. */
+  function editField(si: number, field: Field, value: string) {
+    setSets((sets) => {
+      const from = sets[si];
+      const old = from[field];
+      return sets.map((s, i) => {
+        if (i === si) return { ...s, [field]: value, touched: { ...s.touched, [field]: true } };
+        if (i > si && from.type !== "warmup" && s.type === "normal" && !s.touched[field] && s[field] === old) return { ...s, [field]: value };
+        return s;
+      });
+    });
+  }
+  function changeType(si: number, type: SetType) {
+    setSets((sets) => sets.map((s, i) => {
+      if (i !== si) return s;
+      const rpe = type === "failure" ? "10" : type === "warmup" ? "" : s.rpe;
+      return { ...s, type, rpe };
+    }));
+  }
   function copies(from: SetDraft, n: number): SetDraft[] {
-    return Array.from({ length: n }, () => ({ ...from, key: nextKey() }));
+    return Array.from({ length: n }, () => followUp(from));
+  }
+  function addOne() {
+    focusSet.current = block.sets.length;
+    setSets((sets) => [...sets, ...copies(sets[sets.length - 1], 1)]);
   }
   function addBulk() {
     const n = Math.min(Math.max(1, Math.floor(Number(bulk)) || 1), room);
     if (n < 1) return;
     setSets((sets) => [...sets, ...copies(sets[sets.length - 1], n)]);
+  }
+  function openNote() {
+    setNoteOpen((o) => !o);
+    if (!noteOpen) requestAnimationFrame(() => document.getElementById(noteId)?.focus());
   }
 
   return (
@@ -381,6 +482,30 @@ function BlockCard({
         </div>
       )}
 
+      <div className="flex flex-col gap-2">
+        <button
+          type="button" onClick={openNote} aria-expanded={noteOpen} aria-controls={`${noteId}-panel`}
+          className="flex min-h-11 w-full items-center gap-2 rounded-xl px-1 text-left text-muted transition-colors hover:text-[var(--foreground)]"
+        >
+          <StickyNote size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
+          <span className={`min-w-0 flex-1 truncate ${block.notes && !noteOpen ? "text-[var(--foreground)]" : ""}`}>
+            {block.notes && !noteOpen ? block.notes : t("workouts.note.add")}
+          </span>
+        </button>
+        {noteOpen && (
+          <div id={`${noteId}-panel`} className="flex flex-col gap-1">
+            <label htmlFor={noteId} className="sr-only">{t("workouts.note.label")} ({L})</label>
+            <textarea
+              id={noteId} value={block.notes} rows={2} maxLength={MAX_NOTES}
+              onChange={(e) => onChange((b) => ({ ...b, notes: e.target.value }))}
+              placeholder={t("workouts.note.ph")} aria-invalid={errorIds.has(`b${index}.notes`) || undefined}
+              className={`input w-full ${errorIds.has(`b${index}.notes`) ? bad : ""}`}
+            />
+            <p className="text-right text-xs text-muted" aria-live="off">{t("workouts.note.count", { n: block.notes.length })}</p>
+          </div>
+        )}
+      </div>
+
       <ol className="flex flex-col gap-3">
         {block.sets.map((s, si) => {
           const n = si + 1;
@@ -388,20 +513,31 @@ function BlockCard({
           const fid = (f: string) => `${uid}-b${index}.s${si}.${f}`;
           const rpeOptions = s.rpe !== "" && !RPE_OPTIONS.includes(s.rpe) ? [s.rpe, ...RPE_OPTIONS] : RPE_OPTIONS;
           const cols = weighted ? "sm:grid-cols-4" : "sm:grid-cols-3";
+          const style = TYPE_STYLE[s.type];
+          const num = numbers[si];
+          const badge = s.type === "normal" ? String(num) : t(`workouts.type.${s.type}.badge`);
+          const typeName = t(`workouts.type.${s.type}`);
+          const rpeLocked = s.type === "warmup" || s.type === "failure";
           return (
             <li key={s.key} className="flex flex-col gap-2 rounded-2xl border p-3" style={{ background: "color-mix(in srgb, var(--surface-2) 55%, transparent)" }}>
               <div className="flex items-center justify-between gap-2">
-                <span className={eyebrow}>{title}</span>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <button
+                    type="button" onClick={() => setSheetFor(si)} aria-haspopup="dialog"
+                    aria-label={`${t("workouts.type.change", { n, type: typeName })} (${L})`}
+                    title={t("workouts.type.sheetTitle")}
+                    className="num grid size-11 shrink-0 place-items-center rounded-full text-lg transition-transform active:scale-95"
+                    style={{ color: style.color, background: style.bg, boxShadow: `0 0 0 1px color-mix(in srgb, ${style.color} 45%, transparent)` }}
+                  >
+                    {badge}
+                  </button>
+                  <span className={`${eyebrow} truncate`}>{title}{s.type === "normal" ? "" : ` · ${typeName}`}</span>
+                </div>
                 <div className="-mr-2 flex items-center">
                   <button type="button" className={iconBtn} disabled={room < 1} title={t("workouts.set.duplicate", { n })}
                     aria-label={`${t("workouts.set.duplicate", { n })} (${L})`}
-                    onClick={() => setSets((sets) => [...sets.slice(0, si + 1), ...copies(s, 1), ...sets.slice(si + 1)])}>
+                    onClick={() => setSets((sets) => [...sets.slice(0, si + 1), { ...s, key: nextKey(), touched: untouched() }, ...sets.slice(si + 1)])}>
                     <Copy size={16} aria-hidden />
-                  </button>
-                  <button type="button" className={`${iconBtn} hover:!bg-[var(--danger-bg)] hover:!text-danger`} disabled={block.sets.length < 2}
-                    title={t("workouts.set.remove", { n })} aria-label={`${t("workouts.set.remove", { n })} (${L})`}
-                    onClick={() => setSets((sets) => sets.filter((_, i) => i !== si))}>
-                    <X size={18} aria-hidden />
                   </button>
                 </div>
               </div>
@@ -410,8 +546,8 @@ function BlockCard({
                 <label className="flex flex-col gap-1">
                   <span className="text-xs text-muted">{t("workouts.set.reps")}</span>
                   <input
-                    id={fid("reps")} value={s.reps} onChange={(e) => patchSet(si, { reps: e.target.value })}
-                    inputMode="numeric" autoComplete="off" aria-label={`${t("workouts.set.reps")}, ${title} (${L})`}
+                    id={fid("reps")} value={s.reps} onChange={(e) => editField(si, "reps", e.target.value)}
+                    inputMode="numeric" enterKeyHint="next" autoComplete="off" aria-label={`${t("workouts.set.reps")}, ${title} (${L})`}
                     aria-invalid={errorIds.has(`b${index}.s${si}.reps`) || undefined}
                     className={`input num min-h-11 w-full text-center text-lg ${errorIds.has(`b${index}.s${si}.reps`) ? bad : ""}`}
                   />
@@ -419,11 +555,13 @@ function BlockCard({
                 <label className="flex flex-col gap-1">
                   <span className="text-xs text-muted">{t("workouts.set.rpe")}</span>
                   <select
-                    id={fid("rpe")} value={s.rpe} onChange={(e) => patchSet(si, { rpe: e.target.value })}
+                    id={fid("rpe")} value={s.rpe} disabled={rpeLocked}
+                    onChange={(e) => editField(si, "rpe", e.target.value)}
                     aria-label={`${t("workouts.set.rpe")}, ${title} (${L})`}
-                    className="input min-h-11 w-full"
+                    aria-invalid={errorIds.has(`b${index}.s${si}.rpe`) || undefined}
+                    className={`input min-h-11 w-full disabled:cursor-not-allowed disabled:opacity-60 ${errorIds.has(`b${index}.s${si}.rpe`) ? bad : ""}`}
                   >
-                    <option value="">{t("workouts.set.rpeNone")}</option>
+                    <option value="">{s.type === "warmup" ? "–" : t("workouts.set.rpeNone")}</option>
                     {rpeOptions.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </label>
@@ -431,8 +569,8 @@ function BlockCard({
                   <label className="flex flex-col gap-1">
                     <span className="text-xs text-muted">{t("workouts.set.weight")}</span>
                     <input
-                      id={fid("weight")} value={s.weight} onChange={(e) => patchSet(si, { weight: e.target.value })}
-                      inputMode="decimal" autoComplete="off" placeholder={t("workouts.set.weightPh")}
+                      id={fid("weight")} value={s.weight} onChange={(e) => editField(si, "weight", e.target.value)}
+                      inputMode="decimal" enterKeyHint="next" autoComplete="off" placeholder={t("workouts.set.weightPh")}
                       aria-label={`${t("workouts.set.weight")}, ${title} (${L})`}
                       aria-invalid={errorIds.has(`b${index}.s${si}.weight`) || undefined}
                       className={`input min-h-11 w-full ${errorIds.has(`b${index}.s${si}.weight`) ? bad : ""}`}
@@ -453,13 +591,15 @@ function BlockCard({
                   {s.custom && (
                     <input
                       id={fid("rest")} value={s.rest} onChange={(e) => patchSet(si, { rest: e.target.value })}
-                      inputMode="numeric" autoComplete="off" aria-label={`${t("workouts.set.restSeconds")}, ${title} (${L})`}
+                      inputMode="numeric" enterKeyHint="next" autoComplete="off" aria-label={`${t("workouts.set.restSeconds")}, ${title} (${L})`}
                       aria-invalid={errorIds.has(`b${index}.s${si}.rest`) || undefined}
                       className={`input min-h-11 w-full ${errorIds.has(`b${index}.s${si}.rest`) ? bad : ""}`}
                     />
                   )}
                 </div>
               </div>
+              {s.type === "warmup" && <p className="text-xs text-muted">{t("workouts.type.warmupHint")}</p>}
+              {s.type === "failure" && <p className="text-xs text-muted">{t("workouts.type.failureHint")}</p>}
             </li>
           );
         })}
@@ -468,7 +608,7 @@ function BlockCard({
       <div className="flex flex-col gap-2 border-t pt-3">
         <button
           type="button" disabled={room < 1} className="btn inline-flex min-h-11 w-full items-center justify-center gap-2"
-          onClick={() => setSets((sets) => [...sets, newSet()])}
+          onClick={addOne}
         >
           <Plus size={16} aria-hidden />{t("workouts.set.add")}
         </button>
@@ -476,7 +616,7 @@ function BlockCard({
           <label className="flex items-center gap-2">
             <span className="sr-only">{t("workouts.block.bulkLabel")}</span>
             <input
-              value={bulk} onChange={(e) => setBulk(e.target.value)} inputMode="numeric" autoComplete="off"
+              value={bulk} onChange={(e) => setBulk(e.target.value)} inputMode="numeric" enterKeyHint="done" autoComplete="off"
               aria-label={`${t("workouts.block.bulkLabel")} (${L})`}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addBulk(); } }}
               className="input num min-h-11 w-16 text-center text-lg"
@@ -488,7 +628,94 @@ function BlockCard({
         </div>
         <p className="text-xs text-muted">{t("workouts.block.bulkHint")}</p>
       </div>
+
+      {sheetFor !== null && block.sets[sheetFor] && (
+        <SetTypeSheet
+          current={block.sets[sheetFor].type} canRemove={block.sets.length > 1} n={sheetFor + 1}
+          onPick={(type) => changeType(sheetFor, type)}
+          onRemove={() => setSets((sets) => sets.filter((_, i) => i !== sheetFor))}
+          onClosed={() => setSheetFor(null)}
+        />
+      )}
     </li>
+  );
+}
+
+/** Bottom sheet with large options for the type of one set, plus removing the set. */
+function SetTypeSheet({
+  current, canRemove, n, onPick, onRemove, onClosed,
+}: {
+  current: SetType;
+  canRemove: boolean;
+  n: number;
+  onPick: (t: SetType) => void;
+  onRemove: () => void;
+  onClosed: () => void;
+}) {
+  const { t } = useT();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [legend, setLegend] = useState(false);
+  const legendId = useId();
+
+  useEffect(() => {
+    const el = ref.current;
+    if (el && !el.open) el.showModal();
+  }, []);
+  const close = () => ref.current?.close();
+
+  return (
+    <dialog
+      ref={ref} onClose={onClosed} aria-label={`${t("workouts.type.sheetTitle")} (${t("workouts.set.title", { n })})`}
+      className="confirm !m-0 !mx-auto !mt-auto !max-h-[88dvh] !w-full !max-w-[32rem] overflow-y-auto !rounded-b-none !rounded-t-3xl !p-5 !pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
+    >
+      <div className="flex flex-col gap-3 text-sm">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="display text-2xl leading-tight">{t("workouts.type.sheetTitle")}</h2>
+          <div className="-mr-2 flex items-center">
+            <button
+              type="button" onClick={() => setLegend((v) => !v)} aria-expanded={legend} aria-controls={legendId}
+              aria-label={t("workouts.type.info")} title={t("workouts.type.info")} className={iconBtn}
+            >
+              <Info size={20} aria-hidden />
+            </button>
+            <button type="button" onClick={close} aria-label={t("workouts.picker.close")} title={t("workouts.picker.close")} className={iconBtn}>
+              <X size={20} aria-hidden />
+            </button>
+          </div>
+        </div>
+        {legend && (
+          <ul id={legendId} className="flex flex-col gap-1 rounded-2xl border p-3 text-xs text-muted">
+            {SET_TYPES.map((k) => <li key={k}>{t(`workouts.type.${k}.desc`)}</li>)}
+          </ul>
+        )}
+        <ul className="flex flex-col gap-2">
+          {SET_TYPES.map((k) => {
+            const st = TYPE_STYLE[k];
+            return (
+              <li key={k}>
+                <button
+                  type="button" aria-current={k === current || undefined}
+                  onClick={() => { onPick(k); close(); }}
+                  className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border px-4 text-left font-semibold transition-colors hover:border-[var(--accent)] ${k === current ? "!border-[var(--accent)] bg-[var(--accent-soft)]" : ""}`}
+                >
+                  <span className="num grid size-9 shrink-0 place-items-center rounded-full text-base" style={{ color: st.color, background: st.bg }}>
+                    {k === "normal" ? "1" : t(`workouts.type.${k}.badge`)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{t(`workouts.type.${k}`)}</span>
+                  {k === current && <Check size={18} aria-hidden className="shrink-0 text-[var(--accent)]" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <button
+          type="button" disabled={!canRemove} onClick={() => { onRemove(); close(); }}
+          className="btn btn-danger inline-flex min-h-14 w-full items-center justify-center gap-2"
+        >
+          <Trash2 size={18} aria-hidden />{t("workouts.set.remove", { n })}
+        </button>
+      </div>
+    </dialog>
   );
 }
 

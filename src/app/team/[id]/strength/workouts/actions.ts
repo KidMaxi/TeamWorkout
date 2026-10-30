@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { MessageKey } from "@/lib/i18n";
 
+export type SetType = "warmup" | "normal" | "failure" | "drop";
 export type WorkoutSetPayload = {
+  set_type: SetType;
   reps: number | null;
   target_rpe: number | null;
   fixed_weight_kg: number | null;
@@ -13,7 +15,7 @@ export type WorkoutSetPayload = {
 export type WorkoutPayload = {
   name: string;
   description: string;
-  blocks: { exercise_id: string; sets: WorkoutSetPayload[] }[];
+  blocks: { exercise_id: string; notes: string | null; sets: WorkoutSetPayload[] }[];
 };
 export type WorkoutResult = { ok: boolean; id?: string; error?: MessageKey };
 
@@ -22,6 +24,7 @@ const GENERIC: MessageKey = "workouts.error.generic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Kinds where a set is prescribed in repetitions. */
 const REP_KINDS = ["weight_reps", "bodyweight_reps", "weighted_bodyweight"];
+const SET_TYPES: SetType[] = ["warmup", "normal", "failure", "drop"];
 
 /** Re-derive club and role from the team; never trust anything the client sends. */
 async function staffContext(teamId: string) {
@@ -65,6 +68,13 @@ function parse(raw: string, kinds: Map<string, string>): Parsed {
     if (typeof b.exercise_id !== "string" || !UUID.test(b.exercise_id)) return { ok: false, error: "workouts.error.exercise" };
     if (!Array.isArray(b.sets) || b.sets.length < 1) return { ok: false, error: "workouts.error.setsRequired" };
     if (b.sets.length > 30) return { ok: false, error: "workouts.error.tooManySets" };
+    let notes: string | null = null;
+    if (b.notes !== undefined && b.notes !== null) {
+      if (typeof b.notes !== "string") return { ok: false, error: "workouts.error.notes" };
+      const trimmed = b.notes.trim();
+      if (trimmed.length > 500) return { ok: false, error: "workouts.error.notes" };
+      notes = trimmed === "" ? null : trimmed;
+    }
     const kind = kinds.get(b.exercise_id);
     const sets: WorkoutSetPayload[] = [];
     for (const s of b.sets as Record<string, unknown>[]) {
@@ -75,7 +85,16 @@ function parse(raw: string, kinds: Map<string, string>): Parsed {
       } else if (!isNum(reps) || !Number.isInteger(reps) || reps < 1 || reps > 100) {
         return { ok: false, error: "workouts.error.reps" };
       }
-      const rpe = s.target_rpe ?? null;
+      const setType = s.set_type ?? "normal";
+      if (typeof setType !== "string" || !SET_TYPES.includes(setType as SetType)) return { ok: false, error: "workouts.error.setType" };
+      let rpe = s.target_rpe ?? null;
+      // Failure is always RPE 10 (a missing value is filled in); warm-ups carry no target RPE.
+      if (setType === "failure") {
+        if (rpe === null) rpe = 10;
+        else if (rpe !== 10) return { ok: false, error: "workouts.error.rpe" };
+      } else if (setType === "warmup" && rpe !== null) {
+        return { ok: false, error: "workouts.error.rpe" };
+      }
       if (rpe !== null && (!isNum(rpe) || rpe < 5 || rpe > 10 || (rpe * 2) % 1 !== 0)) {
         return { ok: false, error: "workouts.error.rpe" };
       }
@@ -87,9 +106,9 @@ function parse(raw: string, kinds: Map<string, string>): Parsed {
       if (!isNum(rest) || !Number.isInteger(rest) || rest < 0 || rest > 600) {
         return { ok: false, error: "workouts.error.rest" };
       }
-      sets.push({ reps, target_rpe: rpe, fixed_weight_kg: weight, rest_seconds: rest });
+      sets.push({ set_type: setType as SetType, reps, target_rpe: rpe as number | null, fixed_weight_kg: weight, rest_seconds: rest });
     }
-    blocks.push({ exercise_id: b.exercise_id, sets });
+    blocks.push({ exercise_id: b.exercise_id, notes, sets });
   }
   return { ok: true, value: { name, description, blocks } };
 }
@@ -102,6 +121,7 @@ function failure(error: { code?: string; message?: string } | null): WorkoutResu
   if (m.includes("too_many_blocks")) return { ok: false, error: "workouts.error.tooManyBlocks" };
   if (m.includes("blocks_required")) return { ok: false, error: "workouts.error.blocksRequired" };
   if (m.includes("sets_required")) return { ok: false, error: "workouts.error.setsRequired" };
+  if (m.includes("invalid_set_type")) return { ok: false, error: "workouts.error.setType" };
   if (m.includes("invalid_exercise")) return { ok: false, error: "workouts.error.exercise" };
   return { ok: false, error: GENERIC };
 }
@@ -171,18 +191,20 @@ export async function duplicateWorkout(teamId: string, workoutId: string): Promi
 
   const { data: src, error: readError } = await ctx.supabase
     .from("workouts")
-    .select("name, description, workout_blocks(position, exercise_id, workout_sets(position, reps, target_rpe, fixed_weight_kg, rest_seconds))")
+    .select("name, description, workout_blocks(position, exercise_id, notes, workout_sets(position, set_type, reps, target_rpe, fixed_weight_kg, rest_seconds))")
     .eq("id", workoutId).eq("club_id", ctx.clubId).is("archived_at", null).maybeSingle();
   if (readError) return { ok: false, error: GENERIC };
   if (!src) return { ok: false, error: "workouts.error.notFound" };
 
-  type SrcSet = { position: number; reps: number | null; target_rpe: number | null; fixed_weight_kg: number | null; rest_seconds: number };
-  type SrcBlock = { position: number; exercise_id: string; workout_sets: SrcSet[] };
+  type SrcSet = { position: number; set_type: SetType; reps: number | null; target_rpe: number | null; fixed_weight_kg: number | null; rest_seconds: number };
+  type SrcBlock = { position: number; exercise_id: string; notes: string | null; workout_sets: SrcSet[] };
   const blocks = [...((src.workout_blocks ?? []) as unknown as SrcBlock[])]
     .sort((a, b) => a.position - b.position)
     .map((b) => ({
       exercise_id: b.exercise_id,
+      notes: b.notes,
       sets: [...b.workout_sets].sort((x, y) => x.position - y.position).map((s) => ({
+        set_type: s.set_type ?? "normal",
         reps: s.reps,
         target_rpe: s.target_rpe === null ? null : Number(s.target_rpe),
         fixed_weight_kg: s.fixed_weight_kg === null ? null : Number(s.fixed_weight_kg),

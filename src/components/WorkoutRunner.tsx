@@ -6,7 +6,7 @@ import { Check, ChevronDown, Flag, Pause, Play, Plus, SkipForward } from "lucide
 import { useT } from "@/lib/i18n/client";
 import type { MessageKey } from "@/lib/i18n";
 import type { ExerciseKind } from "@/lib/exercises";
-import { weightFor } from "@/lib/strength";
+import { roundToStep, weightFor } from "@/lib/strength";
 import { deleteRunSet, finishRun, saveRunSet, startRun } from "@/app/team/[id]/workout/actions";
 
 export type RunExercise = {
@@ -18,8 +18,11 @@ export type RunExercise = {
   /** Athlete's current 5RM (latest test), if any. */
   fiveRmKg: number | null;
 };
+export type SetType = "warmup" | "normal" | "failure" | "drop";
+const SET_TYPES: SetType[] = ["warmup", "normal", "failure", "drop"];
 export type RunSetPlan = {
   id: string;
+  setType: SetType;
   reps: number | null;
   targetRpe: number | null;
   fixedWeightKg: number | null;
@@ -31,6 +34,8 @@ export type RunBlock = {
   sets: RunSetPlan[];
   /** set_index offset when the same exercise appears in an earlier block. */
   indexOffset: number;
+  /** The coach's note for this exercise. */
+  notes: string | null;
 };
 export type SavedSet = {
   exerciseId: string;
@@ -39,6 +44,7 @@ export type SavedSet = {
   weightKg: number | null;
   reps: number | null;
   rpe: number | null;
+  setType: SetType;
 };
 export type PrevSet = SavedSet;
 export type FinishedRun = { durationMin: number; rpe: number | null; sets: number };
@@ -49,10 +55,10 @@ type RowDef = {
   exerciseId: string;
   setId: string | null;
   setIndex: number;
-  ordinal: number;
   side: Side;
+  /** 0-based position within the block (planned sets first, then extra rounds). */
+  pos: number;
   extra: boolean;
-  plan: RunSetPlan | null;
 };
 type RowState = { weight: string; reps: string; rpe: string; done: boolean; dirty: boolean; busy: boolean; error: MessageKey | null };
 
@@ -60,6 +66,8 @@ const EMPTY: RowState = { weight: "", reps: "", rpe: "", done: false, dirty: fal
 const MAX_EXTRA = 30;
 const PLATE_STEP_KG = 2.5;
 
+const typeKey = (exerciseId: string, setIndex: number) => `${exerciseId}:${setIndex}`;
+const isWorking = (t: SetType) => t !== "warmup";
 const keyOf = (exerciseId: string, setIndex: number, side: Side) => `${exerciseId}:${setIndex}:${side ?? ""}`;
 const hasWeight = (k: ExerciseKind) => k === "weight_reps" || k === "weighted_bodyweight";
 const hasRpe = (k: ExerciseKind) => k !== "height_cm" && k !== "duration_s";
@@ -82,9 +90,14 @@ function clock(totalSeconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
 
+/** Plan that extra rounds copy: the last working set, else the last set. */
+function extraPlan(block: RunBlock): RunSetPlan | null {
+  for (let i = block.sets.length - 1; i >= 0; i--) if (isWorking(block.sets[i].setType)) return block.sets[i];
+  return block.sets[block.sets.length - 1] ?? null;
+}
+
 function buildRows(block: RunBlock, extras: number): RowDef[] {
   const sides: Side[] = block.exercise.perSide ? ["left", "right"] : [null];
-  const last = block.sets[block.sets.length - 1] ?? null;
   const rows: RowDef[] = [];
   for (let i = 0; i < block.sets.length + extras; i++) {
     const planned = block.sets[i];
@@ -95,14 +108,47 @@ function buildRows(block: RunBlock, extras: number): RowDef[] {
         exerciseId: block.exercise.id,
         setId: planned?.id ?? null,
         setIndex,
-        ordinal: i + 1,
         side,
+        pos: i,
         extra: !planned,
-        plan: planned ?? last,
       });
     }
   }
   return rows;
+}
+
+const BADGE: Record<SetType, { letter: string | null; bg: string; fg: string }> = {
+  warmup: { letter: "W", bg: "var(--warn-bg)", fg: "var(--warn)" },
+  failure: { letter: "F", bg: "var(--danger-bg)", fg: "var(--danger)" },
+  drop: { letter: "D", bg: "var(--accent-soft)", fg: "var(--accent)" },
+  normal: { letter: null, bg: "var(--surface-3)", fg: "var(--foreground)" },
+};
+
+function SetBadge({ type, n }: { type: SetType; n: number | undefined }) {
+  const b = BADGE[type];
+  return (
+    <span aria-hidden className="num grid size-9 place-items-center rounded-full text-base" style={{ background: b.bg, color: b.fg }}>
+      {type === "normal" ? (n ?? "·") : b.letter}
+    </span>
+  );
+}
+
+/** Coach note under the exercise name; collapsed when long. */
+function CoachNote({ text, label, more, less }: { text: string; label: string; more: string; less: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = text.length > 120 || text.includes("\n");
+  return (
+    <div className="rounded-2xl border p-3 text-sm" style={{ background: "var(--accent-soft)" }}>
+      <p className={`whitespace-pre-line ${long && !expanded ? "line-clamp-2" : ""}`}>
+        <span className="font-semibold">{label}</span> {text}
+      </p>
+      {long && (
+        <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className="link mt-1 inline-flex min-h-11 items-center">
+          {expanded ? less : more}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function WorkoutRunner({
@@ -152,11 +198,24 @@ export function WorkoutRunner({
     });
     return m;
   });
+  // Type of extra rounds (planned sets take their type from the plan).
+  const [extraTypes, setExtraTypes] = useState<Record<string, SetType>>(() => {
+    const planned = new Map<string, number>();
+    for (const b of blocks) planned.set(b.exercise.id, (planned.get(b.exercise.id) ?? 0) + b.sets.length);
+    const m: Record<string, SetType> = {};
+    for (const s of saved) if (s.setIndex > (planned.get(s.exerciseId) ?? 0)) m[typeKey(s.exerciseId, s.setIndex)] = s.setType;
+    return m;
+  });
   const prevMap = useMemo(() => new Map(prev.map((p) => [keyOf(p.exerciseId, p.setIndex, p.side), p])), [prev]);
 
   const blockRows = useMemo(() => blocks.map((b) => buildRows(b, extras[b.id] ?? 0)), [blocks, extras]);
-  const totalSets = blockRows.reduce((n, r) => n + r.length, 0);
-  const doneSets = blockRows.reduce((n, r) => n + r.filter((d) => rows[d.key]?.done).length, 0);
+  function typeAt(block: RunBlock, pos: number): SetType {
+    return block.sets[pos]?.setType ?? extraTypes[typeKey(block.exercise.id, block.indexOffset + pos + 1)] ?? "normal";
+  }
+  /** Working sets only: warm-ups are shown but never counted. */
+  const workingRows = (bi: number) => blockRows[bi].filter((d) => isWorking(typeAt(blocks[bi], d.pos)));
+  const totalSets = blocks.reduce((n, _b, bi) => n + workingRows(bi).length, 0);
+  const doneSets = blocks.reduce((n, _b, bi) => n + workingRows(bi).filter((d) => rows[d.key]?.done).length, 0);
 
   const [open, setOpen] = useState(() => {
     const savedKeys = new Set(saved.map((s) => keyOf(s.exerciseId, s.setIndex, s.side)));
@@ -207,13 +266,42 @@ export function WorkoutRunner({
     }
     return null;
   }
+  /** Plan for a position; failure sets always target RPE 10. */
+  function planAt(block: RunBlock, pos: number): RunSetPlan | null {
+    const raw = block.sets[pos] ?? extraPlan(block);
+    if (!raw) return null;
+    return typeAt(block, pos) === "failure" ? { ...raw, targetRpe: 10 } : raw;
+  }
+  /** Weight to show for a position. `suggested` = derived from another set, not from the plan itself. */
+  function rxAt(block: RunBlock, pos: number): { kg: number | null; suggested: boolean } {
+    const plan = planAt(block, pos);
+    if (!plan || !hasWeight(block.exercise.kind)) return { kg: null, suggested: false };
+    const type = typeAt(block, pos);
+    const planned = pos < block.sets.length;
+    if (type === "warmup" && planned && plan.fixedWeightKg === null && plan.targetRpe === null) {
+      const j = block.sets.findIndex((s) => isWorking(s.setType));
+      const w = j >= 0 ? prescription(block, planAt(block, j)) : null;
+      const kg = w !== null ? roundToStep(w * 0.5, PLATE_STEP_KG) : 0;
+      return kg > 0 ? { kg, suggested: true } : { kg: null, suggested: false };
+    }
+    if (type === "drop" && plan.fixedWeightKg === null && pos > 0) {
+      const before = prescription(block, planAt(block, pos - 1));
+      const kg = before !== null ? roundToStep(before * 0.8, PLATE_STEP_KG) : 0;
+      if (kg > 0) return { kg, suggested: true };
+    }
+    return { kg: prescription(block, plan), suggested: false };
+  }
   function placeholders(block: RunBlock, d: RowDef) {
+    const type = typeAt(block, d.pos);
+    const plan = planAt(block, d.pos);
     const p = prevMap.get(d.key);
-    const rx = prescription(block, d.plan);
+    // Previous values only count for the same class (warm-up vs working).
+    const pv = p && isWorking(p.setType) === isWorking(type) ? p : undefined;
+    const rx = rxAt(block, d.pos).kg;
     return {
-      weight: p?.weightKg != null ? fmt(p.weightKg) : rx !== null ? fmt(rx) : "",
-      reps: p?.reps != null ? String(p.reps) : d.plan?.reps != null ? String(d.plan.reps) : "",
-      rpe: d.plan?.targetRpe != null ? fmt(d.plan.targetRpe) : p?.rpe != null ? fmt(p.rpe) : "",
+      weight: pv?.weightKg != null ? fmt(pv.weightKg) : rx !== null ? fmt(rx) : "",
+      reps: pv?.reps != null ? String(pv.reps) : plan?.reps != null ? String(plan.reps) : "",
+      rpe: plan?.targetRpe != null ? fmt(plan.targetRpe) : pv?.rpe != null ? fmt(pv.rpe) : "",
     };
   }
   const patch = (key: string, p: Partial<RowState>) =>
@@ -232,7 +320,8 @@ export function WorkoutRunner({
 
     const weight = hasWeight(kind) ? parseNum(eff(st.weight, ph.weight)) : null;
     const reps = parseNum(eff(st.reps, ph.reps));
-    const rpe = hasRpe(kind) ? parseNum(eff(st.rpe, ph.rpe)) : null;
+    const type = typeAt(block, d.pos);
+    const rpe = hasRpe(kind) ? (type === "failure" ? 10 : parseNum(eff(st.rpe, ph.rpe))) : null;
 
     let error: MessageKey | null = null;
     if (hasWeight(kind) && ((weight === null && kind === "weight_reps") || (weight !== null && !validWeight(weight)))) error = "run.error.weight";
@@ -248,6 +337,7 @@ export function WorkoutRunner({
     try {
       res = await saveRunSet(teamId, sessionId, {
         exerciseId: d.exerciseId, setId: d.setId, setIndex: d.setIndex, side: d.side, weight, reps, rpe,
+        setType: d.extra ? type : undefined,
       });
     } catch {
       res = { ok: false, error: "run.error.save" };
@@ -262,7 +352,7 @@ export function WorkoutRunner({
       reps: String(reps),
       rpe: rpe === null ? "" : fmt(rpe),
     });
-    const secs = d.plan?.restSeconds ?? 0;
+    const secs = planAt(block, d.pos)?.restSeconds ?? 0;
     if (secs > 0 && d.side !== "left") setRest({ end: Date.now() + secs * 1000, total: secs });
   }
 
@@ -297,6 +387,30 @@ export function WorkoutRunner({
     setStartedAt(res.startedAt);
   }
 
+  // ---- set type sheet (extra rounds only) ----
+  const sheetRef = useRef<HTMLDialogElement>(null);
+  const [sheet, setSheet] = useState<{ exerciseId: string; setIndex: number; keys: string[] } | null>(null);
+  function openSheet(block: RunBlock, d: RowDef) {
+    setSheet({
+      exerciseId: d.exerciseId,
+      setIndex: d.setIndex,
+      keys: blockRows[blocks.indexOf(block)].filter((r) => r.setIndex === d.setIndex).map((r) => r.key),
+    });
+    sheetRef.current?.showModal();
+  }
+  function pickType(type: SetType) {
+    if (sheet) {
+      setExtraTypes((m) => ({ ...m, [typeKey(sheet.exerciseId, sheet.setIndex)]: type }));
+      // A saved row needs saving again to store the new type.
+      setRows((r) => {
+        const next = { ...r };
+        for (const k of sheet.keys) if (next[k]?.done) next[k] = { ...next[k], dirty: true };
+        return next;
+      });
+    }
+    sheetRef.current?.close();
+  }
+
   // ---- finish dialog ----
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [duration, setDuration] = useState("");
@@ -308,10 +422,10 @@ export function WorkoutRunner({
     const at = Date.now();
     const active = elapsedMsAt(at) - pausedMs - (pausedAt !== null ? at - pausedAt : 0);
     setDuration(String(Math.min(600, Math.max(1, Math.round(active / 60000)))));
-    const rpes = blockRows.flat()
-      .map((d) => rows[d.key])
-      .filter((r) => r?.done)
-      .map((r) => parseNum(r!.rpe))
+    const rpes = blocks
+      .flatMap((b, bi) => workingRows(bi).map((d) => ({ d, type: typeAt(b, d.pos) })))
+      .filter(({ d }) => rows[d.key]?.done)
+      .map(({ d, type }) => (type === "failure" ? 10 : parseNum(rows[d.key]!.rpe)))
       .filter((n): n is number => n !== null && Number.isFinite(n));
     const mean = rpes.length ? Math.round(rpes.reduce((a, b) => a + b, 0) / rpes.length) : 7;
     setRpeLog(String(Math.min(10, Math.max(1, mean))));
@@ -465,8 +579,14 @@ export function WorkoutRunner({
       <ol className="flex flex-col gap-3">
         {blocks.map((block, bi) => {
           const list = blockRows[bi];
-          const done = list.filter((d) => rows[d.key]?.done).length;
-          const complete = list.length > 0 && done === list.length;
+          const working = workingRows(bi);
+          const done = working.filter((d) => rows[d.key]?.done).length;
+          const complete = list.length > 0 && list.every((d) => rows[d.key]?.done);
+          // Numbering skips warm-ups: the first working set is 1.
+          const numbers = new Map<number, number>();
+          for (const d of list) {
+            if (isWorking(typeAt(block, d.pos)) && !numbers.has(d.pos)) numbers.set(d.pos, numbers.size + 1);
+          }
           const isOpen = open === bi;
           const letter = String.fromCharCode(65 + (bi % 26));
           const ex = block.exercise;
@@ -494,13 +614,15 @@ export function WorkoutRunner({
                     <span className="eyebrow block">{t("run.block.label", { letter })}</span>
                     <span className="block truncate font-semibold">{ex.name}</span>
                   </span>
-                  <span className="num shrink-0 text-lg" aria-label={t("run.progress", { done, total: list.length })}>{done}/{list.length}</span>
+                  <span className="num shrink-0 text-lg" aria-label={t("run.progress", { done, total: working.length })}>{done}/{working.length}</span>
                   <ChevronDown size={18} aria-hidden className={`shrink-0 text-muted transition-transform ${isOpen ? "rotate-180" : ""}`} />
                 </button>
               </h3>
 
               {isOpen && (
                 <div id={`block-${block.id}`} className="flex flex-col gap-3 border-t p-3">
+                  {block.notes && <CoachNote text={block.notes} label={t("run.note.label")} more={t("run.note.more")} less={t("run.note.less")} />}
+
                   <details className="group">
                     <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm text-muted [&::-webkit-details-marker]:hidden">
                       {t("run.block.how")}
@@ -516,8 +638,11 @@ export function WorkoutRunner({
                     {list.map((d) => {
                       const st = rows[d.key] ?? EMPTY;
                       const ph = placeholders(block, d);
-                      const rx = prescription(block, d.plan);
-                      const plan = d.plan;
+                      const type = typeAt(block, d.pos);
+                      const { kg: rx, suggested } = rxAt(block, d.pos);
+                      const plan = planAt(block, d.pos);
+                      const lockRpe = type === "failure";
+                      const n = numbers.get(d.pos);
                       const rxText = !plan
                         ? t("run.rx.enter")
                         : ex.kind === "height_cm"
@@ -531,15 +656,18 @@ export function WorkoutRunner({
                                 : plan.targetRpe != null
                                   ? t("run.rx.rpe", { rpe: fmt(plan.targetRpe) })
                                   : t("run.rx.enter");
+                      const typeLabel = t(`run.type.${type}` as MessageKey);
+                      const num = t("run.set.label", { n: n ?? 0 });
+                      const title = type === "warmup" ? typeLabel : type === "normal" ? num : `${num} · ${typeLabel}`;
                       const setLabel = [
-                        t("run.set.label", { n: d.ordinal }),
+                        title,
                         d.side ? t(d.side === "left" ? "run.set.left" : "run.set.right") : null,
                       ].filter(Boolean).join(" · ");
                       const clean = st.done && !st.dirty;
                       const fields: { name: "weight" | "reps" | "rpe"; label: MessageKey; mode: "decimal" | "numeric" }[] = [];
                       if (hasWeight(ex.kind)) fields.push({ name: "weight", label: ex.kind === "weighted_bodyweight" ? "run.field.addedKg" : "run.field.kg", mode: "decimal" });
                       fields.push({ name: "reps", label: unit, mode: ex.kind === "height_cm" ? "decimal" : "numeric" });
-                      if (hasRpe(ex.kind)) fields.push({ name: "rpe", label: "run.field.rpe", mode: "decimal" });
+                      if (hasRpe(ex.kind)) fields.push({ name: "rpe", label: lockRpe ? "run.type.failure" : "run.field.rpe", mode: "decimal" });
                       return (
                         <li
                           key={d.key}
@@ -548,23 +676,45 @@ export function WorkoutRunner({
                           className="flex flex-col gap-2 rounded-2xl border p-3"
                           style={{ background: clean ? "color-mix(in srgb, var(--ok-bg) 45%, var(--surface))" : "var(--surface-2)" }}
                         >
-                          <div className="flex items-baseline justify-between gap-2">
-                            <p className="text-sm font-semibold">
-                              {setLabel}
-                              {d.extra && <span className="chip ml-2">{t("run.set.extra")}</span>}
-                            </p>
-                            <p className="text-right text-sm text-muted">
-                              {rxText}
-                              {rx !== null && <span className="num ml-2 text-base text-[var(--foreground)]">{t("run.rx.kg", { kg: fmt(rx) })}</span>}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            {d.extra && !st.busy ? (
+                              <button
+                                type="button"
+                                onClick={() => openSheet(block, d)}
+                                aria-label={`${t("run.type.change")}: ${typeLabel}`}
+                                title={t("run.type.change")}
+                                className="grid size-11 shrink-0 place-items-center rounded-full"
+                              >
+                                <SetBadge type={type} n={n} />
+                              </button>
+                            ) : (
+                              <span className="grid size-11 shrink-0 place-items-center"><SetBadge type={type} n={n} /></span>
+                            )}
+                            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+                              <p className="min-w-0 text-sm font-semibold">
+                                {setLabel}
+                                {d.extra && <span className="chip ml-2">{t("run.set.extra")}</span>}
+                              </p>
+                              <p className="shrink-0 text-right text-sm text-muted">
+                                {rxText}
+                                {rx !== null && (
+                                  <span className="block">
+                                    {suggested && <span className="mr-1 text-xs">{t("run.rx.suggested")}</span>}
+                                    <span className="num text-base text-[var(--foreground)]">{t("run.rx.kg", { kg: fmt(rx) })}</span>
+                                  </span>
+                                )}
+                              </p>
+                            </div>
                           </div>
                           <div className="flex items-end gap-2">
                             {fields.map((f) => (
                               <label key={f.name} className="flex min-w-0 flex-1 flex-col gap-1">
                                 <span className="eyebrow truncate">{t(f.label)}</span>
                                 <input
-                                  value={st[f.name]}
+                                  value={f.name === "rpe" && lockRpe ? "10" : st[f.name]}
                                   onChange={(e) => edit(d.key, f.name, e.target.value)}
+                                  readOnly={f.name === "rpe" && lockRpe}
+                                  aria-readonly={f.name === "rpe" && lockRpe}
                                   placeholder={ph[f.name]}
                                   inputMode={f.mode}
                                   autoComplete="off"
@@ -572,7 +722,7 @@ export function WorkoutRunner({
                                   maxLength={7}
                                   aria-label={`${t(f.label)}, ${setLabel}`}
                                   aria-invalid={st.error !== null}
-                                  className="input num min-h-12 w-full text-center text-xl"
+                                  className={`input num min-h-12 w-full text-center text-xl ${f.name === "rpe" && lockRpe ? "opacity-70" : ""}`}
                                 />
                               </label>
                             ))}
@@ -610,6 +760,33 @@ export function WorkoutRunner({
           );
         })}
       </ol>
+
+      {/* set type sheet */}
+      <dialog ref={sheetRef} className="confirm" aria-labelledby="type-title" onClose={() => setSheet(null)}>
+        <div className="flex flex-col gap-3">
+          <h2 id="type-title" className="display text-2xl leading-tight">{t("run.type.title")}</h2>
+          <ul className="flex flex-col gap-2">
+            {SET_TYPES.map((ty) => {
+              const current = sheet ? (extraTypes[typeKey(sheet.exerciseId, sheet.setIndex)] ?? "normal") === ty : false;
+              return (
+                <li key={ty}>
+                  <button
+                    type="button"
+                    onClick={() => pickType(ty)}
+                    aria-pressed={current}
+                    className="btn flex min-h-12 w-full items-center gap-3 text-left"
+                    style={current ? { borderColor: "var(--accent)" } : undefined}
+                  >
+                    <SetBadge type={ty} n={undefined} />
+                    <span>{t(`run.type.${ty}` as MessageKey)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <button type="button" onClick={() => sheetRef.current?.close()} className="btn min-h-12">{t("common.cancel")}</button>
+        </div>
+      </dialog>
 
       {/* finish dialog */}
       <dialog ref={dialogRef} className="confirm" aria-labelledby="finish-title">
