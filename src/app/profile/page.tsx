@@ -14,9 +14,14 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
   const { data: p } = await supabase
     .from("profiles")
-    .select("full_name, birth_date, height_cm, weight_kg")
+    .select("full_name, birth_date, height_cm, weight_kg, notify_reminders")
     .eq("id", user.id)
     .single();
+
+  const { count: subCount } = await supabase
+    .from("push_subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
 
   return (
     <div className="mx-auto w-full max-w-md px-4 pb-10">
@@ -36,6 +41,8 @@ export default async function ProfilePage() {
           heightCm: p?.height_cm != null ? String(p.height_cm) : "",
           weightKg: p?.weight_kg != null ? String(p.weight_kg) : "",
         }}
+        remindersEnabled={p?.notify_reminders ?? true}
+        hasSubscription={(subCount ?? 0) > 0}
       />
     </div>
   );

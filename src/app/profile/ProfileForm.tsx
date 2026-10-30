@@ -5,6 +5,7 @@ import { Cake, Check, Languages, LogOut, Mail, Ruler, Scale, ShieldCheck, User }
 import { deleteAccount, signOut } from "@/app/actions";
 import { Avatar } from "@/components/Avatar";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { NotificationsCard } from "@/components/NotificationsCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n/client";
 import { updateProfile, type ProfileResult } from "./actions";
@@ -44,7 +45,17 @@ function Tile({ label, value, unit }: { label: string; value: string; unit?: str
   );
 }
 
-export function ProfileForm({ email, initial }: { email: string; initial: Initial }) {
+export function ProfileForm({
+  email,
+  initial,
+  remindersEnabled = false,
+  hasSubscription = false,
+}: {
+  email: string;
+  initial: Initial;
+  remindersEnabled?: boolean;
+  hasSubscription?: boolean;
+}) {
   const { t } = useT();
   const [state, action, pending] = useActionState<ProfileResult | null, FormData>(updateProfile, null);
   const age = ageOf(initial.birthDate);
@@ -124,6 +135,8 @@ export function ProfileForm({ email, initial }: { email: string; initial: Initia
         </span>
         <LanguageSwitcher />
       </section>
+
+      <NotificationsCard initialEnabled={remindersEnabled && hasSubscription} hasSubscription={hasSubscription} />
 
       <form action={signOut}>
         <button type="submit" className="btn inline-flex min-h-11 w-full items-center justify-center gap-2">

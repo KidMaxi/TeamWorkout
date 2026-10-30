@@ -153,7 +153,7 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDetailProps["weekly"
       </div>
       <ol className="mt-2 flex gap-1" aria-hidden>
         {weekly.map((w, i) => (
-          <li key={w.week_start} className={`min-w-0 flex-1 text-center text-[9px] ${i === weekly.length - 1 ? "font-semibold" : "text-muted"}`}>
+          <li key={w.week_start} className={`min-w-0 flex-1 whitespace-nowrap text-center text-[9px] ${i === weekly.length - 1 ? "font-semibold" : "text-muted"}`}>
             {i % 2 === (weekly.length - 1) % 2 ? labelOf(w.week_start) : ""}
           </li>
         ))}
