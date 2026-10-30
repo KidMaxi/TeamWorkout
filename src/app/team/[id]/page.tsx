@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { StaffDashboard } from "@/components/StaffDashboard";
 import { AthleteDashboard } from "@/components/AthleteDashboard";
+import { todayInTeamZone, type WellnessEntry } from "@/lib/wellness";
 import {
   athleteLevel,
   type Availability, type AthleteRow, type DashboardFilter, type LoadRow, type MissingRow, type SessionType, type WeekTrendRow,
@@ -20,10 +21,17 @@ export default async function TeamOverview({
     .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
 
   if (me?.role === "staff") {
-    const [overview, trend, missing] = await Promise.all([
+    const day = todayInTeamZone();
+    const [overview, trend, missing, wellnessRes, membersRes] = await Promise.all([
       supabase.rpc("team_load_overview", { _team: id }),
       supabase.rpc("team_week_trend", { _team: id, _weeks: 8 }),
       supabase.rpc("team_missing_logs", { _team: id }),
+      // RLS only returns rows of athletes who gave consent.
+      supabase
+        .from("wellness_checks")
+        .select("user_id, day, sleep, soreness, fatigue, stress, mood")
+        .eq("day", day),
+      supabase.from("team_members").select("user_id, consent_given").eq("team_id", id).eq("role", "athlete"),
     ]);
     const err = overview.error ?? trend.error ?? missing.error;
     if (err) throw new Error(err.message);
@@ -33,9 +41,19 @@ export default async function TeamOverview({
       missing: missingBy.get(r.user_id) ?? 0,
       level: athleteLevel(r),
     }));
+    // Wellness is optional extra data: a failure here must not take the dashboard down.
+    const consent: Record<string, boolean> = {};
+    for (const m of membersRes.data ?? []) consent[m.user_id as string] = !!m.consent_given;
+    const wellness: Record<string, WellnessEntry | null> = {};
+    for (const r of rows) wellness[r.user_id] = null;
+    for (const w of wellnessRes.data ?? []) {
+      if (consent[w.user_id as string]) {
+        wellness[w.user_id as string] = { day: w.day, sleep: w.sleep, soreness: w.soreness, fatigue: w.fatigue, stress: w.stress, mood: w.mood };
+      }
+    }
     const { filter } = await searchParams;
     const f: DashboardFilter = (["alerts", "unavailable", "missing"] as const).find((x) => x === filter) ?? "all";
-    return <StaffDashboard teamId={id} rows={rows} weeks={trend.data as WeekTrendRow[]} filter={f} />;
+    return <StaffDashboard teamId={id} rows={rows} weeks={trend.data as WeekTrendRow[]} filter={f} wellness={wellness} consent={consent} />;
   }
 
   const DAY = 86400_000;
@@ -48,7 +66,8 @@ export default async function TeamOverview({
   const thisWeekStart = startOfWeek(now);
   const firstWeekStart = thisWeekStart - 5 * 7 * DAY;
 
-  const [logsRes, sessionsRes, availRes] = await Promise.all([
+  const today = todayInTeamZone();
+  const [logsRes, sessionsRes, availRes, wellnessRes] = await Promise.all([
     supabase
       .from("session_logs")
       .select("session_id, load, rpe, duration_min, attended, sessions!inner(title, type, starts_at, team_id)")
@@ -63,6 +82,12 @@ export default async function TeamOverview({
       .lte("starts_at", new Date(now).toISOString()),
     supabase
       .from("availability").select("status, note").eq("team_id", id).eq("user_id", user!.id).maybeSingle(),
+    supabase
+      .from("wellness_checks")
+      .select("day, sleep, soreness, fatigue, stress, mood")
+      .eq("user_id", user!.id)
+      .gte("day", new Date(Date.parse(`${today}T00:00:00Z`) - 6 * DAY).toISOString().slice(0, 10))
+      .order("day", { ascending: false }),
   ]);
   const dbErr = logsRes.error ?? sessionsRes.error ?? availRes.error;
   if (dbErr) throw new Error(dbErr.message);
@@ -105,6 +130,10 @@ export default async function TeamOverview({
       attended: l.attended, duration_min: l.duration_min, rpe: l.rpe, load: l.load,
     }));
 
+  const recentWellness: WellnessEntry[] = (wellnessRes.data ?? []).map((w) => ({
+    day: w.day, sleep: w.sleep, soreness: w.soreness, fatigue: w.fatigue, stress: w.stress, mood: w.mood,
+  }));
+
   return (
     <AthleteDashboard
       teamId={id}
@@ -114,6 +143,7 @@ export default async function TeamOverview({
       recentLogs={recentLogs}
       last7Load={last7Load}
       attendedThisWeek={attendedThisWeek}
+      wellness={{ today: recentWellness.find((w) => w.day === today) ?? null, recent: recentWellness }}
     />
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, CircleHelp, Gauge, KeyRound, MessageSquare, Plus, Shield, ShieldCheck, Users, X } from "lucide-react";
+import { Check, ChevronRight, CircleHelp, Gauge, KeyRound, MessageSquare, Plus, Shield, ShieldCheck, Users, X } from "lucide-react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Availability } from "@/lib/load";
@@ -124,6 +124,16 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                       {t(ROLE_KEY[m.role as keyof typeof ROLE_KEY])}
                     </span>
                   </div>
+                  {m.role === "athlete" && (
+                    <Link
+                      href={`/team/${id}/athlete/${m.user_id}`}
+                      aria-label={t("detail.open", { name: display })}
+                      title={t("detail.open", { name: display })}
+                      className="inline-grid size-10 shrink-0 place-items-center rounded-full text-muted transition-colors hover:text-[var(--foreground)]"
+                    >
+                      <ChevronRight size={20} aria-hidden />
+                    </Link>
+                  )}
                   {m.user_id !== user!.id && (
                     <ConfirmButton
                       action={removeMember.bind(null, id, m.user_id)}

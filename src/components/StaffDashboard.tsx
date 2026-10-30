@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  Ban, CircleHelp, ClipboardList, TriangleAlert, UserCheck, Users, UserPlus,
+  Ban, ChevronRight, CircleHelp, ClipboardList, HeartPulse, Lock, TriangleAlert, UserCheck, Users, UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
@@ -8,6 +8,7 @@ import { Dial } from "@/components/Dial";
 import { AvailabilityIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, dateLocale, type Locale, type MessageKey, type TFunction } from "@/lib/i18n";
+import { wellnessAverage, wellnessFlag, type WellnessEntry } from "@/lib/wellness";
 import {
   applyFilter,
   sortByRisk,
@@ -33,6 +34,14 @@ const FILTERS: { key: DashboardFilter; label: MessageKey; Icon: LucideIcon }[] =
   { key: "missing", label: "dashboard.filter.missing", Icon: ClipboardList },
 ];
 
+type WellnessMap = Record<string, WellnessEntry | null>;
+type ConsentMap = Record<string, boolean>;
+const FLAG_CLS = { ok: "badge badge-ok", watch: "badge badge-watch", low: "badge badge-high" } as const;
+const isLow = (w: WellnessMap | undefined, c: ConsentMap | undefined, id: string) => {
+  const e = w?.[id];
+  return !!(c?.[id] && e && wellnessFlag(e) === "low");
+};
+
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 function shortName(full: string, fallback: string) {
@@ -55,9 +64,10 @@ function Stat({
 }
 
 function Hero({
-  weeks, available, total, alerts, high, missing, t,
+  weeks, available, total, alerts, high, missing, wellnessCount, t,
 }: {
-  weeks: WeekTrendRow[]; available: number; total: number; alerts: number; high: number; missing: number; t: TFunction;
+  weeks: WeekTrendRow[]; available: number; total: number; alerts: number; high: number; missing: number;
+  wellnessCount: { filled: number; total: number } | null; t: TFunction;
 }) {
   const thisWeek = weeks.at(-1)?.total_load ?? 0;
   const max = Math.max(...weeks.map((w) => w.total_load), 1);
@@ -83,11 +93,18 @@ function Hero({
         <Stat Icon={TriangleAlert} label={t("dashboard.tiles.alerts")} value={alerts} tone={high ? "danger" : alerts ? "warn" : undefined} />
         <Stat Icon={ClipboardList} label={t("dashboard.tiles.missing")} value={missing} tone={missing ? "warn" : undefined} />
       </div>
+      {wellnessCount && wellnessCount.total > 0 && (
+        <p className="flex items-center gap-2 self-start text-sm text-muted">
+          <HeartPulse size={16} aria-hidden className="text-[var(--accent)]" />
+          {t("wellness.staff.tile")}
+          <span className="num text-base text-[var(--foreground)]">{wellnessCount.filled}/{wellnessCount.total}</span>
+        </p>
+      )}
     </div>
   );
 }
 
-function Attention({ rows, t }: { rows: AthleteRow[]; t: TFunction }) {
+function Attention({ rows, lowIds, t }: { rows: AthleteRow[]; lowIds: Set<string>; t: TFunction }) {
   return (
     <section aria-label={t("dashboard.attention.title")}>
       <p className="eyebrow mb-2 px-1">{t("dashboard.attention.title")}</p>
@@ -98,7 +115,10 @@ function Attention({ rows, t }: { rows: AthleteRow[]; t: TFunction }) {
             <li key={r.user_id} className="card flex w-40 shrink-0 snap-start flex-col gap-2 !p-3">
               <div className="flex items-center gap-2">
                 <Avatar name={r.full_name} size={36} />
-                <p className="min-w-0 truncate text-sm font-semibold">{shortName(r.full_name, t("dashboard.athlete.unnamed"))}</p>
+                <p className="min-w-0 flex-1 truncate text-sm font-semibold">{shortName(r.full_name, t("dashboard.athlete.unnamed"))}</p>
+                {lowIds.has(r.user_id) && (
+                  <HeartPulse size={14} aria-label={t("wellness.staff.attention")} role="img" className="shrink-0 text-[var(--danger)]" />
+                )}
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className={lvl.cls}>{t(lvl.key)}</span>
@@ -185,7 +205,36 @@ function TrendChart({ weeks, t, locale }: { weeks: WeekTrendRow[]; t: TFunction;
   );
 }
 
-function AthleteCard({ r, t }: { r: AthleteRow; t: TFunction }) {
+function WellnessRow({ entry, consent, t }: { entry: WellnessEntry | null | undefined; consent: boolean; t: TFunction }) {
+  if (!consent) {
+    return (
+      <span className="chip mt-1.5" title={t("wellness.staff.noConsentHint")}>
+        <Lock size={12} aria-hidden /> {t("wellness.staff.noConsent")}
+        <span className="sr-only">. {t("wellness.staff.noConsentHint")}</span>
+      </span>
+    );
+  }
+  if (!entry) {
+    return (
+      <span className="chip mt-1.5">
+        <HeartPulse size={12} aria-hidden /> {t("wellness.staff.notFilled")}
+      </span>
+    );
+  }
+  const flag = wellnessFlag(entry);
+  const avg = wellnessAverage(entry);
+  return (
+    <span className="mt-1.5 flex items-center gap-2" aria-label={t("wellness.staff.avg", { avg, flag: t(`wellness.flag.${flag}`) })}>
+      <HeartPulse size={14} aria-hidden className="text-[var(--accent)]" />
+      <span className="num text-sm" aria-hidden>{avg}</span>
+      <span className={FLAG_CLS[flag]} aria-hidden>{t(`wellness.flag.${flag}`)}</span>
+    </span>
+  );
+}
+
+function AthleteCard({
+  r, teamId, wellness, consent, t,
+}: { r: AthleteRow; teamId: string; wellness?: WellnessMap; consent?: ConsentMap; t: TFunction }) {
   const lvl = LEVEL[r.level];
   const avail = r.availability ?? "available";
   const name = r.full_name || t("dashboard.athlete.unnamed");
@@ -196,7 +245,14 @@ function AthleteCard({ r, t }: { r: AthleteRow; t: TFunction }) {
       <div className="flex items-start gap-3">
         <Avatar name={r.full_name} size={44} />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold">{name}</p>
+          <Link
+            href={`/team/${teamId}/athlete/${r.user_id}`}
+            aria-label={t("wellness.staff.open", { name })}
+            className="-my-1 flex min-h-11 items-center justify-between gap-1 font-semibold"
+          >
+            <span className="truncate">{name}</span>
+            <ChevronRight size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
+          </Link>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
             <span className="inline-flex items-center gap-1">
               <AvailabilityIcon status={avail} size={14} />
@@ -204,6 +260,7 @@ function AthleteCard({ r, t }: { r: AthleteRow; t: TFunction }) {
             </span>
             {r.availability_note && <span>{r.availability_note}</span>}
           </p>
+          {wellness && consent && <WellnessRow entry={wellness[r.user_id]} consent={!!consent[r.user_id]} t={t} />}
           {r.missing > 0 && (
             <span className="chip mt-1.5 !text-[var(--warn)]">
               <ClipboardList size={12} aria-hidden /> {t("dashboard.athlete.missing", { n: r.missing })}
@@ -250,21 +307,29 @@ function AthleteCard({ r, t }: { r: AthleteRow; t: TFunction }) {
 }
 
 export async function StaffDashboard({
-  teamId, rows, weeks, filter,
-}: { teamId: string; rows: AthleteRow[]; weeks: WeekTrendRow[]; filter: DashboardFilter }) {
+  teamId, rows, weeks, filter, wellness, consent,
+}: {
+  teamId: string; rows: AthleteRow[]; weeks: WeekTrendRow[]; filter: DashboardFilter;
+  wellness?: WellnessMap; consent?: ConsentMap;
+}) {
   const { t, locale } = await getT();
   const alerts = rows.filter((r) => r.level === "high" || r.level === "watch").length;
   const high = rows.filter((r) => r.level === "high").length;
   const available = rows.filter((r) => (r.availability ?? "available") === "available").length;
   const missing = rows.reduce((s, r) => s + r.missing, 0);
   const visible = sortByRisk(applyFilter(rows, filter));
-  const attention = sortByRisk(rows.filter((r) => r.level === "high" || r.level === "watch" || r.level === "out"));
+  const lowIds = new Set(rows.filter((r) => isLow(wellness, consent, r.user_id)).map((r) => r.user_id));
+  const attention = sortByRisk(rows.filter((r) => r.level === "high" || r.level === "watch" || r.level === "out" || lowIds.has(r.user_id)));
+  const consenting = consent ? rows.filter((r) => consent[r.user_id]) : [];
+  const wellnessCount = wellness && consent
+    ? { filled: consenting.filter((r) => wellness[r.user_id]).length, total: consenting.length }
+    : null;
 
   return (
     <section className="stagger flex flex-col gap-5">
-      <Hero weeks={weeks} available={available} total={rows.length} alerts={alerts} high={high} missing={missing} t={t} />
+      <Hero weeks={weeks} available={available} total={rows.length} alerts={alerts} high={high} missing={missing} wellnessCount={wellnessCount} t={t} />
 
-      {attention.length > 0 && <Attention rows={attention} t={t} />}
+      {attention.length > 0 && <Attention rows={attention} lowIds={lowIds} t={t} />}
 
       <TrendChart weeks={weeks} t={t} locale={locale} />
 
@@ -288,7 +353,7 @@ export async function StaffDashboard({
 
       <div className="flex flex-col gap-3">
         <ul className="grid gap-3 sm:grid-cols-2">
-          {visible.map((r) => <AthleteCard key={r.user_id} r={r} t={t} />)}
+          {visible.map((r) => <AthleteCard key={r.user_id} r={r} teamId={teamId} wellness={wellness} consent={consent} t={t} />)}
         </ul>
         {!visible.length && (
           rows.length ? (

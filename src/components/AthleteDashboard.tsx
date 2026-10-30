@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Ban, CalendarCheck, CircleCheck, Pencil } from "lucide-react";
+import { WellnessCard } from "@/components/WellnessCard";
 import { Dial } from "@/components/Dial";
 import { AvailabilityIcon, SessionTypeIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, SESSION_TYPE_KEY, dateLocale, type Locale, type TFunction } from "@/lib/i18n";
 import type { Availability, SessionType } from "@/lib/load";
+import type { WellnessEntry } from "@/lib/wellness";
 
 export type AthleteDashboardProps = {
   teamId: string;
@@ -24,6 +26,8 @@ export type AthleteDashboardProps = {
   }[];
   last7Load: number;
   attendedThisWeek: number;
+  /** Own check-ins: today (or null) and the last 7 days, newest first. */
+  wellness?: { today: WellnessEntry | null; recent: WellnessEntry[] };
 };
 
 const dateFmt = (iso: string, locale: Locale) =>
@@ -130,12 +134,14 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDashboardProps["week
 }
 
 export async function AthleteDashboard({
-  teamId, availability, pending, weekly, recentLogs, last7Load, attendedThisWeek,
+  teamId, availability, pending, weekly, recentLogs, last7Load, attendedThisWeek, wellness,
 }: AthleteDashboardProps) {
   const { t, locale } = await getT();
   return (
     <section className="stagger flex flex-col gap-5">
       <Hero last7Load={last7Load} attendedThisWeek={attendedThisWeek} weekly={weekly} t={t} />
+
+      {wellness && !wellness.today && <WellnessCard teamId={teamId} today={null} />}
 
       {pending.length ? (
         <section className="flex flex-col gap-2" aria-label={t("athlete.pending.title")}>
@@ -162,6 +168,8 @@ export async function AthleteDashboard({
           <CircleCheck size={16} aria-hidden className="text-[var(--accent)]" /> {t("athlete.pending.done")}
         </p>
       )}
+
+      {wellness?.today && <WellnessCard teamId={teamId} today={wellness.today} />}
 
       <AvailabilityStrip availability={availability} t={t} />
 
