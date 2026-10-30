@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RegisterSW } from "./register-sw";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getLocale } from "@/lib/i18n/server";
+import { LEGAL } from "@/lib/legal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,6 +25,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Absolute base for social image URLs; Vercel provides the production host automatically.
+  metadataBase: new URL(
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : LEGAL.operator.website,
+  ),
   title: "TeamWorkout",
   description: "Trainingsload en beschikbaarheid van je team",
   appleWebApp: { capable: true, title: "TeamWorkout" },

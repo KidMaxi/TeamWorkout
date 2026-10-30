@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { MessageKey } from "@/lib/i18n";
+import { TERMS_VERSION } from "@/lib/legal";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -99,14 +100,23 @@ export async function updateMember(teamId: string, userId: string, formData: For
       max_weekly_load: max ? Number(max) : null,
       updated_at: new Date().toISOString(),
     }),
-    supabase.from("team_members").update({
-      consent_given: formData.get("consent") === "on",
-      consent_at: formData.get("consent") === "on" ? new Date().toISOString() : null,
-    }).eq("team_id", teamId).eq("user_id", userId),
   ]);
   const failed = results.find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
   revalidatePath(`/team/${teamId}`, "layout");
+}
+
+/** The signed-in user accepts the current terms and privacy statement. */
+export async function acceptTerms() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const { error } = await supabase
+    .from("profiles")
+    .update({ terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION })
+    .eq("id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
 }
 
 export async function setLocale(locale: string) {

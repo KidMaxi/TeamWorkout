@@ -1,20 +1,31 @@
 import Link from "next/link";
-import { Check, ChevronRight, CircleHelp, Gauge, KeyRound, MessageSquare, Plus, Shield, ShieldCheck, Users, X } from "lucide-react";
+import { Check, ChevronRight, CircleHelp, Gauge, KeyRound, Lock, MessageSquare, Plus, Shield, ShieldCheck, Users, X } from "lucide-react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Availability } from "@/lib/load";
 import { AvailabilityIcon } from "@/components/icons";
 import { Avatar } from "@/components/Avatar";
 import { getT } from "@/lib/i18n/server";
-import { AVAILABILITY_KEY, ROLE_KEY } from "@/lib/i18n";
+import { AVAILABILITY_KEY, ROLE_KEY, dateLocale } from "@/lib/i18n";
 import { createInvite, deleteInvite, removeMember, updateMember } from "@/app/actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { ParentConsentForm } from "@/components/ConsentCard";
+import { withdrawParentConsent } from "@/app/consent-actions";
+
+function ageOf(birth: string | null | undefined): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(birth ?? "");
+  if (!m) return null;
+  const now = new Date();
+  let a = now.getUTCFullYear() - Number(m[1]);
+  if (now.getUTCMonth() + 1 < Number(m[2]) || (now.getUTCMonth() + 1 === Number(m[2]) && now.getUTCDate() < Number(m[3]))) a--;
+  return a >= 0 && a < 130 ? a : null;
+}
 
 const label = "eyebrow flex items-center gap-1.5";
 
 export default async function MembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: me } = await supabase
@@ -33,6 +44,8 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const av = new Map(avail?.map((a) => [a.user_id, a]));
   const lim = new Map(limits?.map((l) => [l.user_id, l]));
   const now = Date.now();
+  const fmt = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleDateString(dateLocale(locale), { day: "numeric", month: "short", year: "numeric" }) : "";
 
   return (
     <section className="flex flex-col gap-6">
@@ -113,6 +126,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
             const a = av.get(m.user_id);
             const status = (a?.status ?? "available") as Availability;
             const display = p?.full_name || t("members.unnamed");
+            const age = ageOf(p?.birth_date);
             return (
               <li key={m.user_id} className="card flex flex-col gap-4 text-sm">
                 <div className="flex items-center gap-3">
@@ -147,6 +161,42 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                   )}
                 </div>
                 {m.role === "athlete" && (
+                  <div className="flex flex-col gap-3 border-t pt-4">
+                    <span className={label}><ShieldCheck size={12} aria-hidden />{t("members.consent")}</span>
+                    {m.consent_given ? (
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="badge badge-ok">
+                          <ShieldCheck size={12} aria-hidden />
+                          {m.consent_by === "parent"
+                            ? t("consent.staff.parent", { date: fmt(m.consent_at) })
+                            : t("consent.staff.self", { date: fmt(m.consent_at) })}
+                        </span>
+                        {m.consent_by === "parent" && m.consent_note && (
+                          <span className="break-words text-xs text-muted">{t("consent.staff.noteLabel", { note: m.consent_note })}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="badge badge-none self-start"><Lock size={12} aria-hidden />{t("consent.staff.none")}</span>
+                    )}
+                    {age === null ? (
+                      <p className="text-xs text-muted">{t("consent.staff.needBirth")}</p>
+                    ) : age >= 16 ? (
+                      <p className="text-xs text-muted">{t("consent.staff.selfHint")}</p>
+                    ) : m.consent_given ? (
+                      <ConfirmButton
+                        action={withdrawParentConsent.bind(null, id, m.user_id)}
+                        icon="warning"
+                        label={t("consent.parent.withdraw")}
+                        title={t("consent.parent.withdrawTitle")}
+                        body={t("consent.parent.withdrawBody")}
+                        className="self-start"
+                      />
+                    ) : (
+                      <ParentConsentForm teamId={id} userId={m.user_id} />
+                    )}
+                  </div>
+                )}
+                {m.role === "athlete" && (
                   <form action={updateMember.bind(null, id, m.user_id)} className="flex flex-col gap-4 border-t pt-4">
                     <div className="grid grid-cols-2 gap-3">
                       <label className="flex flex-col gap-1.5">
@@ -167,14 +217,6 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                         <input name="note" defaultValue={a?.note ?? ""} className="input min-h-11 w-full" />
                       </label>
                     </div>
-                    <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4" style={{ background: "var(--surface-2)" }}>
-                      <ShieldCheck size={18} aria-hidden className="shrink-0 text-[var(--accent)]" />
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="font-medium">{t("members.consent")}</span>
-                        <span className="text-xs text-muted">{t("members.consentHint")}</span>
-                      </span>
-                      <input type="checkbox" name="consent" defaultChecked={m.consent_given} className="size-5 shrink-0 accent-[var(--primary)]" />
-                    </label>
                     <button className="btn inline-flex min-h-12 w-full items-center justify-center gap-2">
                       <Check size={18} aria-hidden />{t("common.save")}
                     </button>

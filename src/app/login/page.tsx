@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Mail, Lock, User, LogIn, UserPlus } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 import { Dial } from "@/components/Dial";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { TERMS_VERSION } from "@/lib/legal";
 import { useT } from "@/lib/i18n/client";
 
 function Field({ icon: Icon, ...props }: { icon: typeof Mail } & React.InputHTMLAttributes<HTMLInputElement>) {
@@ -25,9 +27,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [accepted, setAccepted] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (mode === "up" && !accepted) return;
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -46,7 +50,7 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: String(f.get("name")) } },
+        options: { data: { full_name: String(f.get("name")), accepted_terms_version: TERMS_VERSION } },
       });
       if (error) setError(error.message);
       else if (data.session) {
@@ -88,7 +92,26 @@ export default function LoginPage() {
             autoComplete={mode === "in" ? "current-password" : "new-password"}
             placeholder={t("auth.password")}
           />
-          <button disabled={busy} className="btn btn-primary mt-1 inline-flex min-h-11 w-full items-center justify-center gap-2">
+          {mode === "up" && (
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 py-1 text-sm">
+              <input
+                type="checkbox"
+                name="accept_terms"
+                required
+                checked={accepted}
+                onChange={(e) => setAccepted(e.target.checked)}
+                className="mt-0.5 size-5 shrink-0 accent-[var(--primary)]"
+              />
+              <span>
+                {t("consent.accept.before")}
+                <Link href="/terms" className="link" target="_blank">{t("consent.accept.terms")}</Link>
+                {t("consent.accept.mid")}
+                <Link href="/privacy" className="link" target="_blank">{t("consent.accept.privacy")}</Link>
+                {t("consent.accept.after")}
+              </span>
+            </label>
+          )}
+          <button disabled={busy || (mode === "up" && !accepted)} className="btn btn-primary mt-1 inline-flex min-h-11 w-full items-center justify-center gap-2">
             {mode === "in" ? <LogIn size={16} aria-hidden /> : <UserPlus size={16} aria-hidden />}
             {mode === "in" ? t("auth.signIn") : t("auth.signUp")}
           </button>
@@ -101,6 +124,12 @@ export default function LoginPage() {
         <button type="button" onClick={() => setMode(mode === "in" ? "up" : "in")} className="link mt-5 min-h-10 text-sm">
           {mode === "in" ? t("auth.noAccount") : t("auth.haveAccount")}
         </button>
+
+        <nav aria-label="Legal" className="mt-3 flex flex-wrap items-center justify-center gap-x-4 text-xs text-muted">
+          <Link href="/privacy" className="link inline-flex min-h-11 items-center">{t("legal.nav.privacy")}</Link>
+          <Link href="/terms" className="link inline-flex min-h-11 items-center">{t("legal.nav.terms")}</Link>
+          <Link href="/cookies" className="link inline-flex min-h-11 items-center">{t("legal.nav.cookies")}</Link>
+        </nav>
       </div>
     </main>
   );

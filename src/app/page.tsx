@@ -6,6 +6,8 @@ import { Avatar } from "@/components/Avatar";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { getT } from "@/lib/i18n/server";
 import { ROLE_KEY } from "@/lib/i18n";
+import { LegalLinks } from "@/components/LegalLinks";
+import { TermsGate } from "@/components/TermsGate";
 import { createTeam, joinTeam, signOut } from "./actions";
 
 const iconBtn =
@@ -51,6 +53,8 @@ export default async function Home() {
           </form>
         </div>
       </header>
+
+      <TermsGate />
 
       {memberships?.length ? (
         <ul className="flex flex-col gap-3">
@@ -121,6 +125,8 @@ export default async function Home() {
           <button className="btn inline-flex min-h-11 items-center gap-1.5"><UserPlus size={16} aria-hidden />{t("home.join")}</button>
         </form>
       </section>
+
+      <LegalLinks className="mt-auto pt-4" />
     </main>
   );
 }

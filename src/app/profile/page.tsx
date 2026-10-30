@@ -3,12 +3,23 @@ import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
+import { dateLocale } from "@/lib/i18n";
+import { ConsentCard } from "@/components/ConsentCard";
 import { LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ProfileForm } from "./ProfileForm";
 
+function ageOf(birth: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birth);
+  if (!m) return null;
+  const now = new Date();
+  let a = now.getUTCFullYear() - Number(m[1]);
+  if (now.getUTCMonth() + 1 < Number(m[2]) || (now.getUTCMonth() + 1 === Number(m[2]) && now.getUTCDate() < Number(m[3]))) a--;
+  return a >= 0 && a < 130 ? a : null;
+}
+
 export default async function ProfilePage() {
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -22,6 +33,17 @@ export default async function ProfilePage() {
     .from("push_subscriptions")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id);
+
+  const { data: athleteRows } = await supabase
+    .from("team_members")
+    .select("team_id, consent_given, consent_at, consent_by, teams(name)")
+    .eq("user_id", user.id)
+    .eq("role", "athlete")
+    .order("joined_at");
+  const age = ageOf(p?.birth_date ?? "");
+  const ageState = age === null ? "unknown" : age >= 16 ? "adult" : "minor";
+  const fmt = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleDateString(dateLocale(locale), { day: "numeric", month: "long", year: "numeric" }) : "";
 
   return (
     <div className="mx-auto w-full max-w-md px-4 pb-10">
@@ -43,6 +65,23 @@ export default async function ProfilePage() {
         }}
         remindersEnabled={p?.notify_reminders ?? true}
         hasSubscription={(subCount ?? 0) > 0}
+        consent={
+          athleteRows?.length ? (
+            <>
+              {athleteRows.map((m) => (
+                <ConsentCard
+                  key={m.team_id}
+                  teamId={m.team_id}
+                  teamName={(m.teams as unknown as { name: string } | null)?.name ?? ""}
+                  given={!!m.consent_given}
+                  dateLabel={fmt(m.consent_at)}
+                  by={m.consent_by === "parent" ? "parent" : m.consent_by === "self" ? "self" : null}
+                  age={ageState}
+                />
+              ))}
+            </>
+          ) : null
+        }
       />
     </div>
   );

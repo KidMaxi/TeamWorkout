@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
-import { Cake, Check, Languages, LogOut, Mail, Ruler, Scale, ShieldCheck, User } from "lucide-react";
+import { Cake, Check, Download, Languages, LogOut, Mail, Ruler, Scale, ShieldCheck, User } from "lucide-react";
 import { deleteAccount, signOut } from "@/app/actions";
 import { Avatar } from "@/components/Avatar";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -50,11 +51,13 @@ export function ProfileForm({
   initial,
   remindersEnabled = false,
   hasSubscription = false,
+  consent = null,
 }: {
   email: string;
   initial: Initial;
   remindersEnabled?: boolean;
   hasSubscription?: boolean;
+  consent?: React.ReactNode;
 }) {
   const { t } = useT();
   const [state, action, pending] = useActionState<ProfileResult | null, FormData>(updateProfile, null);
@@ -91,7 +94,7 @@ export function ProfileForm({
             <input name="full_name" className="input min-h-11 w-full pl-10" maxLength={80} defaultValue={initial.fullName} autoComplete="name" />
           </Field>
           <Field icon={Cake} label={t("profile.birthDate")}>
-            <input name="birth_date" type="date" className="input min-h-11 w-full pl-10" defaultValue={initial.birthDate} autoComplete="bday" />
+            <input id="birth_date" name="birth_date" type="date" className="input min-h-11 w-full pl-10" defaultValue={initial.birthDate} autoComplete="bday" />
           </Field>
         </section>
 
@@ -128,6 +131,8 @@ export function ProfileForm({
         </div>
       </form>
 
+      {consent}
+
       <section className="card flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-sm font-medium">
           <Languages size={18} aria-hidden className="text-[var(--accent)]" />
@@ -137,6 +142,22 @@ export function ProfileForm({
       </section>
 
       <NotificationsCard initialEnabled={remindersEnabled && hasSubscription} hasSubscription={hasSubscription} />
+
+      <section className="card flex flex-col gap-3">
+        <h2 className="display text-lg">{t("consent.privacy.title")}</h2>
+        <div>
+          <p className="text-sm text-muted">{t("consent.export.body")}</p>
+          <a href="/api/me/export" download className="btn mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2">
+            <Download size={16} aria-hidden />
+            {t("consent.export.button")}
+          </a>
+        </div>
+        <nav aria-label={t("consent.privacy.title")} className="flex flex-wrap gap-x-4 text-sm">
+          <Link href="/privacy" className="link inline-flex min-h-11 items-center">{t("legal.nav.privacy")}</Link>
+          <Link href="/terms" className="link inline-flex min-h-11 items-center">{t("legal.nav.terms")}</Link>
+          <Link href="/cookies" className="link inline-flex min-h-11 items-center">{t("legal.nav.cookies")}</Link>
+        </nav>
+      </section>
 
       <form action={signOut}>
         <button type="submit" className="btn inline-flex min-h-11 w-full items-center justify-center gap-2">
