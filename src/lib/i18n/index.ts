@@ -8,13 +8,16 @@ import athlete from "./messages/athlete";
 import profile from "./messages/profile";
 import help from "./messages/help";
 import danger from "./messages/danger";
+import wellness from "./messages/wellness";
+import detail from "./messages/detail";
+import notify from "./messages/notify";
 
 export type Locale = "nl" | "en";
 export const LOCALES: Locale[] = ["nl", "en"];
 export const DEFAULT_LOCALE: Locale = "nl";
 export const LOCALE_COOKIE = "tw_locale";
 
-const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger };
+const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger, wellness, detail, notify };
 type Areas = typeof areas;
 
 /** "area.key", e.g. "common.save" or "dashboard.tiles.load" */
