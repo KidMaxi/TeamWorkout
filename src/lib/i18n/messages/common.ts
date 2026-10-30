@@ -32,6 +32,8 @@ export default defineMessages(
     "availability.unavailable": "Niet beschikbaar",
     "role.staff": "Staf",
     "role.athlete": "Atleet",
+    "hint.label": "Tip",
+    "hint.dismiss": "Tip sluiten",
   },
   {
     appName: "TeamWorkout",
@@ -64,5 +66,7 @@ export default defineMessages(
     "availability.unavailable": "Unavailable",
     "role.staff": "Staff",
     "role.athlete": "Athlete",
+    "hint.label": "Tip",
+    "hint.dismiss": "Close tip",
   },
 );
