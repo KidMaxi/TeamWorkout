@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, CircleHelp, LayoutDashboard, User, Users } from "lucide-react";
+import { CalendarDays, Dumbbell, LayoutDashboard, User, Users } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 
 export function TeamNav({ teamId, isStaff }: { teamId: string; isStaff: boolean }) {
@@ -12,9 +12,9 @@ export function TeamNav({ teamId, isStaff }: { teamId: string; isStaff: boolean 
   const items = [
     { href: base, label: t("common.nav.overview"), Icon: LayoutDashboard, exact: true },
     { href: `${base}/sessions`, label: t("common.nav.sessions"), Icon: CalendarDays },
+    { href: `${base}/strength`, label: t("strength.title"), Icon: Dumbbell },
     ...(isStaff ? [{ href: `${base}/members`, label: t("common.nav.members"), Icon: Users }] : []),
     { href: "/profile", label: t("common.nav.profile"), Icon: User },
-    { href: "/help", label: t("common.nav.help"), Icon: CircleHelp },
   ];
   return (
     <nav

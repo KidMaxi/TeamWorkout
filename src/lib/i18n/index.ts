@@ -13,13 +13,15 @@ import detail from "./messages/detail";
 import notify from "./messages/notify";
 import strength from "./messages/strength";
 import exercises from "./messages/exercises";
+import legal from "./messages/legal";
+import consent from "./messages/consent";
 
 export type Locale = "nl" | "en";
 export const LOCALES: Locale[] = ["nl", "en"];
 export const DEFAULT_LOCALE: Locale = "nl";
 export const LOCALE_COOKIE = "tw_locale";
 
-const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger, wellness, detail, notify, strength, exercises };
+const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger, wellness, detail, notify, strength, exercises, legal, consent };
 type Areas = typeof areas;
 
 /** "area.key", e.g. "common.save" or "dashboard.tiles.load" */

@@ -23,6 +23,18 @@ export default async function Home() {
     .select("role, teams(id, name)")
     .order("joined_at");
 
+  // Clubs where the user is staff, so a new team can be added to an existing club.
+  const { data: staffRows } = await supabase
+    .from("team_members")
+    .select("teams(club_id, clubs(name))")
+    .eq("role", "staff");
+  const clubMap = new Map<string, string>();
+  for (const r of staffRows ?? []) {
+    const team = r.teams as unknown as { club_id: string; clubs: { name: string } | null } | null;
+    if (team?.club_id && !clubMap.has(team.club_id)) clubMap.set(team.club_id, team.clubs?.name ?? team.club_id);
+  }
+  const clubs = [...clubMap].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <main className="stagger mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-4 pb-10 pt-4 sm:px-6">
       <header className="flex items-center justify-between gap-2">
@@ -76,12 +88,25 @@ export default async function Home() {
 
       <section className="card">
         <h2 className="display mb-3 text-lg">{t("home.createTitle")}</h2>
-        <form action={createTeam} className="flex gap-2">
-          <div className="relative flex-1">
-            <InputIcon icon={Users} />
-            <input name="name" required placeholder={t("home.newTeam")} aria-label={t("home.newTeam")} className="input min-h-11 w-full pl-10" />
+        <form action={createTeam} className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <InputIcon icon={Users} />
+              <input name="name" required placeholder={t("home.newTeam")} aria-label={t("home.newTeam")} className="input min-h-11 w-full pl-10" />
+            </div>
+            <button className="btn btn-primary inline-flex min-h-11 items-center gap-1.5"><Plus size={16} aria-hidden />{t("home.create")}</button>
           </div>
-          <button className="btn btn-primary inline-flex min-h-11 items-center gap-1.5"><Plus size={16} aria-hidden />{t("home.create")}</button>
+          {clubs.length > 0 && (
+            <label className="flex flex-col gap-1">
+              <span className="eyebrow">{t("home.club")}</span>
+              <select name="club" defaultValue="new" className="input min-h-11 w-full">
+                <option value="new">{t("home.clubNew")}</option>
+                {clubs.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </form>
       </section>
 

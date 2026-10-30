@@ -14,7 +14,13 @@ export async function signOut() {
 
 export async function createTeam(formData: FormData) {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_team", { _name: String(formData.get("name")).trim() });
+  const name = String(formData.get("name")).trim();
+  const club = String(formData.get("club") ?? "new");
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(club);
+  if (club !== "new" && club !== "" && !isUuid) throw new Error("Invalid club");
+  const { data, error } = isUuid
+    ? await supabase.rpc("create_team_in_club", { _name: name, _club: club })
+    : await supabase.rpc("create_team", { _name: name });
   if (error) throw new Error(error.message);
   redirect(`/team/${data}`);
 }

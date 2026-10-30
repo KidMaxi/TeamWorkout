@@ -13,6 +13,8 @@ export default defineMessages(
     joinHint: "Vraag de code aan je staf.",
     emptyTitle: "Nog geen team",
     emptyHint: "Start een team of sluit je aan met een code.",
+    club: "Club",
+    clubNew: "Nieuwe club",
   },
   {
     title: "My teams",
@@ -26,5 +28,7 @@ export default defineMessages(
     joinHint: "Ask your staff for the code.",
     emptyTitle: "No team yet",
     emptyHint: "Start a team or join one with a code.",
+    club: "Club",
+    clubNew: "New club",
   },
 );
