@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ChevronRight, CircleHelp, KeyRound, LogOut, Plus, Shield, User, UserPlus, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { LogoMark } from "@/components/Logo";
@@ -6,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { getT } from "@/lib/i18n/server";
 import { ROLE_KEY } from "@/lib/i18n";
+import { TERMS_VERSION } from "@/lib/legal";
 import { LegalLinks } from "@/components/LegalLinks";
 import { TermsGate } from "@/components/TermsGate";
 import { createTeam, joinTeam, signOut } from "./actions";
@@ -17,13 +19,27 @@ function InputIcon({ icon: Icon }: { icon: typeof Users }) {
   return <Icon size={16} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />;
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ all?: string | string[] }> }) {
+  const { all } = await searchParams;
   const { t } = await getT();
   const supabase = await createClient();
   const { data: memberships } = await supabase
     .from("team_members")
     .select("role, teams(id, name)")
     .order("joined_at");
+
+  // One team and no explicit "all teams" request: go straight to it (unless updated terms still need accepting).
+  if (all === undefined && memberships?.length === 1) {
+    const only = memberships[0].teams as unknown as { id: string } | null;
+    if (only?.id) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: p } = user
+        ? await supabase.from("profiles").select("terms_version").eq("id", user.id).single()
+        : { data: null };
+      const termsPending = !!p && p.terms_version !== TERMS_VERSION;
+      if (!termsPending) redirect(`/team/${only.id}`);
+    }
+  }
 
   // Clubs where the user is staff, so a new team can be added to an existing club.
   const { data: staffRows } = await supabase

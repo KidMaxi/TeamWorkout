@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, Dumbbell, LayoutDashboard, User, Users } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 
-export function TeamNav({ teamId, isHead }: { teamId: string; isHead: boolean }) {
+export function TeamNav({ teamId, isHead, pending = 0 }: { teamId: string; isHead: boolean; pending?: number }) {
   const { t } = useT();
   const path = usePathname();
   const base = `/team/${teamId}`;
@@ -35,7 +35,18 @@ export function TeamNav({ teamId, isHead }: { teamId: string; isHead: boolean })
                 : "text-muted hover:text-[var(--foreground)]"
             }`}
           >
-            <Icon size={20} aria-hidden className={active ? "text-primary" : ""} />
+            <span className="relative">
+              <Icon size={20} aria-hidden className={active ? "text-primary" : ""} />
+              {exact && pending > 0 && (
+                <span
+                  role="img"
+                  aria-label={t("common.nav.pending", { n: pending })}
+                  className="absolute -right-2 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold leading-none text-[var(--background)] ring-2 ring-[var(--surface-2)]"
+                >
+                  {pending > 9 ? "9+" : pending}
+                </span>
+              )}
+            </span>
             <span>{label}</span>
             {active && <span aria-hidden className="absolute -top-0.5 h-1 w-4 rounded-full bg-[var(--primary)] shadow-[0_0_10px_var(--primary)] md:hidden" />}
           </Link>

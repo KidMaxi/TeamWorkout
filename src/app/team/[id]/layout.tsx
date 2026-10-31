@@ -7,6 +7,7 @@ import { LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { can, getStaffKind } from "@/lib/roles";
 import { TeamNav } from "@/components/TeamNav";
+import { getPendingCount } from "@/lib/pending";
 
 export default async function TeamLayout({
   children,
@@ -24,11 +25,13 @@ export default async function TeamLayout({
   const { data: me } = await supabase
     .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
 
+  const pending = me?.role === "athlete" ? await getPendingCount(supabase, id, user!.id) : 0;
+
   return (
     <div className="mx-auto min-h-dvh max-w-3xl px-4 pb-32 pt-5 md:pb-8">
       <header className="mb-4 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Link href="/" aria-label={t("common.nav.teams")} className="flex items-center gap-1 text-muted hover:text-[var(--foreground)]">
+          <Link href="/?all=1" aria-label={t("common.nav.teams")} className="flex items-center gap-1 text-muted hover:text-[var(--foreground)]">
             <ChevronLeft size={18} aria-hidden />
             <LogoMark size={22} />
           </Link>
@@ -44,7 +47,7 @@ export default async function TeamLayout({
           </Link>
         </div>
       </header>
-      <TeamNav teamId={id} isHead={can(me?.role === "staff" ? await getStaffKind(supabase, id, user!.id) : null, "manageMembers")} />
+      <TeamNav teamId={id} pending={pending} isHead={can(me?.role === "staff" ? await getStaffKind(supabase, id, user!.id) : null, "manageMembers")} />
       {children}
     </div>
   );
