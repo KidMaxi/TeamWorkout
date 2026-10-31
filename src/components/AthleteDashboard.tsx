@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Ban, CalendarCheck, CircleCheck, Pencil } from "lucide-react";
+import { ArrowRight, Ban, CalendarCheck } from "lucide-react";
 import { WellnessCard } from "@/components/WellnessCard";
 import { Dial } from "@/components/Dial";
+import { QuickLog } from "@/components/QuickLog";
 import { AvailabilityIcon, SessionTypeIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, SESSION_TYPE_KEY, dateLocale, type Locale, type TFunction } from "@/lib/i18n";
@@ -11,7 +12,7 @@ import { TEAM_TIME_ZONE, type WellnessEntry } from "@/lib/wellness";
 export type AthleteDashboardProps = {
   teamId: string;
   availability: { status: Availability; note: string | null } | null;
-  pending: { id: string; type: SessionType; title: string; starts_at: string }[];
+  pending: { id: string; type: SessionType; title: string; starts_at: string; plannedDurationMin: number; plannedRpe: number | null }[];
   /** Oldest first; the last entry is the current week. week_start is YYYY-MM-DD (Monday). */
   weekly: { week_start: string; total_load: number }[];
   /** Newest first. */
@@ -35,10 +36,10 @@ export type AthleteDashboardProps = {
   };
 };
 
+const QUICK_MAX = 3;
+
 const dateFmt = (iso: string, locale: Locale) =>
   new Date(iso).toLocaleDateString(dateLocale(locale), { weekday: "short", day: "numeric", month: "short" });
-
-const ring = { boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" } as const;
 
 function Hero({
   last7Load, attendedThisWeek, weekly, t,
@@ -194,30 +195,17 @@ export async function AthleteDashboard({
 
       {wellness && !wellness.today && <WellnessCard teamId={teamId} today={null} />}
 
-      {pending.length ? (
-        <section className="flex flex-col gap-2" aria-label={t("athlete.pending.title")}>
-          <p className="eyebrow px-1">{t("athlete.pending.title")}</p>
-          <ul className="flex flex-col gap-2">
-            {pending.map((s) => (
-              <li key={s.id} className="card flex items-center gap-3 !p-3">
-                <span className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--accent)]" style={ring}>
-                  <SessionTypeIcon type={s.type} size={20} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{t(SESSION_TYPE_KEY[s.type])}{s.title ? ` ${s.title}` : ""}</p>
-                  <p className="text-xs text-muted">{dateFmt(s.starts_at, locale)}</p>
-                </div>
-                <Link href={`/team/${teamId}/sessions`} className="btn btn-primary inline-flex min-h-10 items-center gap-1.5">
-                  <Pencil size={14} aria-hidden /> {t("athlete.pending.fill")}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <p className="flex items-center gap-1.5 px-1 text-sm text-muted">
-          <CircleCheck size={16} aria-hidden className="text-[var(--accent)]" /> {t("athlete.pending.done")}
-        </p>
+      <QuickLog
+        teamId={teamId}
+        items={pending.slice(0, QUICK_MAX).map((s) => ({
+          id: s.id, type: s.type, title: s.title, startsAt: s.starts_at,
+          plannedDurationMin: s.plannedDurationMin, plannedRpe: s.plannedRpe,
+        }))}
+      />
+      {pending.length > QUICK_MAX && (
+        <Link href={`/team/${teamId}/sessions`} className="link -mt-3 inline-flex min-h-11 w-fit items-center gap-1.5 px-1 text-sm">
+          {t("athlete.pending.all")} <ArrowRight size={14} aria-hidden />
+        </Link>
       )}
 
       {wellness?.today && <WellnessCard teamId={teamId} today={wellness.today} />}

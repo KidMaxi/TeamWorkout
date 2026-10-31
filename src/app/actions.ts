@@ -76,17 +76,45 @@ export async function deleteSession(teamId: string, sessionId: string) {
   revalidatePath(`/team/${teamId}`, "layout");
 }
 
+const LOG_NOTE_MAX = 300;
+
+/** Free text from the log form: no control characters (newlines stay), trimmed, empty -> null. */
+function cleanLogNote(raw: FormDataEntryValue | null): string | null {
+  if (typeof raw !== "string") return null;
+  const note = raw.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/g, "").trim();
+  if (note.length > LOG_NOTE_MAX) throw new Error("note too long");
+  return note || null;
+}
+
+/** Throws on invalid input or a missing permission; callers show a generic translated message. */
 export async function logSession(teamId: string, sessionId: string, formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const [{ data: session }, { data: member }, { data: excluded }] = await Promise.all([
+    supabase.from("sessions").select("id, status").eq("id", sessionId).eq("team_id", teamId).maybeSingle(),
+    supabase.from("team_members").select("role").eq("team_id", teamId).eq("user_id", user.id).maybeSingle(),
+    supabase.from("session_exclusions").select("session_id").eq("session_id", sessionId).eq("user_id", user.id).maybeSingle(),
+  ]);
+  if (!session || member?.role !== "athlete" || excluded || session.status === "cancelled") throw new Error("not allowed");
+
   const attended = formData.get("attended") === "on";
+  const minutes = Number(formData.get("duration_min"));
+  const rpe = Number(formData.get("rpe"));
+  if (attended) {
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) throw new Error("invalid minutes");
+    if (!Number.isInteger(rpe) || rpe < 1 || rpe > 10) throw new Error("invalid rpe");
+  }
+  const note = cleanLogNote(formData.get("note"));
+
   const { error } = await supabase.from("session_logs").upsert({
     session_id: sessionId,
     user_id: user.id,
     attended,
-    duration_min: attended ? Number(formData.get("duration_min")) : null,
-    rpe: attended ? Number(formData.get("rpe")) : null,
+    duration_min: attended ? minutes : null,
+    rpe: attended ? rpe : null,
+    note,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/team/${teamId}`, "layout");

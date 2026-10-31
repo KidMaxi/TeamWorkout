@@ -128,7 +128,7 @@ export default async function TeamOverview({
       .gte("sessions.starts_at", new Date(firstWeekStart).toISOString()),
     supabase
       .from("sessions")
-      .select("id, title, type, starts_at, planned_duration_min")
+      .select("id, title, type, starts_at, planned_duration_min, planned_rpe")
       .eq("team_id", id)
       .neq("status", "cancelled")
       .gte("starts_at", new Date(now - 15 * DAY).toISOString())
@@ -188,7 +188,10 @@ export default async function TeamOverview({
       return end < now && end >= now - 14 * DAY && !logged.has(s.id) && !excluded.has(s.id);
     })
     .sort((a, b) => b.starts_at.localeCompare(a.starts_at))
-    .map((s) => ({ id: s.id, type: s.type as SessionType, title: s.title ?? "", starts_at: s.starts_at }));
+    .map((s) => ({
+      id: s.id, type: s.type as SessionType, title: s.title ?? "", starts_at: s.starts_at,
+      plannedDurationMin: s.planned_duration_min as number, plannedRpe: (s.planned_rpe as number | null) ?? null,
+    }));
 
   const recentLogs = [...logs]
     .sort((a, b) => b.starts_at.localeCompare(a.starts_at))

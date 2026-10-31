@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, ChevronDown, CircleHelp, ClipboardList, Clock, Flame, Gauge, MapPin, Play, Repeat, Tag, X } from "lucide-react";
+import { Check, ChevronDown, ClipboardList, Clock, Flame, Gauge, MapPin, MessageSquare, Play, Repeat, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionType } from "@/lib/load";
 import { SessionTypeIcon } from "@/components/icons";
@@ -7,6 +7,8 @@ import { getT } from "@/lib/i18n/server";
 import { SESSION_TYPE_KEY, dateLocale } from "@/lib/i18n";
 import { deleteMyLog, logSession } from "@/app/actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { MinutesStepper } from "@/components/QuickLog";
+import { RpePicker } from "@/components/RpePicker";
 import { SessionsTabs } from "@/components/SessionsTabs";
 import { PlanSessionCard, SessionManage } from "@/components/SessionPlanner";
 import { SESSION_TYPE_LIST } from "@/lib/load";
@@ -17,15 +19,6 @@ import type { MessageKey } from "@/lib/i18n";
 const STATUS_BADGE: Record<SessionStatus, string> = { planned: "badge-none", completed: "badge-ok", adjusted: "badge-watch", cancelled: "badge-high" };
 
 const label = "eyebrow flex items-center gap-1.5";
-
-function Field({ icon: Icon, text, children }: { icon: typeof Tag; text: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className={label}><Icon size={12} aria-hidden />{text}</span>
-      {children}
-    </label>
-  );
-}
 
 export default async function SessionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -60,7 +53,7 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
 
   // Athletes who are excluded from a session do not get a start link.
   const isAthlete = me?.role === "athlete";
-  const { data: excl } = isAthlete && linkedIds.length
+  const { data: excl } = isAthlete && (sessions ?? []).length
     ? await supabase.from("session_exclusions").select("session_id").eq("user_id", user!.id)
         .in("session_id", (sessions ?? []).map((s) => s.id))
     : { data: [] };
@@ -169,7 +162,7 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
 
         {cancelled && isPast && <p className="border-t pt-3 text-xs text-muted">{t("sessions.noLogNeeded")}</p>}
 
-        {isPast && !cancelled && (
+        {isPast && !cancelled && isAthlete && !excluded.has(s.id) && (
           <details open={!log} className="group border-t pt-3">
             <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
               <span className={label}>{t("sessions.yourLog")}</span>
@@ -203,18 +196,26 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
                 </span>
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Field icon={Clock} text={`${t("sessions.minutes")}`}>
-                  <input name="duration_min" type="number" inputMode="numeric" min={1} max={600} defaultValue={log?.duration_min ?? s.planned_duration_min} className="input num h-14 text-center text-2xl" />
-                </Field>
-                <div className="flex flex-col gap-1.5">
-                  <span className={`${label} justify-between`}>
-                    <span className="flex items-center gap-1.5"><Gauge size={12} aria-hidden />{t("sessions.rpe")}</span>
-                    <Link href="/help#rpe" aria-label={t("sessions.help")} className="link -m-2.5 grid size-10 place-items-center"><CircleHelp size={14} aria-hidden /></Link>
-                  </span>
-                  <input name="rpe" type="number" inputMode="numeric" min={1} max={10} aria-label={t("sessions.rpe")} defaultValue={log?.rpe ?? s.planned_rpe ?? 5} className="input num h-14 text-center text-2xl" />
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <span className={label}><Clock size={12} aria-hidden />{t("sessions.minutes")}</span>
+                <MinutesStepper defaultValue={log?.duration_min ?? s.planned_duration_min} />
               </div>
+              <div className="flex flex-col gap-1.5">
+                <span className={label}><Gauge size={12} aria-hidden />{t("sessions.rpe")}</span>
+                <RpePicker defaultValue={log?.rpe ?? s.planned_rpe ?? 5} plannedRpe={s.planned_rpe} />
+              </div>
+              <label className="flex flex-col gap-1.5">
+                <span className={label}><MessageSquare size={12} aria-hidden />{t("quicklog.note.label")}</span>
+                <textarea
+                  name="note"
+                  rows={2}
+                  maxLength={300}
+                  defaultValue={(log?.note as string | null) ?? ""}
+                  placeholder={t("quicklog.note.placeholder")}
+                  className="input w-full resize-none"
+                />
+                <span className="text-xs text-muted">{t("quicklog.note.help")}</span>
+              </label>
 
               <button className="btn btn-primary inline-flex min-h-12 w-full items-center justify-center gap-2">
                 <Check size={18} aria-hidden />{t("common.save")}

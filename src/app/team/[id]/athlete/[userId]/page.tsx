@@ -36,7 +36,7 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
     supabase.from("athlete_limits").select("max_weekly_load").eq("team_id", id).eq("user_id", userId).maybeSingle(),
     supabase
       .from("session_logs")
-      .select("session_id, attended, duration_min, rpe, load, sessions!inner(title, type, starts_at, team_id)")
+      .select("session_id, attended, duration_min, rpe, load, note, sessions!inner(title, type, starts_at, team_id)")
       .eq("user_id", userId)
       .eq("sessions.team_id", id)
       .neq("sessions.status", "cancelled")
@@ -64,6 +64,8 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
     return {
       session_id: l.session_id as string, attended: l.attended as boolean,
       duration_min: l.duration_min as number, rpe: l.rpe as number, load: (l.load as number) ?? 0,
+      // A free-text note may contain health information: only with the athlete's consent.
+      note: member.consent_given ? ((l.note as string | null) || null) : null,
       starts_at: s.starts_at, type: s.type, title: s.title ?? "",
     };
   });
@@ -122,7 +124,7 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
     .slice(0, 15)
     .map((l) => ({
       starts_at: l.starts_at, type: l.type, title: l.title,
-      attended: l.attended, duration_min: l.duration_min, rpe: l.rpe, load: l.load,
+      attended: l.attended, duration_min: l.duration_min, rpe: l.rpe, load: l.load, note: l.note,
     }));
 
   const wellness: (WellnessEntry & { avg: number })[] = (wellnessRes.data ?? []).map((w) => {

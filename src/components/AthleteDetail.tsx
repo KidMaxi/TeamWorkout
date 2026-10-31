@@ -47,7 +47,7 @@ export type AthleteDetailProps = {
   /** Oldest first, last is the current week. week_start is YYYY-MM-DD (Monday). */
   weekly: { week_start: string; total_load: number }[];
   /** Newest first. */
-  recent: { starts_at: string; type: SessionType; title: string; attended: boolean; duration_min: number; rpe: number; load: number }[];
+  recent: { starts_at: string; type: SessionType; title: string; attended: boolean; duration_min: number; rpe: number; load: number; note?: string | null }[];
   missing: number;
   /** Newest first, only present when consent is given. */
   wellness: (WellnessEntry & { avg: number })[];
@@ -384,6 +384,11 @@ export async function AthleteDetail(p: AthleteDetailProps) {
                   <span className="inline-flex items-center gap-1 text-xs text-muted">
                     <Ban size={14} aria-hidden /> {t("detail.recent.absent")}
                   </span>
+                )}
+                {p.consent && l.note && (
+                  <p className="basis-full whitespace-pre-line break-words border-l-2 border-[var(--accent)] pl-2.5 text-xs italic text-muted">
+                    “{l.note}”
+                  </p>
                 )}
               </li>
             ))}
