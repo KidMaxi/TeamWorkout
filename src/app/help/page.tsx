@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Activity, Bell, CalendarDays, CalendarPlus, ChevronLeft, ClipboardCheck, Dumbbell, Gauge, HeartPulse, Info,
-  LineChart, Lock, Percent, ShieldAlert, SmilePlus, Users, type LucideIcon,
+  ClipboardList, LineChart, Lock, Percent, ShieldAlert, SmilePlus, Tablet, Users, type LucideIcon,
 } from "lucide-react";
 import { getT } from "@/lib/i18n/server";
 import { LogoMark } from "@/components/Logo";
@@ -49,6 +49,8 @@ export default async function HelpPage() {
     { id: "checkin", label: "help.checkin.title" },
     { id: "week", label: "help.week.title" },
     { id: "gym", label: "help.gym.title" },
+    { id: "ipad", label: "help.ipad.title" },
+    { id: "review", label: "help.review.title" },
     { id: "rpe", label: "help.rpe.title" },
     { id: "load", label: "help.load.title" },
     { id: "ratio", label: "help.ratio.title" },
@@ -126,6 +128,14 @@ export default async function HelpPage() {
 
         <Section id="gym" icon={Dumbbell} title={t("help.gym.title")}>
           <Bullets items={[t("help.gym.b1"), t("help.gym.b2"), t("help.gym.b3"), t("help.gym.b4"), t("help.gym.b5")]} />
+        </Section>
+
+        <Section id="ipad" icon={Tablet} title={t("help.ipad.title")}>
+          <Bullets items={[t("help.ipad.b1"), t("help.ipad.b2"), t("help.ipad.b3"), t("help.ipad.b4")]} />
+        </Section>
+
+        <Section id="review" icon={ClipboardList} title={t("help.review.title")}>
+          <Bullets items={[t("help.review.b1"), t("help.review.b2"), t("help.review.b3")]} />
         </Section>
 
         <Section id="rpe" icon={Gauge} title={t("help.rpe.title")}>
