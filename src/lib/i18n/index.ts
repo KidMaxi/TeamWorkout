@@ -23,13 +23,14 @@ import pins from "./messages/pins";
 import review from "./messages/review";
 import calendar from "./messages/calendar";
 import roles from "./messages/roles";
+import quicklog from "./messages/quicklog";
 
 export type Locale = "nl" | "en";
 export const LOCALES: Locale[] = ["nl", "en"];
 export const DEFAULT_LOCALE: Locale = "nl";
 export const LOCALE_COOKIE = "tw_locale";
 
-const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger, wellness, detail, notify, strength, exercises, legal, consent, workload, workouts, run, kiosk, pins, review, calendar, roles };
+const areas = { common, auth, home, sessions, members, dashboard, athlete, profile, help, danger, wellness, detail, notify, strength, exercises, legal, consent, workload, workouts, run, kiosk, pins, review, calendar, roles, quicklog };
 type Areas = typeof areas;
 
 /** "area.key", e.g. "common.save" or "dashboard.tiles.load" */
