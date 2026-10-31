@@ -34,6 +34,10 @@ export default defineMessages(
     "role.athlete": "Atleet",
     "hint.label": "Tip",
     "hint.dismiss": "Tip sluiten",
+    "staffKind.head": "Hoofdcoach",
+    "staffKind.sc": "S&C-coach",
+    "staffKind.basketball": "Basketbaltrainer",
+    "staffKind.medical": "Medisch",
   },
   {
     appName: "TeamWorkout",
@@ -68,5 +72,9 @@ export default defineMessages(
     "role.athlete": "Athlete",
     "hint.label": "Tip",
     "hint.dismiss": "Close tip",
+    "staffKind.head": "Head coach",
+    "staffKind.sc": "S&C coach",
+    "staffKind.basketball": "Basketball coach",
+    "staffKind.medical": "Medical",
   },
 );
