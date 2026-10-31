@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import { getT } from "@/lib/i18n/server";
 import { Hint } from "@/components/Hint";
 import { StrengthTabs } from "@/components/StrengthTabs";
@@ -18,7 +19,8 @@ export default async function ExercisesPage({ params }: { params: Promise<{ id: 
     supabase.from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).single(),
   ]);
   if (!team?.club_id || !me) notFound();
-  const isStaff = me.role === "staff";
+  // "isStaff" here means: may edit the library (S&C or head).
+  const isStaff = me.role === "staff" && can(await getStaffKind(supabase, id, user.id), "manageLibrary");
 
   const { data } = await supabase
     .from("exercises").select("*")

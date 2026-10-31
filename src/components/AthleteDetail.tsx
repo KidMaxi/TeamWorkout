@@ -51,6 +51,10 @@ export type AthleteDetailProps = {
   missing: number;
   /** Newest first, only present when consent is given. */
   wellness: (WellnessEntry & { avg: number })[];
+  /** Team setting. Off by default: the acute:chronic ratio and its fixed bands stay hidden. */
+  showRatio?: boolean;
+  /** This week against the athlete's own previous weeks; null pct = not enough history yet. */
+  deviation?: { pct: number | null; baseline: number | null; flagged: boolean };
 };
 
 function Tile({ label, children }: { label: string; children: React.ReactNode }) {
@@ -62,11 +66,15 @@ function Tile({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-function Hero({ row, level, t }: { row: LoadRow; level: Level; t: TFunction }) {
+function Hero({ row, level, showRatio, deviation, t }: {
+  row: LoadRow; level: Level; showRatio: boolean; deviation?: AthleteDetailProps["deviation"]; t: TFunction;
+}) {
   const acute = Math.round(row.acute_load);
   const chronic = Math.round(row.chronic_weekly_avg);
   const denom = row.max_weekly_load ?? Math.max(row.chronic_weekly_avg * 1.5, 1);
   const L = LEVEL[level];
+  // Fixed-band colours only with the ratio on; a coach-set limit stays red.
+  const tone: DialTone = showRatio || level === "high" ? L.tone : "accent";
   return (
     <div className="card card-hero flex flex-col items-center gap-5">
       <p className="eyebrow self-start">{t("detail.hero.eyebrow")}</p>
@@ -74,7 +82,7 @@ function Hero({ row, level, t }: { row: LoadRow; level: Level; t: TFunction }) {
         value={clamp01(row.acute_load / denom)}
         marker={row.chronic_weekly_avg > 0 ? clamp01(row.chronic_weekly_avg / denom) : undefined}
         size={200}
-        tone={L.tone}
+        tone={tone}
         label={t("detail.hero.aria", { load: acute, chronic })}
       >
         <p className="num" style={{ fontSize: String(acute).length > 4 ? "2.1rem" : "2.8rem" }}>{acute}</p>
@@ -82,23 +90,40 @@ function Hero({ row, level, t }: { row: LoadRow; level: Level; t: TFunction }) {
       <div className="grid w-full grid-cols-4 gap-2">
         <Tile label={t("detail.tile.acute")}><span className="num text-xl">{acute}</span></Tile>
         <Tile label={t("detail.tile.chronic")}><span className="num text-xl">{chronic}</span></Tile>
-        <Tile label={t("detail.tile.ratio")}>
-          {row.acwr !== null ? (
-            <span className="flex flex-col items-center gap-1">
-              <span className="num text-xl">{row.acwr.toFixed(2)}</span>
-              <span className={L.cls}>{t(L.key)}</span>
-            </span>
-          ) : (
-            <span className="text-[11px] leading-tight text-muted">{t("detail.ratio.none")}</span>
-          )}
-        </Tile>
+        {showRatio ? (
+          <Tile label={t("detail.tile.ratio")}>
+            {row.acwr !== null ? (
+              <span className="flex flex-col items-center gap-1">
+                <span className="num text-xl">{row.acwr.toFixed(2)}</span>
+                <span className={L.cls}>{t(L.key)}</span>
+              </span>
+            ) : (
+              <span className="text-[11px] leading-tight text-muted">{t("detail.ratio.none")}</span>
+            )}
+          </Tile>
+        ) : (
+          <Tile label={t("detail.tile.deviation")}>
+            {deviation?.pct != null ? (
+              <span className="flex flex-col items-center gap-1">
+                <span className="num text-xl">{deviation.pct > 0 ? "+" : ""}{Math.round(deviation.pct)}%</span>
+                <span className="badge badge-none">{t("detail.deviation.own")}</span>
+              </span>
+            ) : (
+              <span className="text-[11px] leading-tight text-muted">{t("detail.deviation.none")}</span>
+            )}
+          </Tile>
+        )}
         <Tile label={t("detail.tile.limit")}>
           <span className="num text-xl">{row.max_weekly_load ?? "–"}</span>
         </Tile>
       </div>
-      <Link href="/help#ratio" className="link -my-2 inline-flex min-h-11 items-center gap-1.5 self-end text-xs">
-        <CircleHelp size={14} aria-hidden /> {t("detail.ratio.help")}
-      </Link>
+      {showRatio ? (
+        <Link href="/help#ratio" className="link -my-2 inline-flex min-h-11 items-center gap-1.5 self-end text-xs">
+          <CircleHelp size={14} aria-hidden /> {t("detail.ratio.help")}
+        </Link>
+      ) : (
+        <p className="self-start text-xs text-muted">{t("detail.deviation.note")}</p>
+      )}
     </div>
   );
 }
@@ -329,7 +354,7 @@ export async function AthleteDetail(p: AthleteDetailProps) {
         </div>
       </header>
 
-      <Hero row={p.row} level={p.level} t={t} />
+      <Hero row={p.row} level={p.level} showRatio={!!p.showRatio} deviation={p.deviation} t={t} />
       <WeeklyBars weekly={p.weekly} t={t} locale={locale} />
       <Wellness teamId={p.teamId} consent={p.consent} entries={p.wellness} t={t} locale={locale} />
 

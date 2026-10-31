@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { MessageKey } from "@/lib/i18n";
+import { can, getStaffKind, type Capability, type StaffKind } from "@/lib/roles";
+import { todayInTeamZone } from "@/lib/wellness";
+import type { DangerResult } from "@/app/actions";
 
 export type WorkloadResult = { ok: boolean; error?: MessageKey };
 
@@ -10,15 +13,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NOT_ALLOWED: WorkloadResult = { ok: false, error: "workload.error.notAllowed" };
 const GENERIC: WorkloadResult = { ok: false, error: "workload.error.generic" };
 
-async function staffContext(teamId: string) {
+async function staffContext(teamId: string, capability: Capability = "planRules") {
   if (!UUID.test(teamId)) return null;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", teamId).eq("user_id", user.id).maybeSingle();
-  if (me?.role !== "staff") return null;
-  return { supabase, userId: user.id };
+  const kind = await getStaffKind(supabase, teamId, user.id);
+  if (!can(kind, capability)) return null;
+  return { supabase, userId: user.id, kind: kind as StaffKind };
 }
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -107,5 +109,96 @@ export async function toggleExclusion(
     if (error) return GENERIC;
   }
   revalidatePath(`/team/${teamId}/workload`);
+  return { ok: true };
+}
+
+const REASONS = ["load", "pain", "illness", "schedule", "tactics", "other"] as const;
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A staff note (any staff kind that may write notes): why the plan was adjusted, or what was seen. */
+export async function addWorkloadNote(teamId: string, userId: string, formData: FormData): Promise<WorkloadResult> {
+  const ctx = await staffContext(teamId, "writeNotes");
+  if (!ctx || !UUID.test(userId)) return NOT_ALLOWED;
+  const { supabase } = ctx;
+  if (!(await isAthleteOf(supabase, teamId, userId))) return NOT_ALLOWED;
+
+  const reason = String(formData.get("reason") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const dayRaw = String(formData.get("day") ?? "").trim();
+  const sessionRaw = String(formData.get("session_id") ?? "").trim();
+  if (!(REASONS as readonly string[]).includes(reason) || note.length < 1 || note.length > 500) {
+    return { ok: false, error: "workload.error.note" };
+  }
+  let day = todayInTeamZone();
+  if (dayRaw !== "") {
+    const d = YMD.test(dayRaw) ? new Date(`${dayRaw}T12:00:00Z`) : null;
+    if (!d || isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== dayRaw) return { ok: false, error: "workload.error.note" };
+    day = dayRaw;
+  }
+  let sessionId: string | null = null;
+  if (sessionRaw !== "") {
+    if (!UUID.test(sessionRaw)) return { ok: false, error: "workload.error.note" };
+    const { data: session } = await supabase.from("sessions").select("id").eq("id", sessionRaw).eq("team_id", teamId).maybeSingle();
+    if (!session) return NOT_ALLOWED;
+    sessionId = sessionRaw;
+  }
+  const { error } = await supabase.from("workload_notes").insert({
+    team_id: teamId, user_id: userId, session_id: sessionId, day, reason, note, created_by: ctx.userId,
+  });
+  if (error) return GENERIC;
+  revalidatePath(`/team/${teamId}/workload`);
+  return { ok: true };
+}
+
+/** Delete a note: the author or the head coach (RLS decides; this only checks the caller is staff). */
+export async function deleteWorkloadNote(teamId: string, noteId: string): Promise<DangerResult> {
+  const ctx = await staffContext(teamId, "writeNotes");
+  if (!ctx || !UUID.test(noteId)) return { error: "workload.error.notAllowed" };
+  const { error } = await ctx.supabase.from("workload_notes").delete().eq("id", noteId).eq("team_id", teamId);
+  if (error) return { error: "workload.error.generic" };
+  revalidatePath(`/team/${teamId}/workload`);
+  return {};
+}
+
+function parseNumber(raw: FormDataEntryValue | null, min: number, max: number, integer: boolean): number | undefined {
+  const s = typeof raw === "string" ? raw.trim().replace(",", ".") : "";
+  if (!/^\d{1,3}(\.\d)?$/.test(s)) return undefined;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < min || n > max || (integer && !Number.isInteger(n))) return undefined;
+  return n;
+}
+
+/** Team workload thresholds (head coach only). Ranges mirror the table checks. Missing row = defaults. */
+export async function saveWorkloadSettings(teamId: string, formData: FormData): Promise<WorkloadResult> {
+  const ctx = await staffContext(teamId, "manageTeam");
+  if (!ctx) return NOT_ALLOWED;
+  const heavyRpe = parseNumber(formData.get("heavy_rpe"), 1, 10, false);
+  const heavyPerDay = parseNumber(formData.get("heavy_per_day"), 1, 6, true);
+  const consecutive = parseNumber(formData.get("consecutive_heavy_days"), 2, 7, true);
+  const baselineWeeks = parseNumber(formData.get("baseline_weeks"), 2, 12, true);
+  const deviationPct = parseNumber(formData.get("deviation_pct"), 10, 100, true);
+  if ([heavyRpe, heavyPerDay, consecutive, baselineWeeks, deviationPct].some((v) => v === undefined)) {
+    return { ok: false, error: "workload.error.settings" };
+  }
+  const values = {
+    heavy_rpe: heavyRpe as number,
+    heavy_per_day: heavyPerDay as number,
+    consecutive_heavy_days: consecutive as number,
+    baseline_weeks: baselineWeeks as number,
+    deviation_pct: deviationPct as number,
+    show_ratio: formData.get("show_ratio") === "on",
+    updated_by: ctx.userId,
+    updated_at: new Date().toISOString(),
+  };
+  const { supabase } = ctx;
+  const { data: existing, error: selErr } = await supabase
+    .from("team_workload_settings").select("team_id").eq("team_id", teamId).maybeSingle();
+  if (selErr) return GENERIC;
+  const { error } = existing
+    ? await supabase.from("team_workload_settings").update(values).eq("team_id", teamId)
+    : await supabase.from("team_workload_settings").insert({ team_id: teamId, ...values });
+  if (error) return GENERIC;
+  revalidatePath(`/team/${teamId}/workload`);
+  revalidatePath(`/team/${teamId}`);
   return { ok: true };
 }

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
 import { deleteTeam, removeMember } from "@/app/actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { can, getStaffKind } from "@/lib/roles";
 import { KioskSettings, type KioskAthlete } from "@/components/KioskSettings";
 
 export default async function TeamSettings({ params }: { params: Promise<{ id: string }> }) {
@@ -15,10 +16,13 @@ export default async function TeamSettings({ params }: { params: Promise<{ id: s
   const { data: me } = await supabase
     .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
   if (!team || !me) notFound();
-  const canDelete = me.role === "staff" && (team.created_by === user!.id || team.created_by === null);
+  const kind = me.role === "staff" ? await getStaffKind(supabase, id, user!.id) : null;
+  const isHead = can(kind, "manageTeam");
+  const canKiosk = can(kind, "manageLibrary");
+  const canDelete = isHead && (team.created_by === user!.id || team.created_by === null);
 
   let athletes: KioskAthlete[] = [];
-  if (me.role === "staff") {
+  if (canKiosk) {
     const { data: rows } = await supabase
       .from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete").order("joined_at");
     const ids = (rows ?? []).map((r) => r.user_id as string);
@@ -37,8 +41,8 @@ export default async function TeamSettings({ params }: { params: Promise<{ id: s
 
   return (
     <section className="rise flex flex-col gap-4">
-      {me.role === "staff" && (
-        <KioskSettings teamId={id} pinRequired={!!team.kiosk_pin_required} athletes={athletes} />
+      {canKiosk && (
+        <KioskSettings teamId={id} pinRequired={!!team.kiosk_pin_required} athletes={athletes} canRequire={isHead} />
       )}
       <div
         className="card flex flex-col gap-4"
@@ -78,7 +82,7 @@ export default async function TeamSettings({ params }: { params: Promise<{ id: s
               className="w-full"
             />
           ) : (
-            me.role === "staff" && (
+            isHead && (
               <p className="flex items-center gap-2 text-xs text-muted">
                 <Info size={14} aria-hidden className="shrink-0" />
                 {t("danger.settings.ownerOnly")}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import type { MessageKey } from "@/lib/i18n";
 import type { ExerciseKind } from "@/lib/exercises";
 
@@ -40,9 +41,7 @@ async function staffContext(teamId: string): Promise<Staff | Fail> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "run.error.auth" };
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", teamId).eq("user_id", user.id).maybeSingle();
-  if (!me || me.role !== "staff") return { error: "review.error.notAllowed" };
+  if (!can(await getStaffKind(supabase, teamId, user.id), "manageLibrary")) return { error: "review.error.notAllowed" };
   return { supabase, staffId: user.id };
 }
 

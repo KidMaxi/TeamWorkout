@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
 import { LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { can, getStaffKind } from "@/lib/roles";
 import { TeamNav } from "@/components/TeamNav";
 
 export default async function TeamLayout({
@@ -43,7 +44,7 @@ export default async function TeamLayout({
           </Link>
         </div>
       </header>
-      <TeamNav teamId={id} isStaff={me?.role === "staff"} />
+      <TeamNav teamId={id} isHead={can(me?.role === "staff" ? await getStaffKind(supabase, id, user!.id) : null, "manageMembers")} />
       {children}
     </div>
   );

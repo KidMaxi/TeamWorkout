@@ -76,7 +76,8 @@ export async function GET(req: Request) {
     const teamIds = [...new Set(memberships.map((m) => m.team_id as string))];
 
     // Sessions + logs for all relevant teams.
-    const sessions = await inChunks("sessions", "id, team_id, starts_at, planned_duration_min", "team_id", teamIds);
+    // Cancelled sessions owe no RPE and count nothing.
+    const sessions = await inChunks("sessions", "id, team_id, starts_at, planned_duration_min", "team_id", teamIds, (q) => q.neq("status", "cancelled"));
     const sessionById = new Map(sessions.map((s) => [s.id as string, s]));
     const logs = await inChunks("session_logs", "session_id, user_id, attended, load", "session_id", [...sessionById.keys()]);
     const logKey = new Set(logs.map((l) => `${l.session_id}:${l.user_id}`));
@@ -118,6 +119,9 @@ export async function GET(req: Request) {
     const athleteRows = await inChunks("team_members", "team_id, user_id", "team_id", staffTeams, (q) => q.eq("role", "athlete"));
     const limits = await inChunks("athlete_limits", "team_id, user_id, max_weekly_load", "team_id", staffTeams);
     const avail = await inChunks("availability", "team_id, user_id, status", "team_id", staffTeams);
+    // The fixed acute:chronic band only drives the notification for teams that switched the ratio on (default off).
+    const settingRows = await inChunks("team_workload_settings", "team_id, show_ratio", "team_id", staffTeams);
+    const ratioTeams = new Set(settingRows.filter((r) => r.show_ratio === true).map((r) => r.team_id as string));
     const limitOf = new Map(limits.map((l) => [`${l.team_id}:${l.user_id}`, l.max_weekly_load as number | null]));
     const unavailable = new Set(avail.filter((a) => a.status === "unavailable").map((a) => `${a.team_id}:${a.user_id}`));
     const highByTeam = new Map<string, number>();
@@ -139,7 +143,7 @@ export async function GET(req: Request) {
       const chronic = sum28 / 4;
       const ratio = chronic > 0 && first <= nowMs - 28 * DAY ? acute / chronic : null;
       const max = limitOf.get(`${team}:${uid}`);
-      if ((ratio !== null && ratio > 1.5) || (max != null && acute > max)) highByTeam.set(team, (highByTeam.get(team) ?? 0) + 1);
+      if ((ratioTeams.has(team) && ratio !== null && ratio > 1.5) || (max != null && acute > max)) highByTeam.set(team, (highByTeam.get(team) ?? 0) + 1);
     }
 
     // Build one notification per user.

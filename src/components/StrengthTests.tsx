@@ -30,8 +30,10 @@ const HISTORY_MAX = 8;
 const label = "eyebrow";
 
 export function StrengthTests({
-  teamId, athleteId, today, exercises, tests,
+  teamId, athleteId, today, exercises, tests, readOnly = false,
 }: {
+  /** Staff without the manageLibrary capability can look but not enter or delete tests. */
+  readOnly?: boolean;
   teamId: string;
   athleteId: string;
   today: string;
@@ -122,7 +124,7 @@ export function StrengthTests({
             <li key={ex.id} className="card flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="min-w-0 truncate font-semibold">{ex.name}</h3>
-                {cur && (
+                {cur && !readOnly && (
                   <ConfirmButton
                     action={deleteStrengthTest.bind(null, teamId, cur.id)}
                     icon="trash"
@@ -174,7 +176,7 @@ export function StrengthTests({
                               <span className="block text-xs">{p.weight_kg} × {p.reps} @ {fmt(p.rpe)}</span>
                             </span>
                             <span className="num text-lg">{p.estimated ? "≈ " : ""}{fmt(p.five_rm_kg)} {t("strength.card.kg")}</span>
-                            <ConfirmButton
+                            {!readOnly && <ConfirmButton
                               action={deleteStrengthTest.bind(null, teamId, p.id)}
                               icon="trash"
                               iconOnly
@@ -182,7 +184,7 @@ export function StrengthTests({
                               title={t("strength.delete.title")}
                               body={t("strength.delete.body")}
                               className="-mr-2"
-                            />
+                            />}
                           </li>
                         ))}
                       </ul>
@@ -192,16 +194,16 @@ export function StrengthTests({
               ) : (
                 <p className="text-sm text-muted">{t("strength.card.noTest")}</p>
               )}
-              <button type="button" onClick={() => startAdd(ex.id)} className="btn inline-flex min-h-11 items-center justify-center gap-2 text-sm">
+              {!readOnly && <button type="button" onClick={() => startAdd(ex.id)} className="btn inline-flex min-h-11 items-center justify-center gap-2 text-sm">
                 <Plus size={16} aria-hidden className="text-[var(--accent)]" />{t("strength.card.addTest")}
-              </button>
+              </button>}
             </li>
           );
         })}
       </ul>
 
       {/* add test */}
-      <div ref={formRef} className="scroll-mt-4">
+      {!readOnly && <div ref={formRef} className="scroll-mt-4">
         <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="card group !p-0">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 font-semibold [&::-webkit-details-marker]:hidden">
             <span className="flex items-center gap-2"><Dumbbell size={18} aria-hidden className="text-[var(--accent)]" />{t("strength.form.title")}</span>
@@ -271,7 +273,7 @@ export function StrengthTests({
             </button>
           </form>
         </details>
-      </div>
+      </div>}
 
       {/* calculator */}
       <section className="card card-hero flex flex-col gap-4" aria-labelledby="calc-title">

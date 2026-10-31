@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import type { MessageKey } from "@/lib/i18n";
 import type { DangerResult } from "@/app/actions";
 
@@ -50,6 +51,7 @@ export async function recordParentConsent(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "consent.error.auth" };
+  if (!can(await getStaffKind(supabase, teamId, user.id), "manageMembers")) return { ok: false, error: "consent.error.notAllowed" };
   const { error } = await supabase.rpc("record_parent_consent", {
     _team: teamId,
     _user: userId,

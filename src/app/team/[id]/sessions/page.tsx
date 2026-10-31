@@ -1,12 +1,20 @@
 import Link from "next/link";
-import { Calendar, Check, ChevronDown, CircleHelp, ClipboardList, Clock, Flame, Gauge, Play, Plus, Tag, Type, X } from "lucide-react";
+import { Check, ChevronDown, CircleHelp, ClipboardList, Clock, Flame, Gauge, MapPin, Play, Repeat, Tag, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionType } from "@/lib/load";
 import { SessionTypeIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { SESSION_TYPE_KEY, dateLocale } from "@/lib/i18n";
-import { createSession, deleteMyLog, deleteSession, logSession } from "@/app/actions";
+import { deleteMyLog, logSession } from "@/app/actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { SessionsTabs } from "@/components/SessionsTabs";
+import { PlanSessionCard, SessionManage } from "@/components/SessionPlanner";
+import { SESSION_TYPE_LIST } from "@/lib/load";
+import { canPlanType, getStaffKind } from "@/lib/roles";
+import { TIME_ZONE, isFocus, isStatus, localDay, localTime, type SessionStatus } from "@/lib/session-plan";
+import type { MessageKey } from "@/lib/i18n";
+
+const STATUS_BADGE: Record<SessionStatus, string> = { planned: "badge-none", completed: "badge-ok", adjusted: "badge-watch", cancelled: "badge-high" };
 
 const label = "eyebrow flex items-center gap-1.5";
 
@@ -27,6 +35,10 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
   const { data: me } = await supabase
     .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
   const isStaff = me?.role === "staff";
+  const kind = await getStaffKind(supabase, id, user!.id);
+  const allowedTypes = SESSION_TYPE_LIST.filter((ty) => canPlanType(kind, ty));
+  const canPlan = allowedTypes.length > 0;
+  const today = localDay(new Date().toISOString());
 
   const { data: team } = await supabase.from("teams").select("club_id").eq("id", id).single();
   const { data: sessions } = await supabase
@@ -53,11 +65,16 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
         .in("session_id", (sessions ?? []).map((s) => s.id))
     : { data: [] };
   const excluded = new Set((excl ?? []).map((e) => e.session_id as string));
+  const adjusterIds = [...new Set((sessions ?? []).filter((s) => s.status === "adjusted" && s.updated_by).map((s) => s.updated_by as string))];
+  const { data: adjusters } = adjusterIds.length
+    ? await supabase.from("profiles").select("id, full_name").in("id", adjusterIds)
+    : { data: [] };
+  const adjusterName = new Map((adjusters ?? []).map((p) => [p.id as string, (p.full_name as string) || ""]));
   const now = Date.now();
   const loc = dateLocale(locale);
 
+  const workoutList = (workouts ?? []) as { id: string; name: string }[];
   const all = sessions ?? [];
-  const todayKey = new Date().toDateString();
   const upcoming = all.filter((s) => new Date(s.starts_at).getTime() > now).reverse();
   const past = all.filter((s) => new Date(s.starts_at).getTime() <= now);
 
@@ -66,7 +83,13 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
     const d = new Date(s.starts_at);
     const typeLabel = t(SESSION_TYPE_KEY[s.type as SessionType]);
     const wName = s.type === "gym" && s.workout_id ? workoutName.get(s.workout_id) : undefined;
-    const canStart = !!wName && isAthlete && !excluded.has(s.id) && (isPast || d.toDateString() === todayKey);
+    const status: SessionStatus = isStatus(s.status) ? s.status : "planned";
+    const cancelled = status === "cancelled";
+    const focus = ((s.focus ?? []) as string[]).filter(isFocus);
+    const canStart = !cancelled && !!wName && isAthlete && !excluded.has(s.id) && (isPast || localDay(s.starts_at) === today);
+    const canManage = canPlan && canPlanType(kind, s.type);
+    const adjustedAt = s.updated_at ? new Date(s.updated_at).toLocaleDateString(loc, { day: "numeric", month: "short", timeZone: TIME_ZONE }) : "";
+    const adjustedBy = s.updated_by ? adjusterName.get(s.updated_by) : "";
     return (
       <li key={s.id} className="card flex flex-col gap-3 text-sm">
         <div className="flex items-start gap-3">
@@ -81,17 +104,21 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
             <SessionTypeIcon type={s.type as SessionType} size={20} />
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <p className="truncate font-semibold">
+            <p className={`truncate font-semibold ${cancelled ? "text-muted line-through" : ""}`}>
               {typeLabel}{s.title ? ` · ${s.title}` : ""}
             </p>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="chip"><Clock size={12} aria-hidden />{d.toLocaleTimeString(loc, { timeStyle: "short" })}</span>
+              {status !== "planned" && <span className={`badge ${STATUS_BADGE[status]}`}>{t(`sessions.status.${status}` as MessageKey)}</span>}
+              {s.series_id && <span className="chip"><Repeat size={12} aria-hidden />{t("sessions.series")}</span>}
+              <span className="chip"><Clock size={12} aria-hidden />{localTime(s.starts_at).hm}</span>
               <span className="chip">{s.planned_duration_min} {t("common.min")}{s.planned_rpe ? ` · ${t("sessions.rpe")} ${s.planned_rpe}` : ""}</span>
-              {s.planned_rpe ? (
+              {s.planned_rpe && !cancelled ? (
                 <span className="chip" title={t("sessions.plannedLoad")}>
                   <Flame size={12} aria-hidden className="text-[var(--accent)]" />{s.planned_rpe * s.planned_duration_min}
                 </span>
               ) : null}
+              {s.location && <span className="chip max-w-full"><MapPin size={12} aria-hidden className="shrink-0" /><span className="truncate">{s.location}</span></span>}
+              {focus.map((f) => <span key={f} className="chip">{t(`sessions.focus.${f}` as MessageKey)}</span>)}
               {wName && (
                 <span className="chip max-w-full" title={t("sessions.workout")}>
                   <ClipboardList size={12} aria-hidden className="shrink-0 text-[var(--accent)]" />
@@ -100,7 +127,13 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
                 </span>
               )}
             </div>
-            {isStaff && wName && s.type === "gym" && (
+            {s.coach_note && <p className="text-muted">{s.coach_note}</p>}
+            {status === "adjusted" && s.updated_at && (
+              <p className="text-xs text-muted">
+                {adjustedBy ? t("sessions.adjustedBy", { name: adjustedBy, date: adjustedAt }) : t("sessions.adjustedOn", { date: adjustedAt })}
+              </p>
+            )}
+            {isStaff && wName && s.type === "gym" && !cancelled && (
               <div className="flex flex-wrap gap-x-4">
                 <Link href={`/team/${id}/kiosk/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("sessions.ipadMode")}</Link>
                 <Link href={`/team/${id}/review/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("sessions.reviewLink")}</Link>
@@ -114,24 +147,29 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
           </div>
           <div className="flex shrink-0 items-start gap-1">
             <div className="flex w-10 flex-col items-center gap-1 pt-0.5 text-center">
-              <span className="num text-2xl">{d.toLocaleDateString(loc, { day: "numeric" })}</span>
-              <span className="eyebrow">{d.toLocaleDateString(loc, { month: "short" }).replace(".", "")}</span>
+              <span className="num text-2xl">{d.toLocaleDateString(loc, { day: "numeric", timeZone: TIME_ZONE })}</span>
+              <span className="eyebrow">{d.toLocaleDateString(loc, { month: "short", timeZone: TIME_ZONE }).replace(".", "")}</span>
             </div>
-            {isStaff && (
-              <ConfirmButton
-                action={deleteSession.bind(null, id, s.id)}
-                icon="trash"
-                iconOnly
-                label={t("common.delete")}
-                title={t("danger.session.title")}
-                body={t("danger.session.body")}
-                className="-mr-2 -mt-1"
-              />
-            )}
           </div>
         </div>
 
-        {isPast && (
+        {canManage && (
+          <SessionManage
+            teamId={id}
+            allowedTypes={allowedTypes}
+            workouts={workoutList}
+            today={today}
+            session={{
+              id: s.id, type: s.type as SessionType, day: localDay(s.starts_at), time: localTime(s.starts_at).hm,
+              duration: s.planned_duration_min, rpe: s.planned_rpe, focus, location: s.location ?? null, note: s.coach_note ?? null,
+              workoutId: s.workout_id ?? null, status, inSeries: !!s.series_id,
+            }}
+          />
+        )}
+
+        {cancelled && isPast && <p className="border-t pt-3 text-xs text-muted">{t("sessions.noLogNeeded")}</p>}
+
+        {isPast && !cancelled && (
           <details open={!log} className="group border-t pt-3">
             <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
               <span className={label}>{t("sessions.yourLog")}</span>
@@ -202,52 +240,8 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
 
   return (
     <section className="flex flex-col gap-6">
-      {isStaff && (
-        <details className="card group !p-0">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 font-semibold [&::-webkit-details-marker]:hidden">
-            <span className="flex items-center gap-2"><Plus size={18} aria-hidden className="text-[var(--accent)]" />{t("sessions.planTraining")}</span>
-            <ChevronDown size={16} aria-hidden className="text-muted transition-transform group-open:rotate-180" />
-          </summary>
-          <form action={createSession.bind(null, id)} className="grid grid-cols-2 gap-3 border-t p-4 text-sm">
-            <div className="col-span-2">
-              <Field icon={Tag} text={t("sessions.type")}>
-                <select name="type" className="input min-h-11 w-full">
-                  {(Object.keys(SESSION_TYPE_KEY) as SessionType[]).map((k) => <option key={k} value={k}>{t(SESSION_TYPE_KEY[k])}</option>)}
-                </select>
-              </Field>
-            </div>
-            <div className="col-span-2">
-              <Field icon={Type} text={`${t("sessions.titlePh")} (${t("common.optional")})`}>
-                <input name="title" className="input min-h-11 w-full" />
-              </Field>
-            </div>
-            <div className="col-span-2">
-              <Field icon={Calendar} text={t("sessions.date")}>
-                <input name="starts_at" type="datetime-local" required className="input min-h-11 w-full" />
-              </Field>
-            </div>
-            {(workouts ?? []).length > 0 && (
-              <div className="col-span-2">
-                <Field icon={ClipboardList} text={`${t("sessions.workout")} (${t("sessions.workoutHint")})`}>
-                  <select name="workout_id" defaultValue="" className="input min-h-11 w-full">
-                    <option value="">{t("sessions.workoutNone")}</option>
-                    {(workouts ?? []).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                  </select>
-                </Field>
-              </div>
-            )}
-            <Field icon={Clock} text={t("sessions.minutes")}>
-              <input name="planned_duration_min" type="number" inputMode="numeric" min={1} max={600} required className="input min-h-11 w-full" />
-            </Field>
-            <Field icon={Gauge} text={t("sessions.plannedRpe")}>
-              <input name="planned_rpe" type="number" inputMode="numeric" min={1} max={10} className="input min-h-11 w-full" />
-            </Field>
-            <button className="btn btn-primary col-span-2 mt-1 inline-flex min-h-12 w-full items-center justify-center gap-2">
-              <Plus size={18} aria-hidden />{t("sessions.plan")}
-            </button>
-          </form>
-        </details>
-      )}
+      <SessionsTabs teamId={id} />
+      {canPlan && <PlanSessionCard teamId={id} allowedTypes={allowedTypes} workouts={workoutList} today={today} />}
 
       <div className="stagger flex flex-col gap-6">
         {upcoming.length > 0 && (

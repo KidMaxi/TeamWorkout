@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CalendarX, ChevronRight, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import { getT } from "@/lib/i18n/server";
 import { dateLocale } from "@/lib/i18n";
 import { TEAM_TIME_ZONE, todayInTeamZone } from "@/lib/wellness";
@@ -17,15 +18,13 @@ export default async function KioskPickPage({ params }: { params: Promise<{ id: 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) notFound();
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).maybeSingle();
-  if (me?.role !== "staff") notFound();
+  if (!can(await getStaffKind(supabase, id, user.id), "manageLibrary")) notFound();
 
   // Gym sessions with a workout, around now; "today" is decided in the team's time zone.
   const now = Date.now();
   const { data: rows } = await supabase
     .from("sessions").select("id, title, starts_at, workout_id")
-    .eq("team_id", id).eq("type", "gym").not("workout_id", "is", null)
+    .eq("team_id", id).eq("type", "gym").neq("status", "cancelled").not("workout_id", "is", null)
     .gte("starts_at", new Date(now - 36 * 3600_000).toISOString())
     .lte("starts_at", new Date(now + 36 * 3600_000).toISOString())
     .order("starts_at");

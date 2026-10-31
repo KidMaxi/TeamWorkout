@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardList, Pencil, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import { getT } from "@/lib/i18n/server";
 import { Hint } from "@/components/Hint";
 import { StrengthTabs } from "@/components/StrengthTabs";
@@ -32,7 +33,8 @@ export default async function WorkoutsPage({ params }: { params: Promise<{ id: s
     supabase.from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).single(),
   ]);
   if (!team?.club_id || !me) notFound();
-  const isStaff = me.role === "staff";
+  // "isStaff" here means: may edit the library (S&C or head).
+  const isStaff = me.role === "staff" && can(await getStaffKind(supabase, id, user.id), "manageLibrary");
 
   const [{ data }, { count }] = await Promise.all([
     supabase

@@ -40,6 +40,8 @@ export default defineMessages(
     "empty.invite": "Uitnodigen",
     "help.ratio": "Hoe wordt dit berekend?",
     "help.limits": "Uitleg limiet",
+    "dev.badge": "{pct} t.o.v. eigen gem.",
+    "dev.none": "Nog geen eigen gem.",
   },
   {
     "tiles.load": "Load",
@@ -80,5 +82,7 @@ export default defineMessages(
     "empty.invite": "Invite",
     "help.ratio": "How is this calculated?",
     "help.limits": "About limits",
+    "dev.badge": "{pct} vs own avg",
+    "dev.none": "No own avg yet",
   },
 );

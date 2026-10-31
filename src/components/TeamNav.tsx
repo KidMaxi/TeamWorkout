@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, Dumbbell, LayoutDashboard, User, Users } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 
-export function TeamNav({ teamId, isStaff }: { teamId: string; isStaff: boolean }) {
+export function TeamNav({ teamId, isHead }: { teamId: string; isHead: boolean }) {
   const { t } = useT();
   const path = usePathname();
   const base = `/team/${teamId}`;
@@ -14,7 +14,7 @@ export function TeamNav({ teamId, isStaff }: { teamId: string; isStaff: boolean 
     { href: base, label: t("common.nav.overview"), Icon: LayoutDashboard, exact: true },
     { href: `${base}/sessions`, label: t("common.nav.sessions"), Icon: CalendarDays },
     { href: `${base}/strength`, label: t("strength.title"), Icon: Dumbbell },
-    ...(isStaff ? [{ href: `${base}/members`, label: t("common.nav.members"), Icon: Users }] : []),
+    ...(isHead ? [{ href: `${base}/members`, label: t("common.nav.members"), Icon: Users }] : []),
     { href: "/profile", label: t("common.nav.profile"), Icon: User },
   ];
   return (

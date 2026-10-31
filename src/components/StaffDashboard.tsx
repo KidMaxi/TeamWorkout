@@ -42,6 +42,10 @@ const isLow = (w: WellnessMap | undefined, c: ConsentMap | undefined, id: string
   return !!(c?.[id] && e && wellnessFlag(e) === "low");
 };
 
+type DeviationMap = Record<string, { pct: number | null; flagged: boolean }>;
+/** Neutral badge text for the own-average comparison, e.g. "+42%". */
+const pctText = (pct: number) => `${pct > 0 ? "+" : ""}${Math.round(pct)}%`;
+
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 function shortName(full: string, fallback: string) {
@@ -64,17 +68,18 @@ function Stat({
 }
 
 function Hero({
-  weeks, available, total, alerts, high, missing, wellnessCount, t,
+  weeks, available, total, alerts, high, missing, wellnessCount, showRatio, t,
 }: {
   weeks: WeekTrendRow[]; available: number; total: number; alerts: number; high: number; missing: number;
-  wellnessCount: { filled: number; total: number } | null; t: TFunction;
+  wellnessCount: { filled: number; total: number } | null; showRatio: boolean; t: TFunction;
 }) {
   const thisWeek = weeks.at(-1)?.total_load ?? 0;
   const max = Math.max(...weeks.map((w) => w.total_load), 1);
   const prev = weeks.slice(-5, -1);
   const avg = prev.length ? prev.reduce((s, w) => s + w.total_load, 0) / prev.length : 0;
   const hasBaseline = avg > 0;
-  const tone: DialTone = hasBaseline && thisWeek > avg * 1.5 ? "danger" : hasBaseline && thisWeek > avg * 1.3 ? "warn" : "primary";
+  // The fixed 1.3 / 1.5 bands only colour the dial when the ratio is switched on.
+  const tone: DialTone = !showRatio ? "primary" : hasBaseline && thisWeek > avg * 1.5 ? "danger" : hasBaseline && thisWeek > avg * 1.3 ? "warn" : "primary";
   const label = hasBaseline
     ? t("dashboard.hero.aria", { load: thisWeek, avg: Math.round(avg) })
     : t("dashboard.hero.aria.none", { load: thisWeek });
@@ -104,13 +109,26 @@ function Hero({
   );
 }
 
-function Attention({ rows, lowIds, t }: { rows: AthleteRow[]; lowIds: Set<string>; t: TFunction }) {
+/** Level badge. Without the ratio the own-average comparison gets a neutral badge (no risk colour); a coach-set limit stays red. */
+function badgeFor(r: AthleteRow, showRatio: boolean, deviation: DeviationMap, t: TFunction): { cls: string; text: string } {
+  const lvl = LEVEL[r.level];
+  if (showRatio || r.level === "high" || r.level === "out") {
+    return { cls: lvl.cls, text: `${showRatio && r.level !== "out" && r.acwr !== null ? `${r.acwr} ` : ""}${t(lvl.key)}` };
+  }
+  const d = deviation[r.user_id];
+  if (d?.pct == null) return { cls: "badge badge-none", text: t("dashboard.dev.none") };
+  return { cls: "badge badge-none", text: t("dashboard.dev.badge", { pct: pctText(d.pct) }) };
+}
+
+function Attention({ rows, lowIds, showRatio, deviation, t }: {
+  rows: AthleteRow[]; lowIds: Set<string>; showRatio: boolean; deviation: DeviationMap; t: TFunction;
+}) {
   return (
     <section aria-label={t("dashboard.attention.title")}>
       <p className="eyebrow mb-2 px-1">{t("dashboard.attention.title")}</p>
       <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {rows.map((r) => {
-          const lvl = LEVEL[r.level];
+          const badge = badgeFor(r, showRatio, deviation, t);
           return (
             <li key={r.user_id} className="card flex w-40 shrink-0 snap-start flex-col gap-2 !p-3">
               <div className="flex items-center gap-2">
@@ -121,7 +139,7 @@ function Attention({ rows, lowIds, t }: { rows: AthleteRow[]; lowIds: Set<string
                 )}
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className={lvl.cls}>{t(lvl.key)}</span>
+                <span className={badge.cls}>{badge.text}</span>
                 <span className="text-right">
                   <span className="num text-lg">{r.acute_load}</span>
                   <span className="ml-1 text-[11px] text-muted">{t("dashboard.athlete.acute")}</span>
@@ -243,9 +261,11 @@ function WellnessRow({ entry, consent, t }: { entry: WellnessEntry | null | unde
 }
 
 function AthleteCard({
-  r, teamId, wellness, consent, t,
-}: { r: AthleteRow; teamId: string; wellness?: WellnessMap; consent?: ConsentMap; t: TFunction }) {
+  r, teamId, wellness, consent, showRatio, deviation, t,
+}: { r: AthleteRow; teamId: string; wellness?: WellnessMap; consent?: ConsentMap; showRatio: boolean; deviation: DeviationMap; t: TFunction }) {
   const lvl = LEVEL[r.level];
+  const badge = badgeFor(r, showRatio, deviation, t);
+  const dialTone: DialTone = showRatio || r.level === "high" ? lvl.tone : "accent";
   const avail = r.availability ?? "available";
   const name = r.full_name || t("dashboard.athlete.unnamed");
   const cap = r.max_weekly_load ?? Math.max(r.chronic_weekly_avg * 1.5, 1);
@@ -277,7 +297,7 @@ function AthleteCard({
             </span>
           )}
         </div>
-        <span className={lvl.cls}>{r.level !== "out" && r.acwr !== null ? `${r.acwr} ` : ""}{t(lvl.key)}</span>
+        <span className={badge.cls}>{badge.text}</span>
       </div>
       <div className="flex items-center justify-between gap-4">
         <div className="flex gap-5 text-sm">
@@ -306,7 +326,7 @@ function AthleteCard({
           marker={r.has_baseline ? clamp01(r.chronic_weekly_avg / cap) : undefined}
           size={64}
           ticks={24}
-          tone={lvl.tone}
+          tone={dialTone}
           label={label}
         >
           <span className="num text-sm">{r.acute_load}</span>
@@ -317,10 +337,14 @@ function AthleteCard({
 }
 
 export async function StaffDashboard({
-  teamId, rows, weeks, filter, wellness, consent,
+  teamId, rows, weeks, filter, wellness, consent, showRatio = false, deviation = {},
 }: {
   teamId: string; rows: AthleteRow[]; weeks: WeekTrendRow[]; filter: DashboardFilter;
   wellness?: WellnessMap; consent?: ConsentMap;
+  /** Team setting. Off by default: the acute:chronic ratio and its fixed bands stay hidden. */
+  showRatio?: boolean;
+  /** Each athlete's current week against their own previous weeks (pct, and whether it crosses the team threshold). */
+  deviation?: DeviationMap;
 }) {
   const { t, locale } = await getT();
   const alerts = rows.filter((r) => r.level === "high" || r.level === "watch").length;
@@ -337,9 +361,9 @@ export async function StaffDashboard({
 
   return (
     <section className="stagger flex flex-col gap-5">
-      <Hero weeks={weeks} available={available} total={rows.length} alerts={alerts} high={high} missing={missing} wellnessCount={wellnessCount} t={t} />
+      <Hero weeks={weeks} available={available} total={rows.length} alerts={alerts} high={high} missing={missing} wellnessCount={wellnessCount} showRatio={showRatio} t={t} />
 
-      {attention.length > 0 && <Attention rows={attention} lowIds={lowIds} t={t} />}
+      {attention.length > 0 && <Attention rows={attention} lowIds={lowIds} showRatio={showRatio} deviation={deviation} t={t} />}
 
       <TrendChart weeks={weeks} t={t} locale={locale} />
 
@@ -363,7 +387,7 @@ export async function StaffDashboard({
 
       <div className="flex flex-col gap-3">
         <ul className="grid gap-3 sm:grid-cols-2">
-          {visible.map((r) => <AthleteCard key={r.user_id} r={r} teamId={teamId} wellness={wellness} consent={consent} t={t} />)}
+          {visible.map((r) => <AthleteCard key={r.user_id} r={r} teamId={teamId} wellness={wellness} consent={consent} showRatio={showRatio} deviation={deviation} t={t} />)}
         </ul>
         {!visible.length && (
           rows.length ? (
@@ -376,9 +400,11 @@ export async function StaffDashboard({
         )}
       </div>
 
-      <Link href="/help#ratio" className="link inline-flex min-h-10 items-center gap-1 self-start text-xs">
-        <CircleHelp size={14} aria-hidden /> {t("dashboard.help.ratio")}
-      </Link>
+      {showRatio && (
+        <Link href="/help#ratio" className="link inline-flex min-h-10 items-center gap-1 self-start text-xs">
+          <CircleHelp size={14} aria-hidden /> {t("dashboard.help.ratio")}
+        </Link>
+      )}
     </section>
   );
 }

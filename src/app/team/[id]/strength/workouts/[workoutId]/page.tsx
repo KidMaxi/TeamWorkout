@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import { getT } from "@/lib/i18n/server";
 import { Hint } from "@/components/Hint";
 import { WorkoutEditor, type EditorExercise, type EditorWorkout, type SetType } from "@/components/WorkoutEditor";
@@ -39,7 +40,7 @@ export default async function WorkoutEditorPage({ params }: { params: Promise<{ 
     supabase.from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).single(),
   ]);
   // Editing is staff only; athletes get the read-only list.
-  if (!team?.club_id || me?.role !== "staff") notFound();
+  if (!team?.club_id || me?.role !== "staff" || !can(await getStaffKind(supabase, id, user.id), "manageLibrary")) notFound();
 
   let workout: EditorWorkout | null = null;
   if (!creating) {

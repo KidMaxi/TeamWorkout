@@ -30,7 +30,7 @@ export async function GET() {
       .eq("user_id", uid),
     supabase.from("availability").select("*").eq("user_id", uid),
     supabase.from("athlete_limits").select("*").eq("user_id", uid),
-    supabase.from("session_logs").select("*, sessions(type, title, starts_at)").eq("user_id", uid),
+    supabase.from("session_logs").select("*, sessions(type, title, starts_at, status)").eq("user_id", uid),
     supabase.from("wellness_checks").select("*").eq("user_id", uid),
     supabase.from("strength_tests").select("*, exercises(name)").eq("user_id", uid),
     supabase.from("push_subscriptions").select("created_at, user_agent, endpoint").eq("user_id", uid),

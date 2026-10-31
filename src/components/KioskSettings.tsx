@@ -16,9 +16,12 @@ export function KioskSettings({
   teamId,
   pinRequired,
   athletes,
+  canRequire = true,
 }: {
   teamId: string;
   pinRequired: boolean;
+  /** Only the head coach may switch the "PIN required" rule (team setting). */
+  canRequire?: boolean;
   athletes: KioskAthlete[];
 }) {
   const { t } = useT();
@@ -63,7 +66,7 @@ export function KioskSettings({
 
       <hr className="hairline" />
 
-      <div className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border px-4 py-2" style={{ background: "var(--surface-2)" }}>
+      {canRequire && <div className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border px-4 py-2" style={{ background: "var(--surface-2)" }}>
         <span className="min-w-0">
           <span id="kiosk-pin-sw" className="block text-sm font-medium">{t("pins.require.label")}</span>
           <span className="block text-xs text-muted">{t("pins.require.hint")}</span>
@@ -89,8 +92,8 @@ export function KioskSettings({
           </span>
           <span className="sr-only">{required ? t("pins.require.on") : t("pins.require.off")}</span>
         </button>
-      </div>
-      {error && <p role="alert" className="text-sm text-danger">{t(error)}</p>}
+      </div>}
+      {canRequire && error && <p role="alert" className="text-sm text-danger">{t(error)}</p>}
 
       <p className="flex items-start gap-2 text-xs text-muted">
         <Info size={14} aria-hidden className="mt-px shrink-0" />

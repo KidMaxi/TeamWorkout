@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AthleteDetail } from "@/components/AthleteDetail";
 import { athleteLevel, type Availability, type LoadRow, type SessionType } from "@/lib/load";
 import { wellnessAverage, type WellnessEntry } from "@/lib/wellness";
+import { baselineDeviation, settingsFromRow } from "@/lib/workload-day";
 
 const DAY = 86_400_000;
 const WEEKS = 12;
@@ -28,7 +29,8 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
     .from("team_members").select("role, consent_given").eq("team_id", id).eq("user_id", userId).maybeSingle();
   if (!member || member.role !== "athlete") notFound();
 
-  const [profileRes, availRes, limitRes, logsRes, sessionsRes, wellnessRes, exclRes] = await Promise.all([
+  const [settingsRes, profileRes, availRes, limitRes, logsRes, sessionsRes, wellnessRes, exclRes] = await Promise.all([
+    supabase.from("team_workload_settings").select("*").eq("team_id", id).maybeSingle(),
     supabase.from("profiles").select("full_name, birth_date, height_cm, weight_kg").eq("id", userId).maybeSingle(),
     supabase.from("availability").select("status, note").eq("team_id", id).eq("user_id", userId).maybeSingle(),
     supabase.from("athlete_limits").select("max_weekly_load").eq("team_id", id).eq("user_id", userId).maybeSingle(),
@@ -37,11 +39,13 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
       .select("session_id, attended, duration_min, rpe, load, sessions!inner(title, type, starts_at, team_id)")
       .eq("user_id", userId)
       .eq("sessions.team_id", id)
+      .neq("sessions.status", "cancelled")
       .gte("sessions.starts_at", new Date(firstWeekStart).toISOString()),
     supabase
       .from("sessions")
       .select("id, starts_at, planned_duration_min")
       .eq("team_id", id)
+      .neq("status", "cancelled")
       .gte("starts_at", new Date(now - 15 * DAY).toISOString())
       .lte("starts_at", new Date(now).toISOString()),
     member.consent_given
@@ -51,7 +55,7 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
     // Sessions the coach took this athlete out of (rest): no RPE is owed for them.
     supabase.from("session_exclusions").select("session_id").eq("user_id", userId),
   ]);
-  const dbErr = profileRes.error ?? availRes.error ?? limitRes.error ?? logsRes.error ?? sessionsRes.error ?? wellnessRes.error ?? exclRes.error;
+  const dbErr = settingsRes.error ?? profileRes.error ?? availRes.error ?? limitRes.error ?? logsRes.error ?? sessionsRes.error ?? wellnessRes.error ?? exclRes.error;
   if (dbErr) throw new Error(dbErr.message);
 
   type Joined = { title: string | null; type: SessionType; starts_at: string };
@@ -84,6 +88,12 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
   const chronic = sum28 / 4;
   const hasBaseline = firstAttended <= now - 28 * DAY;
   const acwr = hasBaseline && chronic > 0 ? acute / chronic : null;
+
+  const settings = settingsFromRow(settingsRes.data as Record<string, unknown> | null);
+  // This week against the athlete's own previous weeks (newest first). A running week only flags a rise.
+  const weeklyLoads = weekly.map((w) => w.total_load);
+  const dev = baselineDeviation(weeklyLoads[weeklyLoads.length - 1], weeklyLoads.slice(0, -1).reverse(), settings);
+  const deviation = { pct: dev.deviationPct, baseline: dev.baseline, flagged: dev.flagged && (dev.deviationPct ?? 0) > 0 };
 
   const status = (availRes.data?.status ?? "available") as Availability;
   const maxLoad = limitRes.data?.max_weekly_load ?? null;
@@ -136,7 +146,15 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
       consent={member.consent_given}
       availability={{ status, note: availRes.data?.note ?? null }}
       row={loadRow}
-      level={athleteLevel(loadRow)}
+      level={
+        settings.showRatio ? athleteLevel(loadRow)
+        : status === "unavailable" ? "out"
+        : loadRow.over_limit ? "high"
+        : deviation.flagged ? "watch"
+        : deviation.pct === null ? "none" : "ok"
+      }
+      showRatio={settings.showRatio}
+      deviation={deviation}
       weekly={weekly}
       recent={recent}
       missing={missing}

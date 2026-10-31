@@ -386,3 +386,66 @@ create policy wn_insert on public.workload_notes for insert to authenticated
   with check (public.is_team_staff(team_id) and created_by = auth.uid());
 create policy wn_delete on public.workload_notes for delete to authenticated
   using (public.is_team_head(team_id) or created_by = auth.uid());
+
+-- ===== 5. Cancelled sessions count nothing in the older dashboard functions either =====
+create or replace function public.team_load_overview(_team uuid)
+returns table (
+  user_id uuid,
+  full_name text,
+  availability public.availability_status,
+  availability_note text,
+  acute_load integer,
+  chronic_weekly_avg numeric,
+  acwr numeric,
+  max_weekly_load integer,
+  over_limit boolean,
+  has_baseline boolean
+) language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.is_team_staff(_team) then raise exception 'not allowed'; end if;
+  return query
+  with agg as (
+    select m.user_id,
+      coalesce(sum(l.load) filter (where s.starts_at >= now() - interval '7 days'), 0)::int as acute,
+      coalesce(sum(l.load) filter (where s.starts_at >= now() - interval '28 days'), 0)::numeric / 4 as chronic,
+      min(s.starts_at) filter (where l.attended) as first_log
+    from public.team_members m
+    left join public.session_logs l on l.user_id = m.user_id
+    left join public.sessions s on s.id = l.session_id and s.team_id = _team and s.status <> 'cancelled'
+    where m.team_id = _team and m.role = 'athlete'
+    group by m.user_id
+  )
+  select a.user_id, p.full_name, av.status, av.note, a.acute,
+    round(a.chronic, 1),
+    case when a.chronic > 0 and a.first_log <= now() - interval '28 days'
+         then round(a.acute / a.chronic, 2) end,
+    lim.max_weekly_load,
+    coalesce(a.acute > lim.max_weekly_load, false),
+    coalesce(a.first_log <= now() - interval '28 days', false)
+  from agg a
+  join public.profiles p on p.id = a.user_id
+  left join public.availability av on av.team_id = _team and av.user_id = a.user_id
+  left join public.athlete_limits lim on lim.team_id = _team and lim.user_id = a.user_id
+  order by p.full_name;
+end;
+$$;
+
+create or replace function public.team_week_trend(_team uuid, _weeks int default 8)
+returns table (week_start date, total_load int, athletes_logged int)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.is_team_staff(_team) then raise exception 'not allowed'; end if;
+  return query
+  with weeks as (
+    select (date_trunc('week', now())::date - (g * 7)) as ws from generate_series(0, greatest(_weeks, 1) - 1) g
+  )
+  select w.ws,
+    coalesce(sum(l.load), 0)::int,
+    (count(distinct l.user_id) filter (where l.attended))::int
+  from weeks w
+  left join public.sessions s on s.team_id = _team and s.status <> 'cancelled' and s.starts_at >= w.ws and s.starts_at < w.ws + 7
+  left join public.session_logs l on l.session_id = s.id
+  group by w.ws
+  order by w.ws;
+end;
+$$;

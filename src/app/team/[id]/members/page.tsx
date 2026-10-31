@@ -11,6 +11,8 @@ import { createInvite, deleteInvite, removeMember, updateMember } from "@/app/ac
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { ParentConsentForm } from "@/components/ConsentCard";
 import { withdrawParentConsent } from "@/app/consent-actions";
+import { StaffKindSelect } from "@/components/StaffKindSelect";
+import { STAFF_KINDS, can, getStaffKind, isStaffKind, type Capability, type StaffKind } from "@/lib/roles";
 
 function ageOf(birth: string | null | undefined): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(birth ?? "");
@@ -23,6 +25,10 @@ function ageOf(birth: string | null | undefined): number | null {
 
 const label = "eyebrow flex items-center gap-1.5";
 
+const MATRIX_ROWS: Capability[] = [
+  "planGym", "planCourt", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth", "manageMembers", "manageTeam",
+];
+
 export default async function MembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { t, locale } = await getT();
@@ -31,6 +37,11 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const { data: me } = await supabase
     .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
   if (me?.role !== "staff") notFound();
+  const myKind = (await getStaffKind(supabase, id, user!.id)) as StaffKind;
+  const isHead = can(myKind, "manageMembers");
+  const mayAvail = can(myKind, "setAvailability");
+  const mayLimit = can(myKind, "planRules");
+  const kindOf = (v: unknown): StaffKind => (isStaffKind(v) ? v : "head"); // legacy rows behave as head
 
   const [{ data: members }, { data: profiles }, { data: avail }, { data: limits }, { data: invites }] =
     await Promise.all([
@@ -49,7 +60,8 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="card card-hero flex flex-col gap-4 text-sm">
+      {!isHead && <p className="card text-sm text-muted">{t("roles.readOnly")}</p>}
+      {isHead && <div className="card card-hero flex flex-col gap-4 text-sm">
         <div className="flex items-start gap-3">
           <span
             aria-hidden
@@ -75,11 +87,17 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
               <option value="staff">{t("common.role.staff")}</option>
             </select>
           </label>
+          <label className="flex flex-1 flex-col gap-1.5">
+            <span className={label}>{t("roles.kind.invite")}</span>
+            <select name="staff_kind" defaultValue="basketball" className="input min-h-11 w-full">
+              {STAFF_KINDS.map((k) => <option key={k} value={k}>{t(`common.staffKind.${k}`)}</option>)}
+            </select>
+          </label>
           <button className="btn btn-primary inline-flex min-h-11 items-center justify-center gap-2">
             <Plus size={18} aria-hidden />{t("members.newCode")}
           </button>
         </form>
-        <p className="-mt-2 text-xs text-muted">{t("members.days", { n: 14 })}</p>
+        <p className="-mt-2 text-xs text-muted">{t("roles.kind.inviteHint")} {t("members.days", { n: 14 })}</p>
 
         {!!invites?.length && (
           <>
@@ -95,7 +113,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                         <span className="select-all break-all font-mono text-xl font-semibold tracking-[0.18em]">{i.code}</span>
                         <span className="flex flex-wrap items-center gap-2">
                           <span className={`badge ${i.role === "staff" ? "badge-watch" : "badge-none"}`}>
-                            {t(ROLE_KEY[i.role as keyof typeof ROLE_KEY])}
+                            {i.role === "staff" ? t(`common.staffKind.${kindOf(i.staff_kind)}`) : t(ROLE_KEY[i.role as keyof typeof ROLE_KEY])}
                           </span>
                           <span className="text-xs text-muted">{left === 1 ? t("members.dayLeft") : t("members.daysLeft", { n: left })}</span>
                         </span>
@@ -116,7 +134,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
             </div>
           </>
         )}
-      </div>
+      </div>}
 
       <div className="flex flex-col gap-3">
         <h2 className="eyebrow !font-sans">{t("members.team")}</h2>
@@ -135,7 +153,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                     <span className="max-w-full truncate font-semibold">{display}</span>
                     <span className={`badge ${m.role === "staff" ? "badge-watch" : "badge-none"}`}>
                       {m.role === "staff" ? <Shield size={12} aria-hidden /> : <Users size={12} aria-hidden />}
-                      {t(ROLE_KEY[m.role as keyof typeof ROLE_KEY])}
+                      {m.role === "staff" ? t(`common.staffKind.${kindOf(m.staff_kind)}`) : t(ROLE_KEY[m.role as keyof typeof ROLE_KEY])}
                     </span>
                   </div>
                   {m.role === "athlete" && (
@@ -148,7 +166,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                       <ChevronRight size={20} aria-hidden />
                     </Link>
                   )}
-                  {m.user_id !== user!.id && (
+                  {isHead && m.user_id !== user!.id && (
                     <ConfirmButton
                       action={removeMember.bind(null, id, m.user_id)}
                       icon="removeUser"
@@ -160,6 +178,11 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                     />
                   )}
                 </div>
+                {isHead && m.role === "staff" && (
+                  <div className="border-t pt-4">
+                    <StaffKindSelect teamId={id} userId={m.user_id} name={display} kind={kindOf(m.staff_kind)} />
+                  </div>
+                )}
                 {m.role === "athlete" && (
                   <div className="flex flex-col gap-3 border-t pt-4">
                     <span className={label}><ShieldCheck size={12} aria-hidden />{t("members.consent")}</span>
@@ -182,7 +205,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                       <p className="text-xs text-muted">{t("consent.staff.needBirth")}</p>
                     ) : age >= 16 ? (
                       <p className="text-xs text-muted">{t("consent.staff.selfHint")}</p>
-                    ) : m.consent_given ? (
+                    ) : !isHead ? null : m.consent_given ? (
                       <ConfirmButton
                         action={withdrawParentConsent.bind(null, id, m.user_id)}
                         icon="warning"
@@ -196,26 +219,26 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                     )}
                   </div>
                 )}
-                {m.role === "athlete" && (
+                {m.role === "athlete" && (mayAvail || mayLimit) && (
                   <form action={updateMember.bind(null, id, m.user_id)} className="flex flex-col gap-4 border-t pt-4">
                     <div className="grid grid-cols-2 gap-3">
-                      <label className="flex flex-col gap-1.5">
+                      {mayAvail && <label className="flex flex-col gap-1.5">
                         <span className={label}><AvailabilityIcon status={status} size={12} />{t("members.status")}</span>
                         <select name="status" defaultValue={status} className="input min-h-11 w-full">
                           {(Object.keys(AVAILABILITY_KEY) as Availability[]).map((k) => <option key={k} value={k}>{t(AVAILABILITY_KEY[k])}</option>)}
                         </select>
-                      </label>
-                      <div className="flex flex-col gap-1.5">
+                      </label>}
+                      {mayLimit && <div className="flex flex-col gap-1.5">
                         <span className={`${label} justify-between`}>
                           <span className="flex items-center gap-1.5"><Gauge size={12} aria-hidden />{t("members.maxLoad")}</span>
                           <Link href="/help#limits" aria-label={t("common.nav.help")} className="link -m-3 grid size-10 place-items-center"><CircleHelp size={14} aria-hidden /></Link>
                         </span>
                         <input name="max_weekly_load" type="number" inputMode="numeric" min={1} defaultValue={lim.get(m.user_id)?.max_weekly_load ?? ""} aria-label={t("members.maxLoad")} className="input min-h-11 w-full" />
-                      </div>
-                      <label className="col-span-2 flex flex-col gap-1.5">
+                      </div>}
+                      {mayAvail && <label className="col-span-2 flex flex-col gap-1.5">
                         <span className={label}><MessageSquare size={12} aria-hidden />{t("members.note")}</span>
                         <input name="note" defaultValue={a?.note ?? ""} className="input min-h-11 w-full" />
-                      </label>
+                      </label>}
                     </div>
                     <button className="btn inline-flex min-h-12 w-full items-center justify-center gap-2">
                       <Check size={18} aria-hidden />{t("common.save")}
@@ -227,6 +250,43 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
           })}
         </ul>
       </div>
+
+      {isHead && (
+        <div className="card flex flex-col gap-3 text-sm">
+          <div>
+            <h2 className="display text-xl">{t("roles.title")}</h2>
+            <p className="mt-1 text-muted">{t("roles.intro")}</p>
+          </div>
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr>
+                <th scope="col" className="eyebrow pb-2 pr-2 text-left font-normal">{t("roles.what")}</th>
+                {STAFF_KINDS.map((k) => (
+                  <th key={k} scope="col" title={t(`common.staffKind.${k}`)} className="eyebrow w-11 pb-2 text-center font-normal">
+                    {t(`roles.short.${k}`)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {MATRIX_ROWS.map((cap) => (
+                <tr key={cap} className="border-t">
+                  <th scope="row" className="py-2.5 pr-2 text-left font-normal">{t(`roles.cap.${cap}`)}</th>
+                  {STAFF_KINDS.map((k) => (
+                    <td key={k} className="py-2.5 text-center">
+                      {can(k, cap) ? (
+                        <><Check size={16} aria-hidden className="mx-auto text-[var(--ok)]" /><span className="sr-only">{t("roles.yes")}</span></>
+                      ) : (
+                        <><span aria-hidden className="text-muted">·</span><span className="sr-only">{t("roles.no")}</span></>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

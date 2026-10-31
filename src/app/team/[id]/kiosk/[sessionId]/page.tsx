@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import { getT } from "@/lib/i18n/server";
 import { KioskFrame, KioskGrid, type KioskAthlete } from "@/components/KioskGrid";
 
@@ -14,13 +15,11 @@ export default async function KioskGridPage({ params }: { params: Promise<{ id: 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) notFound();
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).maybeSingle();
-  if (me?.role !== "staff") notFound();
+  if (!can(await getStaffKind(supabase, id, user.id), "manageLibrary")) notFound();
 
   const exitHref = `/team/${id}/sessions`;
   const { data: session } = await supabase
-    .from("sessions").select("id, type, title, workout_id").eq("id", sessionId).eq("team_id", id).maybeSingle();
+    .from("sessions").select("id, type, title, workout_id").eq("id", sessionId).eq("team_id", id).neq("status", "cancelled").maybeSingle();
   if (!session) notFound();
   if (session.type !== "gym" || !session.workout_id) {
     return (

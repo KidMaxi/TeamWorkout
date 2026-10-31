@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ClipboardX, Users, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import { getT } from "@/lib/i18n/server";
 import { dateLocale } from "@/lib/i18n";
 import type { ExerciseKind } from "@/lib/exercises";
@@ -44,12 +45,10 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) notFound();
 
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).maybeSingle();
-  if (!me || me.role !== "staff") notFound();
+  if (!can(await getStaffKind(supabase, id, user.id), "manageLibrary")) notFound();
 
   const { data: session } = await supabase
-    .from("sessions").select("id, type, title, starts_at, workout_id").eq("id", sessionId).eq("team_id", id).maybeSingle();
+    .from("sessions").select("id, type, title, starts_at, workout_id").eq("id", sessionId).eq("team_id", id).neq("status", "cancelled").maybeSingle();
   if (!session || session.type !== "gym") notFound();
 
   const sessionsHref = `/team/${id}/sessions`;

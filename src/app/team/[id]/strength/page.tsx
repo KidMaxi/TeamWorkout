@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import { getT } from "@/lib/i18n/server";
 import { Hint } from "@/components/Hint";
 import { todayInTeamZone } from "@/lib/wellness";
@@ -24,6 +25,8 @@ export default async function StrengthPage({
     .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
   if (!me) notFound();
   const isStaff = me.role === "staff";
+  const kind = isStaff ? await getStaffKind(supabase, id, user!.id) : null;
+  const canLib = can(kind, "manageLibrary");
 
   const { data: team } = await supabase.from("teams").select("club_id").eq("id", id).single();
   if (!team) notFound();
@@ -118,6 +121,7 @@ export default async function StrengthPage({
             today={todayInTeamZone()}
             exercises={tracked}
             tests={tests}
+            readOnly={isStaff && !canLib}
           />
         </>
       )}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BedDouble, ClipboardX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { can, getStaffKind } from "@/lib/roles";
 import { getT } from "@/lib/i18n/server";
 import type { ExerciseKind } from "@/lib/exercises";
 import { KioskFrame } from "@/components/KioskGrid";
@@ -38,9 +39,7 @@ export default async function KioskAthletePage({ params }: { params: Promise<{ i
   if (!user) notFound();
 
   // Staff only. The PIN is checked by the server actions, never by this page.
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).maybeSingle();
-  if (me?.role !== "staff") notFound();
+  if (!can(await getStaffKind(supabase, id, user.id), "manageLibrary")) notFound();
   const { data: athlete } = await supabase
     .from("team_members").select("role").eq("team_id", id).eq("user_id", uid).maybeSingle();
   if (athlete?.role !== "athlete") notFound();
@@ -48,7 +47,7 @@ export default async function KioskAthletePage({ params }: { params: Promise<{ i
   const exitHref = `/team/${id}/sessions`;
   const gridHref = `/team/${id}/kiosk/${sessionId}`;
   const { data: session } = await supabase
-    .from("sessions").select("id, type, title, workout_id").eq("id", sessionId).eq("team_id", id).maybeSingle();
+    .from("sessions").select("id, type, title, workout_id").eq("id", sessionId).eq("team_id", id).neq("status", "cancelled").maybeSingle();
   if (!session) notFound();
 
   const calm = (icon: typeof ClipboardX, title: string, body: string) => (
