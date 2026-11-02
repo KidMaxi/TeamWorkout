@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // Offline end-to-end harness: only reachable when E2E_HARNESS=1 (never set in production).
+  if (process.env.E2E_HARNESS === "1" && /^\/(api\/)?e2e\//.test(request.nextUrl.pathname)) return NextResponse.next();
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

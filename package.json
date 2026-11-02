@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test src/lib/*.test.ts"
+    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test src/lib/*.test.ts",
+    "e2e:offline": "node e2e/offline-runner.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
