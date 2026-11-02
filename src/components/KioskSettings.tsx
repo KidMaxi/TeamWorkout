@@ -2,15 +2,48 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowRight, Info, Tablet, TriangleAlert } from "lucide-react";
+import { ArrowRight, Info, Lock, Tablet, TriangleAlert } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import type { MessageKey } from "@/lib/i18n";
 import { Avatar } from "@/components/Avatar";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { PinDialog } from "@/components/PinDialog";
-import { clearPin, setKioskPinRequired, setPin } from "@/app/pin-actions";
+import { clearPin, releasePin, setKioskPinRequired, setPin } from "@/app/pin-actions";
 
-export type KioskAthlete = { userId: string; name: string; hasPin: boolean };
+export type KioskAthlete = {
+  userId: string; name: string; hasPin: boolean;
+  /** Formatted time until which the PIN is locked, or null when not locked. */
+  lockedUntil?: string | null;
+};
+
+/** Badge and button for an athlete whose PIN is locked. Lives here (not on the iPad grid) so athletes cannot release themselves. */
+function LockedRelease({ teamId, athlete }: { teamId: string; athlete: KioskAthlete }) {
+  const { t } = useT();
+  const [error, setError] = useState<MessageKey | null>(null);
+  const [pending, start] = useTransition();
+  function release() {
+    setError(null);
+    start(async () => {
+      const r = await releasePin(teamId, athlete.userId);
+      if (!r.ok) setError(r.error ?? "pins.error.generic");
+    });
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="badge badge-high"><Lock size={12} aria-hidden />{t("pins.locked.badge", { time: athlete.lockedUntil ?? "" })}</span>
+      <button
+        type="button"
+        className="btn btn-danger min-h-11 px-4"
+        disabled={pending}
+        onClick={release}
+        aria-label={t("pins.locked.releaseFor", { name: athlete.name })}
+      >
+        {t("pins.locked.release")}
+      </button>
+      {error && <p role="alert" className="w-full text-sm text-danger">{t(error)}</p>}
+    </div>
+  );
+}
 
 export function KioskSettings({
   teamId,
@@ -121,6 +154,9 @@ export function KioskSettings({
                   {a.hasPin ? t("pins.status.set") : t("pins.status.none")}
                 </span>
               </div>
+              {a.lockedUntil && (
+                <div className="pl-[52px]"><LockedRelease teamId={teamId} athlete={a} /></div>
+              )}
               <div className="flex flex-wrap gap-2 pl-[52px]">
                 <PinDialog
                   triggerLabel={a.hasPin ? t("pins.action.change") : t("pins.action.set")}

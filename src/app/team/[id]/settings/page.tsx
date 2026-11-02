@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { Info, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
+import { dateLocale } from "@/lib/i18n";
+import { TEAM_TIME_ZONE } from "@/lib/wellness";
 import { deleteTeam, removeMember } from "@/app/actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { can, getStaffKind } from "@/lib/roles";
@@ -9,7 +11,7 @@ import { KioskSettings, type KioskAthlete } from "@/components/KioskSettings";
 
 export default async function TeamSettings({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: team } = await supabase.from("teams").select("name, created_by, kiosk_pin_required").eq("id", id).single();
@@ -30,10 +32,16 @@ export default async function TeamSettings({ params }: { params: Promise<{ id: s
       ? await supabase.from("profiles").select("id, full_name").in("id", ids)
       : { data: [] as { id: string; full_name: string | null }[] };
     const names = new Map((profs ?? []).map((p) => [p.id, p.full_name]));
+    // PIN locks (5 wrong tries) that a coach may release; only still-active locks are returned.
+    const { data: locks } = await supabase.rpc("kiosk_locked_users", { _team: id });
+    const clock = new Intl.DateTimeFormat(dateLocale(locale), { timeZone: TEAM_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
+    const lockedUntil = new Map(
+      ((locks ?? []) as { user_id: string; locked_until: string }[]).map((l) => [l.user_id, clock.format(new Date(l.locked_until))]),
+    );
     athletes = await Promise.all(
       ids.map(async (uid) => {
         const { data } = await supabase.rpc("has_athlete_pin", { _user: uid });
-        return { userId: uid, name: names.get(uid) || t("members.unnamed"), hasPin: data === true };
+        return { userId: uid, name: names.get(uid) || t("members.unnamed"), hasPin: data === true, lockedUntil: lockedUntil.get(uid) ?? null };
       }),
     );
     athletes.sort((a, b) => a.name.localeCompare(b.name));

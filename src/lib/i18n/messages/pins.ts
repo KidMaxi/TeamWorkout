@@ -42,6 +42,9 @@ export default defineMessages(
     "error.notAllowed": "Je mag dit niet doen.",
     "error.auth": "Log opnieuw in.",
     "error.generic": "Dat lukte niet. Probeer het opnieuw.",
+    "locked.badge": "Geblokkeerd tot {time}",
+    "locked.release": "Deblokkeren",
+    "locked.releaseFor": "Pincode van {name} deblokkeren",
   },
   {
     "card.title": "iPad mode",
@@ -84,5 +87,8 @@ export default defineMessages(
     "error.notAllowed": "You are not allowed to do this.",
     "error.auth": "Sign in again.",
     "error.generic": "That did not work. Try again.",
+    "locked.badge": "Locked until {time}",
+    "locked.release": "Release",
+    "locked.releaseFor": "Release the PIN lock for {name}",
   },
 );

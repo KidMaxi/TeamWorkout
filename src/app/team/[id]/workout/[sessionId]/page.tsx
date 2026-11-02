@@ -186,6 +186,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
       teamId={id}
       sessionId={sessionId}
       sessionsHref={sessionsHref}
+      queueScope={`${user.id}:${sessionId}`}
       workoutName={workoutName}
       blocks={blocks}
       saved={saved}

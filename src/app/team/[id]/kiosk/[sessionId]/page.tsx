@@ -36,12 +36,15 @@ export default async function KioskGridPage({ params }: { params: Promise<{ id: 
     );
   }
 
-  const [{ data: members }, { data: excl }, { data: runs }, { data: workout }] = await Promise.all([
+  const [{ data: members }, { data: excl }, { data: runs }, { data: workout }, { data: locks }] = await Promise.all([
     supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete"),
     supabase.from("session_exclusions").select("user_id").eq("session_id", sessionId),
     supabase.from("workout_runs").select("user_id, finished_at").eq("session_id", sessionId),
     supabase.from("workouts").select("*").eq("id", session.workout_id).maybeSingle(),
+    // Display only: the iPad shows a hint, the release control lives in team settings.
+    supabase.rpc("kiosk_locked_users", { _team: id }),
   ]);
+  const lockedIds = new Set(((locks ?? []) as { user_id: string }[]).map((l) => l.user_id));
   const ids = (members ?? []).map((m) => m.user_id as string);
   const { data: profiles } = ids.length
     ? await supabase.from("profiles").select("id, full_name").in("id", ids)
@@ -56,7 +59,7 @@ export default async function KioskGridPage({ params }: { params: Promise<{ id: 
       const status: KioskAthlete["status"] = excluded.has(uid)
         ? "rest"
         : run ? (run.finished_at ? "done" : "running") : "todo";
-      return { id: uid, name: names.get(uid) || t("members.unnamed"), status };
+      return { id: uid, name: names.get(uid) || t("members.unnamed"), status, locked: lockedIds.has(uid) };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 

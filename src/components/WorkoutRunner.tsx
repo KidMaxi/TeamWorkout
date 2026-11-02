@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, ChevronDown, Flag, Pause, Play, Plus, SkipForward } from "lucide-react";
+import { Check, ChevronDown, Clock, Flag, Pause, Play, Plus, SkipForward, WifiOff } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import type { MessageKey } from "@/lib/i18n";
 import type { ExerciseKind } from "@/lib/exercises";
 import { roundToStep, weightFor } from "@/lib/strength";
 import { deleteRunSet, finishRun, saveRunSet, startRun } from "@/app/team/[id]/workout/actions";
 import type { RunResult, RunSetPayload, StartResult } from "@/lib/run-writes";
+import { enqueue, flush, loadQueue, saveQueue, type QueueOp } from "@/lib/sync-queue";
 
 /** Server calls the runner makes. The default is the self-service actions; iPad mode passes its own. */
 export type RunnerApi = {
@@ -69,9 +70,9 @@ type RowDef = {
   pos: number;
   extra: boolean;
 };
-type RowState = { weight: string; reps: string; rpe: string; done: boolean; dirty: boolean; busy: boolean; error: MessageKey | null };
+type RowState = { weight: string; reps: string; rpe: string; done: boolean; dirty: boolean; busy: boolean; queued: boolean; error: MessageKey | null };
 
-const EMPTY: RowState = { weight: "", reps: "", rpe: "", done: false, dirty: false, busy: false, error: null };
+const EMPTY: RowState = { weight: "", reps: "", rpe: "", done: false, dirty: false, busy: false, queued: false, error: null };
 const MAX_EXTRA = 30;
 const PLATE_STEP_KG = 2.5;
 
@@ -162,7 +163,7 @@ function CoachNote({ text, label, more, less }: { text: string; label: string; m
 
 export function WorkoutRunner({
   teamId, sessionId, sessionsHref, workoutName, blocks, saved, prev, startedAt: startedAtInit, finished: finishedInit,
-  api: apiProp, onFinished, renderFinished, athleteName, backLabel,
+  api: apiProp, onFinished, renderFinished, athleteName, backLabel, queueScope,
 }: {
   teamId: string;
   sessionId: string;
@@ -183,6 +184,8 @@ export function WorkoutRunner({
   athleteName?: string;
   /** Label of the back link before the workout starts. */
   backLabel?: MessageKey;
+  /** Persist the offline queue in this browser under this scope (user + session). Omit to keep it in memory only. */
+  queueScope?: string;
 }) {
   const { t, locale } = useT();
   const api: RunnerApi = apiProp ?? {
@@ -333,6 +336,115 @@ export function WorkoutRunner({
   const patch = (key: string, p: Partial<RowState>) =>
     setRows((r) => ({ ...r, [key]: { ...(r[key] ?? EMPTY), ...p } }));
 
+  // ---- offline queue: a call that throws is kept and retried; see src/lib/sync-queue.ts ----
+  const queueRef = useRef<QueueOp[]>([]);
+  const [pending, setPending] = useState(0);
+  const [pendingFinish, setPendingFinish] = useState<{ dur: number; r: number } | null>(null);
+  const [sending, setSending] = useState(false);
+  const flushing = useRef(false);
+  const latest = useRef({ api, doneSets, onFinished });
+  useEffect(() => {
+    latest.current = { api, doneSets, onFinished };
+  });
+
+  function setQueue(next: QueueOp[]) {
+    queueRef.current = next;
+    setPending(next.filter((o) => o.kind !== "finish").length);
+    const fin = next.find((o) => o.kind === "finish");
+    setPendingFinish(fin && fin.kind === "finish" ? { dur: fin.durationMin, r: fin.rpe } : null);
+    if (queueScope) saveQueue(queueScope, next);
+  }
+
+  async function flushQueue() {
+    if (flushing.current || !queueRef.current.length) return;
+    flushing.current = true;
+    setSending(true);
+    try {
+      const { api: a, doneSets: sets, onFinished: fin } = latest.current;
+      const res = await flush(queueRef.current, a);
+      const handled = new Set<QueueOp>([...res.applied, ...res.rejected.map((x) => x.op)]);
+      // Operations added while we were sending stay in the queue.
+      const next = queueRef.current.filter((o) => !handled.has(o));
+      setQueue(next);
+      const stillQueued = (key: string) => next.some((o) => o.kind !== "finish" && o.key === key);
+      for (const op of res.applied) {
+        if (op.kind !== "finish" && !stillQueued(op.key)) patch(op.key, { queued: false });
+        if (op.kind === "finish") {
+          dialogRef.current?.close();
+          setFinished({ durationMin: op.durationMin, rpe: op.rpe, sets });
+          fin?.();
+        }
+      }
+      for (const { op, error } of res.rejected) {
+        if (op.kind === "finish") {
+          setFinishError(error);
+          dialogRef.current?.showModal();
+        } else if (!stillQueued(op.key)) {
+          patch(op.key, op.kind === "save" ? { queued: false, done: false, dirty: true, error } : { queued: false, error });
+        }
+      }
+    } finally {
+      flushing.current = false;
+      setSending(false);
+    }
+  }
+  const flushRef = useRef(flushQueue);
+  useEffect(() => {
+    flushRef.current = flushQueue;
+  });
+
+  // Restore what an earlier visit could not send (self-service only), then keep trying.
+  useEffect(() => {
+    if (queueScope) {
+      const q = loadQueue(queueScope);
+      if (q.length) {
+        setQueue(q);
+        const exMax = new Map<string, number>();
+        for (const op of q) {
+          if (op.kind === "save") {
+            patch(op.key, { done: true, queued: true, dirty: false, ...op.display });
+            exMax.set(op.payload.exerciseId, Math.max(exMax.get(op.payload.exerciseId) ?? 0, op.payload.setIndex));
+            if (!op.payload.setId && op.payload.setType) {
+              const st = op.payload.setType as SetType;
+              setExtraTypes((m) => ({ ...m, [typeKey(op.payload.exerciseId, op.payload.setIndex)]: st }));
+            }
+          } else if (op.kind === "delete") patch(op.key, { done: false, dirty: false });
+        }
+        setExtras((m) => {
+          const out = { ...m };
+          blocks.forEach((b, i) => {
+            if (blocks.slice(i + 1).some((o) => o.exercise.id === b.exercise.id)) return;
+            const n = (exMax.get(b.exercise.id) ?? 0) - (b.indexOffset + b.sets.length);
+            if (n > (out[b.id] ?? 0)) out[b.id] = Math.min(n, MAX_EXTRA);
+          });
+          return out;
+        });
+        void flushRef.current();
+      }
+    }
+    const go = () => void flushRef.current();
+    const vis = () => document.visibilityState === "visible" && go();
+    window.addEventListener("online", go);
+    document.addEventListener("visibilitychange", vis);
+    const id = window.setInterval(() => {
+      if (queueRef.current.length) go();
+    }, 8000);
+    return () => {
+      window.removeEventListener("online", go);
+      document.removeEventListener("visibilitychange", vis);
+      window.clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Leaving with unsent sets: let the browser ask first.
+  useEffect(() => {
+    if (!pending && !pendingFinish) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [pending, pendingFinish]);
+
   function edit(key: string, field: "weight" | "reps" | "rpe", value: string) {
     patch(key, { [field]: value, dirty: true, error: null });
   }
@@ -359,25 +471,36 @@ export function WorkoutRunner({
     }
 
     patch(d.key, { busy: true, error: null });
-    let res: RunResult;
-    try {
-      res = await api.saveSet({
-        exerciseId: d.exerciseId, setId: d.setId, setIndex: d.setIndex, side: d.side, weight, reps, rpe,
-        setType: d.extra ? type : undefined,
-      });
-    } catch {
-      res = { ok: false, error: "run.error.save" };
-    }
-    if (!res.ok) {
-      patch(d.key, { busy: false, error: res.error ?? "run.error.save" });
-      return;
-    }
-    patch(d.key, {
-      busy: false, done: true, dirty: false, error: null,
+    const display = {
       weight: weight === null ? "" : fmt(weight),
       reps: String(reps),
       rpe: rpe === null ? "" : fmt(rpe),
-    });
+    };
+    const op: QueueOp = {
+      kind: "save", key: d.key, display,
+      payload: {
+        exerciseId: d.exerciseId, setId: d.setId, setIndex: d.setIndex, side: d.side, weight, reps, rpe,
+        setType: d.extra ? type : undefined,
+      },
+    };
+    // Something already waiting: join the queue so the order is kept.
+    let res: RunResult | null = null;
+    if (!queueRef.current.length) {
+      try {
+        res = await api.saveSet(op.payload);
+      } catch {
+        res = null;
+      }
+    }
+    if (res && !res.ok) {
+      patch(d.key, { busy: false, error: res.error ?? "run.error.save" });
+      return;
+    }
+    if (!res) {
+      setQueue(enqueue(queueRef.current, op));
+      void flushQueue();
+    }
+    patch(d.key, { busy: false, done: true, dirty: false, error: null, queued: !res, ...display });
     const secs = planAt(block, d.pos)?.restSeconds ?? 0;
     if (secs > 0 && d.side !== "left") setRest({ end: Date.now() + secs * 1000, total: secs });
   }
@@ -386,13 +509,19 @@ export function WorkoutRunner({
     const st = rows[d.key];
     if (!st || st.busy) return;
     patch(d.key, { busy: true, error: null });
-    let res: RunResult;
-    try {
-      res = await api.deleteSet(block.exercise.id, d.setIndex, d.side);
-    } catch {
-      res = { ok: false, error: "run.error.save" };
+    let res: RunResult | null = null;
+    if (!queueRef.current.length) {
+      try {
+        res = await api.deleteSet(block.exercise.id, d.setIndex, d.side);
+      } catch {
+        res = null;
+      }
     }
-    patch(d.key, res.ok ? { busy: false, done: false, dirty: false } : { busy: false, error: res.error ?? "run.error.save" });
+    if (!res) {
+      setQueue(enqueue(queueRef.current, { kind: "delete", key: d.key, exerciseId: block.exercise.id, setIndex: d.setIndex, side: d.side }));
+      void flushQueue();
+    }
+    patch(d.key, !res || res.ok ? { busy: false, done: false, dirty: false, queued: false } : { busy: false, error: res.error ?? "run.error.save" });
   }
 
   async function begin() {
@@ -403,7 +532,7 @@ export function WorkoutRunner({
     try {
       res = await api.start();
     } catch {
-      res = { ok: false, error: "run.error.save" };
+      res = { ok: false, error: !navigator.onLine ? "run.error.offline" : "run.error.save" };
     }
     setStarting(false);
     if (!res.ok || !res.startedAt) {
@@ -471,13 +600,22 @@ export function WorkoutRunner({
     if (!(r >= 1 && r <= 10)) return setFinishError("run.error.rpeLog");
     setFinishing(true);
     setFinishError(null);
-    let res: RunResult;
-    try {
-      res = await api.finish(dur, r);
-    } catch {
-      res = { ok: false, error: "run.error.save" };
+    let res: RunResult | null = null;
+    if (!queueRef.current.length) {
+      try {
+        res = await api.finish(dur, r);
+      } catch {
+        res = null;
+      }
     }
     setFinishing(false);
+    if (!res) {
+      // No connection (or sets still waiting): keep the finish in the queue, behind the sets.
+      setQueue(enqueue(queueRef.current, { kind: "finish", durationMin: dur, rpe: r }));
+      dialogRef.current?.close();
+      void flushQueue();
+      return;
+    }
     if (!res.ok) return setFinishError(res.error ?? "run.error.save");
     dialogRef.current?.close();
     setFinished({ durationMin: dur, rpe: r, sets: doneSets });
@@ -492,6 +630,35 @@ export function WorkoutRunner({
       <h2 className={`display mt-1 leading-tight ${athleteName ? "text-xl text-muted" : "text-2xl"}`}>{workoutName || t("run.title")}</h2>
     </div>
   );
+
+  const syncBanner =
+    pending > 0 ? (
+      <div role="status" className="flex items-center gap-3 rounded-2xl border p-3 text-sm" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
+        <WifiOff size={18} aria-hidden className="shrink-0" />
+        <span className="min-w-0 flex-1">{sending ? t("run.sync.sending") : t("run.sync.offline", { n: pending })}</span>
+        <button type="button" onClick={() => void flushQueue()} disabled={sending} className="btn inline-flex min-h-11 items-center px-3 disabled:opacity-60">
+          {t("run.sync.retry")}
+        </button>
+      </div>
+    ) : null;
+
+  if (pendingFinish && !finished) {
+    return (
+      <section className="rise flex flex-col gap-4">
+        {header}
+        <div className="card card-hero flex flex-col items-start gap-4" role="status">
+          <span aria-hidden className="grid size-11 place-items-center rounded-full" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
+            <WifiOff size={22} />
+          </span>
+          <h3 className="display text-2xl leading-tight">{t("run.sync.finishTitle")}</h3>
+          <p className="text-muted">{t("run.sync.finishBody")}</p>
+          <button type="button" onClick={() => void flushQueue()} disabled={sending} className="btn btn-primary inline-flex min-h-14 w-full items-center justify-center text-lg disabled:opacity-60">
+            {sending ? t("run.sync.sending") : t("run.sync.retry")}
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   if (finished && renderFinished) return <>{renderFinished(finished)}</>;
 
@@ -566,6 +733,7 @@ export function WorkoutRunner({
   return (
     <section className="flex flex-col gap-4">
       {header}
+      {syncBanner}
 
       {/* sticky timer bar */}
       <div className="glass sticky top-2 z-20 flex flex-col gap-2 rounded-3xl p-3">
@@ -724,6 +892,9 @@ export function WorkoutRunner({
                               <p className="min-w-0 text-sm font-semibold">
                                 {setLabel}
                                 {d.extra && <span className="chip ml-2">{t("run.set.extra")}</span>}
+                                {st.queued && (
+                                  <span className="chip ml-2 inline-flex items-center gap-1"><Clock size={12} aria-hidden />{t("run.sync.rowQueued")}</span>
+                                )}
                               </p>
                               <p className="shrink-0 text-right text-sm text-muted">
                                 {rxText}

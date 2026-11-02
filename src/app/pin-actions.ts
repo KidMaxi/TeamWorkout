@@ -69,3 +69,17 @@ export async function clearPin(userId: string | null, teamId?: string): Promise<
   refresh(teamId);
   return { ok: true };
 }
+
+/** A coach releases an athlete whose PIN is locked after too many wrong tries. Staff with iPad rights only. */
+export async function releasePin(teamId: string, userId: string): Promise<PinResult> {
+  if (!UUID.test(teamId) || !UUID.test(userId)) return { ok: false, error: "pins.error.notAllowed" };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "pins.error.auth" };
+  if (!can(await getStaffKind(supabase, teamId, user.id), "manageLibrary")) return { ok: false, error: "pins.error.notAllowed" };
+  const { error } = await supabase.rpc("kiosk_release_pin", { _team: teamId, _user: userId });
+  if (error) return { ok: false, error: mapError(error.message) };
+  refresh(teamId);
+  revalidatePath(`/team/${teamId}/kiosk`, "layout");
+  return { ok: true };
+}

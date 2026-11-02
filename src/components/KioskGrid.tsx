@@ -3,11 +3,11 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BedDouble, Check, LogOut } from "lucide-react";
+import { BedDouble, Check, Lock, LogOut } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { Avatar } from "@/components/Avatar";
 
-export type KioskAthlete = { id: string; name: string; status: "todo" | "running" | "done" | "rest" };
+export type KioskAthlete = { id: string; name: string; status: "todo" | "running" | "done" | "rest"; locked?: boolean };
 
 /** Full-screen frame for iPad mode: covers the team header, no settings or navigation for athletes. */
 export function KioskFrame({ exitHref, children }: { exitHref: string; children: React.ReactNode }) {
@@ -57,6 +57,7 @@ export function KioskGrid({
   return (
     <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
       {athletes.map((a) => {
+        const isLocked = !!a.locked && (a.status === "todo" || a.status === "running");
         const label = t(STATUS_KEY[a.status]);
         const inner = (
           <>
@@ -78,11 +79,17 @@ export function KioskGrid({
               )}
             </span>
             <span className="display w-full break-words text-center text-xl leading-tight sm:text-2xl">{a.name}</span>
-            <span
-              className={`badge ${a.status === "done" ? "badge-ok" : a.status === "running" ? "badge-watch" : "badge-none"}`}
-            >
-              {label}
-            </span>
+            {isLocked ? (
+              <span className="badge badge-high !whitespace-normal text-center">
+                <Lock size={12} aria-hidden />{t("kiosk.status.locked")}
+              </span>
+            ) : (
+              <span
+                className={`badge ${a.status === "done" ? "badge-ok" : a.status === "running" ? "badge-watch" : "badge-none"}`}
+              >
+                {label}
+              </span>
+            )}
           </>
         );
         const cls = "card flex min-h-44 flex-col items-center justify-center gap-3 !p-4 text-center";

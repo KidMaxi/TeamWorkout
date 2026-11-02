@@ -34,6 +34,7 @@ export default defineMessages(
     "done.back": "Terug naar de lijst",
     "done.auto": "Je gaat zo terug naar de lijst.",
     "error.notAllowed": "Dit kan niet op de iPad.",
+    "status.locked": "Geblokkeerd, vraag je coach",
   },
   {
     title: "iPad mode",
@@ -68,5 +69,6 @@ export default defineMessages(
     "done.back": "Back to the list",
     "done.auto": "Going back to the list in a moment.",
     "error.notAllowed": "This is not possible on the iPad.",
+    "status.locked": "Locked, ask your coach",
   },
 );
