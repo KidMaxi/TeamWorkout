@@ -47,7 +47,7 @@ export async function updateProfile(_prev: ProfileResult | null, formData: FormD
 
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name: name || null, birth_date: birth, height_cm: height, weight_kg: weight })
+    .update({ full_name: name, birth_date: birth, height_cm: height, weight_kg: weight })
     .eq("id", user.id);
   if (error) return err("profile.error.save");
 

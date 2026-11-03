@@ -15,7 +15,7 @@ export type Capability =
   | "setAvailability"
   | "viewHealth"       // read check-ins/pain (still only with the athlete's consent)
   | "manageMembers"    // invites, kinds, removing members, recording parental consent
-  | "manageTeam"       // team settings, workload thresholds, deleting the team (owner)
+  | "manageTeam"       // team settings, workload thresholds, deleting the team (owner: the DB only lets the creating head delete it)
   ;
 
 const MATRIX: Record<StaffKind, ReadonlySet<Capability>> = {

@@ -36,7 +36,7 @@ function parse(formData: FormData): Parsed {
   const name = String(formData.get("name") ?? "").trim();
   if (name.length < 1 || name.length > 80) return { ok: false, error: "exercises.error.name" };
   const instructions = String(formData.get("instructions") ?? "").trim();
-  if (instructions.length < 1 || instructions.length > 4000) return { ok: false, error: "exercises.error.instructions" };
+  if (instructions.length < 1 || instructions.length > 2000) return { ok: false, error: "exercises.error.instructions" };
 
   const equipment = String(formData.get("equipment") ?? "");
   if (!(EQUIPMENT as readonly string[]).includes(equipment)) return { ok: false, error: "exercises.error.equipment" };

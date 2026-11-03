@@ -58,7 +58,7 @@ function parse(raw: string, kinds: Map<string, string>): Parsed {
   const name = typeof d.name === "string" ? d.name.trim() : "";
   if (name.length < 1 || name.length > 80) return { ok: false, error: "workouts.error.name" };
   const description = typeof d.description === "string" ? d.description.trim() : "";
-  if (description.length > 1000) return { ok: false, error: "workouts.error.description" };
+  if (description.length > 500) return { ok: false, error: "workouts.error.description" };
 
   if (!Array.isArray(d.blocks) || d.blocks.length < 1) return { ok: false, error: "workouts.error.blocksRequired" };
   if (d.blocks.length > 20) return { ok: false, error: "workouts.error.tooManyBlocks" };

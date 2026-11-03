@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { MessageKey } from "@/lib/i18n";
 import { TERMS_VERSION } from "@/lib/legal";
-import { can, canPlanType, getStaffKind, isStaffKind } from "@/lib/roles";
+import { can, getStaffKind, isStaffKind } from "@/lib/roles";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -32,48 +32,6 @@ export async function joinTeam(formData: FormData) {
   const { data, error } = await supabase.rpc("join_team", { _code: String(formData.get("code")).trim() });
   if (error) throw new Error(error.message);
   redirect(`/team/${data}`);
-}
-
-export async function createSession(teamId: string, formData: FormData) {
-  const supabase = await createClient();
-  const rpe = formData.get("planned_rpe");
-  const type = String(formData.get("type"));
-  const { data: { user: planner } } = await supabase.auth.getUser();
-  if (!planner || !canPlanType(await getStaffKind(supabase, teamId, planner.id), type)) throw new Error("not allowed");
-
-  // A workout is only stored on gym sessions and only if it belongs to this team's club.
-  let workoutId: string | null = null;
-  const requested = String(formData.get("workout_id") ?? "");
-  if (type === "gym" && requested) {
-    const { data: team } = await supabase.from("teams").select("club_id").eq("id", teamId).single();
-    if (team?.club_id) {
-      const { data: w } = await supabase
-        .from("workouts").select("id").eq("id", requested).eq("club_id", team.club_id).is("archived_at", null).maybeSingle();
-      workoutId = w?.id ?? null;
-    }
-  }
-
-  const { error } = await supabase.from("sessions").insert({
-    team_id: teamId,
-    type,
-    title: String(formData.get("title") ?? ""),
-    starts_at: new Date(String(formData.get("starts_at"))).toISOString(),
-    planned_duration_min: Number(formData.get("planned_duration_min")),
-    planned_rpe: rpe ? Number(rpe) : null,
-    workout_id: workoutId,
-  });
-  if (error) throw new Error(error.message);
-  revalidatePath(`/team/${teamId}`, "layout");
-}
-
-export async function deleteSession(teamId: string, sessionId: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: target } = await supabase.from("sessions").select("type").eq("id", sessionId).eq("team_id", teamId).maybeSingle();
-  if (!user || !target || !canPlanType(await getStaffKind(supabase, teamId, user.id), target.type as string)) throw new Error("not allowed");
-  const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
-  if (error) throw new Error(error.message);
-  revalidatePath(`/team/${teamId}`, "layout");
 }
 
 const LOG_NOTE_MAX = 300;
@@ -144,19 +102,25 @@ export async function updateMember(teamId: string, userId: string, formData: For
   const mayAvail = can(kind, "setAvailability");
   const mayLimit = can(kind, "planRules");
   if (!mayAvail && !mayLimit) throw new Error("not allowed");
+  // Validate before writing (the table checks would only surface as a generic database error).
+  const status = String(formData.get("status"));
+  const availNote = String(formData.get("note") ?? "");
+  if (mayAvail && (!["available", "limited", "unavailable"].includes(status) || availNote.length > 500)) throw new Error("invalid input");
+  const maxLoad = max ? Number(max) : null;
+  if (mayLimit && maxLoad !== null && (!Number.isInteger(maxLoad) || maxLoad < 1 || maxLoad > 100000)) throw new Error("invalid input");
   const results = await Promise.all([
     !mayAvail ? { error: null } : supabase.from("availability").upsert({
       team_id: teamId,
       user_id: userId,
-      status: String(formData.get("status")),
-      note: String(formData.get("note") ?? "") || null,
+      status,
+      note: availNote || null,
       updated_by: user?.id,
       updated_at: new Date().toISOString(),
     }),
     !mayLimit ? { error: null } : supabase.from("athlete_limits").upsert({
       team_id: teamId,
       user_id: userId,
-      max_weekly_load: max ? Number(max) : null,
+      max_weekly_load: maxLoad,
       updated_at: new Date().toISOString(),
     }),
   ]);

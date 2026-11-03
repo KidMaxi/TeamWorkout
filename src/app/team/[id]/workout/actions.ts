@@ -23,8 +23,8 @@ async function context(teamId: string, sessionId: string): Promise<Ctx | Fail> {
   if (!member) return { error: "run.error.notAllowed" };
 
   const { data: session } = await supabase
-    .from("sessions").select("id, type, workout_id").eq("id", sessionId).eq("team_id", teamId).maybeSingle();
-  if (!session) return { error: "run.error.notAllowed" };
+    .from("sessions").select("id, type, workout_id, status").eq("id", sessionId).eq("team_id", teamId).maybeSingle();
+  if (!session || session.status === "cancelled") return { error: "run.error.notAllowed" };
   if (session.type !== "gym" || !session.workout_id) return { error: "run.error.noWorkout" };
 
   const { data: excluded } = await supabase

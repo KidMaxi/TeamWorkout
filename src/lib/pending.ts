@@ -43,12 +43,12 @@ export async function getPendingCount(supabase: SupabaseClient, teamId: string, 
       ...(logsRes.data ?? []).map((r) => r.session_id as string),
       ...(exclRes.data ?? []).map((r) => r.session_id as string),
     ]);
-    const cutoff = now - WINDOW_DAYS * DAY_MS;
+    const cutoff = now - WINDOW_DAYS * DAY_MS; // same window as team_missing_logs: started within 14 days and already over
     let pending = 0;
     for (const s of sessionsRes.data ?? []) {
       const start = Date.parse(s.starts_at as string);
       const end = start + ((s.planned_duration_min as number | null) ?? 0) * 60_000;
-      if (end < now && end >= cutoff && !done.has(s.id as string)) pending++;
+      if (end < now && start >= cutoff && !done.has(s.id as string)) pending++;
     }
     if (!wellnessRes.data) pending++;
     return pending;

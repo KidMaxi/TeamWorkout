@@ -64,7 +64,12 @@ export async function runStart(c: Ctx, teamId: string, sessionId: string): Promi
     }
     const { error } = await c.supabase.from("workout_runs").insert(row);
     // 23505: a parallel call (double tap, second tab) created it first; that is fine.
-    if (error && error.code !== "23505") return { ok: false, error: "run.error.save" };
+    if (error && error.code !== "23505") {
+      const m = error.message ?? "";
+      if (m.includes("excluded")) return { ok: false, error: "run.error.excluded" };
+      if (m.includes("session_cancelled") || m.includes("not_an_athlete")) return { ok: false, error: "run.error.notAllowed" };
+      return { ok: false, error: "run.error.save" };
+    }
     run = await findRun(c, sessionId);
   }
   if (!run) return { ok: false, error: "run.error.save" };
@@ -220,7 +225,9 @@ export async function runFinish(c: Ctx, teamId: string, sessionId: string, durat
     const m = error.message ?? "";
     if (m.includes("invalid_duration")) return { ok: false, error: "run.error.duration" };
     if (m.includes("invalid_rpe")) return { ok: false, error: "run.error.rpeLog" };
-    if (m.includes("not allowed")) return { ok: false, error: "run.error.notAllowed" };
+    if (m.includes("already_finished")) return { ok: false, error: "run.error.finished" };
+    if (m.includes("excluded")) return { ok: false, error: "run.error.excluded" };
+    if (m.includes("session_cancelled") || m.includes("not allowed")) return { ok: false, error: "run.error.notAllowed" };
     return { ok: false, error: "run.error.save" };
   }
   revalidate(teamId);
