@@ -77,20 +77,21 @@ export function WeekRulesForm({
         ))}
       </div>
       <p className="text-xs text-muted">{t("workload.rules.hint")}</p>
-      <div className="flex flex-wrap items-center gap-2">
-        <button disabled={pending || resetting} className="btn btn-primary inline-flex min-h-11 items-center gap-2">
-          <Check size={16} aria-hidden />{t("workload.rules.save")}
-        </button>
+      {/* phone: primary on top, full width; sm+: secondary left, primary right */}
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
         {userId !== null && hasOverride && (
           <button
             type="button"
             onClick={reset}
             disabled={pending || resetting}
-            className="btn inline-flex min-h-11 items-center gap-2"
+            className="btn inline-flex min-h-11 items-center justify-center gap-2"
           >
             <RotateCcw size={16} aria-hidden />{t("workload.rules.useDefault")}
           </button>
         )}
+        <button disabled={pending || resetting} className="btn btn-primary inline-flex min-h-11 items-center justify-center gap-2">
+          <Check size={16} aria-hidden />{t("workload.rules.save")}
+        </button>
       </div>
       <p role="status" aria-live="polite" className={`min-h-5 text-xs ${result && !result.ok ? "text-danger" : "text-muted"}`}>
         {result?.ok
@@ -161,8 +162,8 @@ export function WorkloadSettingsForm({ teamId, settings }: { teamId: string; set
             <span className="text-xs text-muted">{t("workload.settings.showRatioHelp")}</span>
           </span>
         </label>
-        <div className="flex flex-wrap items-center gap-2">
-          <button disabled={pending} className="btn btn-primary inline-flex min-h-11 items-center gap-2">
+        <div className="action-bar glass flex justify-end rounded-2xl p-2">
+          <button disabled={pending} className="btn btn-primary inline-flex min-h-11 w-full items-center justify-center gap-2 sm:w-auto">
             <Check size={16} aria-hidden />{t("workload.settings.save")}
           </button>
         </div>

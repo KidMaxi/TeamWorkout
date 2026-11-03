@@ -130,7 +130,7 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDashboardProps["week
       </ol>
       <ol className="mt-2 flex gap-1.5" aria-hidden>
         {weekly.map((w, i) => (
-          <li key={w.week_start} className={`flex-1 text-center text-[10px] ${i === weekly.length - 1 ? "font-semibold" : "text-muted"}`}>
+          <li key={w.week_start} className={`flex-1 text-center text-[11px] ${i === weekly.length - 1 ? "font-semibold" : "text-muted"}`}>
             {labelOf(w.week_start)}
           </li>
         ))}

@@ -191,7 +191,7 @@ function FormBody({ teamId, exercise, onDone }: { teamId: string; exercise?: Exe
 
       {state.error && <p role="alert" className="text-sm text-danger">{t(state.error)}</p>}
 
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="sticky bottom-0 z-10 -mx-5 -mb-5 flex flex-col-reverse gap-2 border-t bg-[var(--surface)] px-5 py-3 sm:flex-row sm:justify-end">
         <button type="button" onClick={onDone} className="btn min-h-11 sm:min-w-28">{t("common.cancel")}</button>
         <button disabled={pending} className="btn btn-primary inline-flex min-h-11 items-center justify-center gap-2 sm:min-w-32">
           <Check size={18} aria-hidden />{pending ? t("exercises.form.saving") : t("exercises.form.save")}

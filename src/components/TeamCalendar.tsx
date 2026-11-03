@@ -130,7 +130,7 @@ export function TeamCalendar({ teamId, view, date, today, sessions, showLoad, at
         style={{ background: "var(--card-sheen), var(--surface)" }}
       >
         <div className="flex items-center justify-between gap-2">
-          <Link href={href("day", day)} className="inline-flex min-h-11 items-center gap-2 rounded-lg">
+          <Link href={href("day", day)} className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg">
             <span className="eyebrow">{fmtDay(day, loc, { weekday: "short" }).replace(".", "")}</span>
             <span className={`num ${bigHeader ? "text-3xl" : "text-xl"} ${isToday ? "text-[var(--accent)]" : ""}`}>{fmtDay(day, loc, { day: "numeric" })}</span>
           </Link>

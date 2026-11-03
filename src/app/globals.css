@@ -102,7 +102,7 @@
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
   h1, h2, h3 { font-family: var(--font-display), var(--font-sans), sans-serif; letter-spacing: -0.02em; }
-  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, [role="switch"]:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
@@ -133,7 +133,7 @@
   /* ---- type ---- */
   .display { font-family: var(--font-display), var(--font-sans), sans-serif; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
   .num { font-family: var(--font-display), var(--font-sans), sans-serif; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1; }
-  .eyebrow { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+  .eyebrow { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: color-mix(in srgb, var(--accent) 72%, var(--foreground)); } /* AA on ivory paper */
 
   /* ---- controls ---- */
   .input {
@@ -143,7 +143,10 @@
     transition: border-color 0.15s, background 0.15s;
   }
   .input:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
-  .input:focus { border-color: var(--accent); outline: none; background: var(--surface-2); }
+  .input:focus { border-color: var(--accent); outline: none; background: var(--surface-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+  .input:disabled { opacity: 0.55; cursor: not-allowed; }
+  /* iOS zooms the page when a focused field is under 16px: keep fields at 16px on touch screens */
+  @media (pointer: coarse) { .input { font-size: max(16px, 1em); } }
   .input::placeholder { color: var(--muted); }
   .input-sm { padding: 0.3rem 0.6rem; border-radius: 0.65rem; }
   .btn {
@@ -156,6 +159,7 @@
   .btn:hover { border-color: var(--accent); }
   .btn:active { transform: scale(0.97); }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+  .btn[aria-busy="true"] { cursor: progress; }
   .btn-primary {
     background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 82%, white), var(--primary));
     color: var(--on-primary); border-color: transparent;
@@ -186,6 +190,13 @@
   }
   dialog.confirm::backdrop { background: rgb(5 5 7 / 0.65); backdrop-filter: blur(6px); }
 
+  /* Sticky primary-action bar for long forms: above the phone bottom nav, near the viewport edge on md+. */
+  .action-bar {
+    position: sticky; z-index: 10;
+    bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 768px) { .action-bar { bottom: 1rem; } }
+
   /* ---- floating glass navigation ---- */
   .glass {
     background: color-mix(in srgb, var(--surface) 72%, transparent);
@@ -213,7 +224,11 @@
 .dial-arc { animation: dial-sweep 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both; }
 .dial-tick { animation: tick-in 0.6s ease-out 0.1s both; }
 
+/* ---- loading skeletons (loading.tsx): calm, same footprint as the real content ---- */
+@keyframes skeleton-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.skeleton { background: var(--surface-3); border-radius: 0.75rem; animation: skeleton-pulse 1.6s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .rise, .stagger > *, .dial-arc, .dial-tick { animation: none !important; }
+  .rise, .stagger > *, .dial-arc, .dial-tick, .skeleton { animation: none !important; }
   .btn { transition: none; }
 }

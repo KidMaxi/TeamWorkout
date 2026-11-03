@@ -313,7 +313,7 @@ function AthleteCard({
             <div>
               <p className="flex items-center gap-1 text-xs text-muted">
                 {t("dashboard.athlete.max")}
-                <Link href="/help#limits" className="link inline-grid min-h-6 min-w-6 place-items-center" aria-label={t("dashboard.help.limits")}>
+                <Link href="/help#limits" className="link -my-3 inline-grid min-h-11 min-w-11 place-items-center" aria-label={t("dashboard.help.limits")}>
                   <CircleHelp size={12} aria-hidden />
                 </Link>
               </p>
@@ -375,7 +375,7 @@ export async function StaffDashboard({
               key={key}
               href={key === "all" ? `/team/${teamId}` : `/team/${teamId}?filter=${key}`}
               aria-current={active ? "page" : undefined}
-              className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors ${
+              className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors ${
                 active ? "bg-[var(--primary)] text-[var(--on-primary)]" : "text-muted hover:text-[var(--foreground)]"
               }`}
             >
@@ -401,7 +401,7 @@ export async function StaffDashboard({
       </div>
 
       {showRatio && (
-        <Link href="/help#ratio" className="link inline-flex min-h-10 items-center gap-1 self-start text-xs">
+        <Link href="/help#ratio" className="link inline-flex min-h-11 items-center gap-1 self-start text-xs">
           <CircleHelp size={14} aria-hidden /> {t("dashboard.help.ratio")}
         </Link>
       )}

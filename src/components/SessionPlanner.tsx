@@ -198,10 +198,12 @@ function SessionForm({
       )}
 
       {error && <p role="alert" className="col-span-2 text-sm text-danger">{t(error)}</p>}
-      <button disabled={pending || (repeat === "weekly" && !session && (tooMany || until < date))} className="btn btn-primary col-span-2 mt-1 inline-flex min-h-12 w-full items-center justify-center gap-2">
-        {session ? <Check size={18} aria-hidden /> : <Plus size={18} aria-hidden />}
-        {pending ? t("common.loading") : session ? t("common.save") : t("sessions.plan")}
-      </button>
+      <div className={`col-span-2 mt-1 ${session ? "sticky bottom-0 z-10 -mx-5 -mb-2 border-t bg-[var(--surface)] px-5 py-3" : "action-bar glass rounded-2xl p-2"}`}>
+        <button disabled={pending || (repeat === "weekly" && !session && (tooMany || until < date))} className="btn btn-primary inline-flex min-h-12 w-full items-center justify-center gap-2">
+          {session ? <Check size={18} aria-hidden /> : <Plus size={18} aria-hidden />}
+          {pending ? t("common.loading") : session ? t("common.save") : t("sessions.plan")}
+        </button>
+      </div>
     </form>
   );
 }
@@ -289,6 +291,9 @@ export function SessionManage({ teamId, session, allowedTypes, workouts, today }
             <button type="button" className={btn} onClick={() => openStatus("cancelled")}><Ban size={16} aria-hidden />{t("sessions.cancelSession")}</button>
           </>
         )}
+      </div>
+      {/* destructive action on its own row, away from the edit / cancel buttons */}
+      <div className="mt-1 flex justify-end border-t pb-1 pt-2">
         <button type="button" className={`${btn} btn-danger`} onClick={() => open("delete")}><Trash2 size={16} aria-hidden />{t("sessions.deleteSession")}</button>
       </div>
 

@@ -32,7 +32,7 @@ export function HintCard({ id, text, title, href, linkLabel, label, dismissLabel
         <p className="eyebrow">{title ?? label}</p>
         <p className="mt-0.5 text-muted">{text}</p>
         {href && linkLabel && (
-          <Link href={href} className="link mt-1 inline-block text-xs">{linkLabel}</Link>
+          <Link href={href} className="link inline-flex min-h-11 items-center text-xs">{linkLabel}</Link>
         )}
       </div>
       <button

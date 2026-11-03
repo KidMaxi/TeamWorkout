@@ -20,7 +20,7 @@ export function KioskFrame({ exitHref, children }: { exitHref: string; children:
       <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col gap-6 px-4 pb-10 pt-4 sm:px-8">
         <div className="flex items-center justify-between gap-3">
           <p className="eyebrow">{t("kiosk.title")}</p>
-          <Link href={exitHref} className="link inline-flex min-h-11 items-center gap-2 text-sm">
+          <Link href={exitHref} className="link inline-flex min-h-14 items-center gap-2 px-2 text-base">
             <LogOut size={14} aria-hidden />{t("kiosk.exit")}
           </Link>
         </div>

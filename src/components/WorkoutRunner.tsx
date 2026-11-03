@@ -144,7 +144,7 @@ function SetBadge({ type, n }: { type: SetType; n: number | undefined }) {
 }
 
 /** Coach note under the exercise name; collapsed when long. */
-function CoachNote({ text, label, more, less }: { text: string; label: string; more: string; less: string }) {
+function CoachNote({ text, label, more, less, kiosk }: { text: string; label: string; more: string; less: string; kiosk?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const long = text.length > 120 || text.includes("\n");
   return (
@@ -153,7 +153,7 @@ function CoachNote({ text, label, more, less }: { text: string; label: string; m
         <span className="font-semibold">{label}</span> {text}
       </p>
       {long && (
-        <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className="link mt-1 inline-flex min-h-11 items-center">
+        <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className={`link mt-1 inline-flex ${kiosk ? "min-h-14" : "min-h-11"} items-center`}>
           {expanded ? less : more}
         </button>
       )}
@@ -196,6 +196,10 @@ export function WorkoutRunner({
   };
   const dec = locale === "nl" ? "," : ".";
   const fmt = (n: number) => String(Math.round(n * 100) / 100).replace(".", dec);
+  // iPad mode (athleteName is only set there): sweaty-hand targets, >= 56px.
+  const kiosk = !!athleteName;
+  const tapH = kiosk ? "min-h-14" : "min-h-12";
+  const tapSize = kiosk ? "size-14" : "size-12";
 
   const [startedAt, setStartedAt] = useState(startedAtInit);
   const [finished, setFinished] = useState(finishedInit);
@@ -636,7 +640,7 @@ export function WorkoutRunner({
       <div role="status" className="flex items-center gap-3 rounded-2xl border p-3 text-sm" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
         <WifiOff size={18} aria-hidden className="shrink-0" />
         <span className="min-w-0 flex-1">{sending ? t("run.sync.sending") : t("run.sync.offline", { n: pending })}</span>
-        <button type="button" onClick={() => void flushQueue()} disabled={sending} className="btn inline-flex min-h-11 items-center px-3 disabled:opacity-60">
+        <button type="button" onClick={() => void flushQueue()} disabled={sending} className={`btn inline-flex ${tapH} items-center px-3 disabled:opacity-60`}>
           {t("run.sync.retry")}
         </button>
       </div>
@@ -748,11 +752,11 @@ export function WorkoutRunner({
             aria-pressed={paused}
             aria-label={paused ? t("run.timer.resume") : t("run.timer.pause")}
             title={paused ? t("run.timer.resume") : t("run.timer.pause")}
-            className="btn grid size-12 shrink-0 place-items-center !p-0"
+            className={`btn grid ${tapSize} shrink-0 place-items-center !p-0`}
           >
             {paused ? <Play size={18} aria-hidden /> : <Pause size={18} aria-hidden />}
           </button>
-          <button type="button" onClick={openFinish} className="btn btn-primary inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap">
+          <button type="button" onClick={openFinish} className={`btn btn-primary inline-flex ${tapH} min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap`}>
             <Flag size={16} aria-hidden />{t("run.finish.button")}
           </button>
         </div>
@@ -762,7 +766,7 @@ export function WorkoutRunner({
             <div className="flex items-center justify-between gap-2">
               <span className="eyebrow">{t("run.rest.label")}</span>
               <span className="num text-xl">{clock(restLeft)}</span>
-              <button type="button" onClick={() => setRest(null)} className="btn inline-flex min-h-11 items-center gap-1.5 text-sm">
+              <button type="button" onClick={() => setRest(null)} className={`btn inline-flex ${kiosk ? "min-h-14 text-base" : "min-h-11 text-sm"} items-center gap-1.5`}>
                 <SkipForward size={14} aria-hidden />{t("run.rest.skip")}
               </button>
             </div>
@@ -819,10 +823,10 @@ export function WorkoutRunner({
 
               {isOpen && (
                 <div id={`block-${block.id}`} className="flex flex-col gap-3 border-t p-3">
-                  {block.notes && <CoachNote text={block.notes} label={t("run.note.label")} more={t("run.note.more")} less={t("run.note.less")} />}
+                  {block.notes && <CoachNote kiosk={kiosk} text={block.notes} label={t("run.note.label")} more={t("run.note.more")} less={t("run.note.less")} />}
 
                   <details className="group">
-                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm text-muted [&::-webkit-details-marker]:hidden">
+                    <summary className={`flex ${kiosk ? "min-h-14 text-base" : "min-h-11 text-sm"} cursor-pointer list-none items-center justify-between text-muted [&::-webkit-details-marker]:hidden`}>
                       {t("run.block.how")}
                       <ChevronDown size={16} aria-hidden className="transition-transform group-open:rotate-180" />
                     </summary>
@@ -889,7 +893,7 @@ export function WorkoutRunner({
                               <span className="grid size-11 shrink-0 place-items-center"><SetBadge type={type} n={n} /></span>
                             )}
                             <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-                              <p className="min-w-0 text-sm font-semibold">
+                              <p className={`min-w-0 font-semibold ${kiosk ? "text-base" : "text-sm"}`}>
                                 {setLabel}
                                 {d.extra && <span className="chip ml-2">{t("run.set.extra")}</span>}
                                 {st.queued && (
@@ -909,7 +913,7 @@ export function WorkoutRunner({
                           </div>
                           <div className="flex items-end gap-2">
                             {fields.map((f) => (
-                              <label key={f.name} className="flex min-w-0 flex-1 flex-col gap-1">
+                              <label key={f.name} className={`flex min-w-0 flex-col gap-1 ${f.name === "weight" ? "flex-[1.35]" : "flex-1"}`}>
                                 <span className="eyebrow truncate">{t(f.label)}</span>
                                 <input
                                   value={f.name === "rpe" && lockRpe ? "10" : st[f.name]}
@@ -923,7 +927,7 @@ export function WorkoutRunner({
                                   maxLength={7}
                                   aria-label={`${t(f.label)}, ${setLabel}`}
                                   aria-invalid={st.error !== null}
-                                  className={`input num min-h-12 w-full text-center text-xl ${f.name === "rpe" && lockRpe ? "opacity-70" : ""}`}
+                                  className={`input num ${tapH} w-full !px-1 text-center ${kiosk ? "text-2xl" : "text-xl"} ${f.name === "rpe" && lockRpe ? "opacity-70" : ""}`}
                                 />
                               </label>
                             ))}
@@ -934,7 +938,7 @@ export function WorkoutRunner({
                               aria-busy={st.busy}
                               aria-label={clean ? t("run.undo") : st.done ? t("run.saveChanges") : t("run.save")}
                               title={clean ? t("run.undo") : st.done ? t("run.saveChanges") : t("run.save")}
-                              className={`grid size-12 shrink-0 place-items-center rounded-full border transition-colors disabled:opacity-60 ${clean ? "" : "btn !p-0"}`}
+                              className={`grid ${tapSize} shrink-0 place-items-center rounded-full border transition-colors disabled:opacity-60 ${clean ? "" : "btn !p-0"}`}
                               style={clean ? { background: "var(--ok)", color: "var(--background)", borderColor: "transparent" } : undefined}
                             >
                               <Check size={22} aria-hidden className={clean ? "" : "text-[var(--accent)]"} />
@@ -950,7 +954,7 @@ export function WorkoutRunner({
                     <button
                       type="button"
                       onClick={() => setExtras((m) => ({ ...m, [block.id]: (m[block.id] ?? 0) + 1 }))}
-                      className="btn inline-flex min-h-12 items-center justify-center gap-2"
+                      className={`btn inline-flex ${tapH} items-center justify-center gap-2`}
                     >
                       <Plus size={16} aria-hidden className="text-[var(--accent)]" />{t("run.addRound")}
                     </button>
@@ -975,7 +979,7 @@ export function WorkoutRunner({
                     type="button"
                     onClick={() => pickType(ty)}
                     aria-pressed={current}
-                    className="btn flex min-h-12 w-full items-center gap-3 text-left"
+                    className={`btn flex ${tapH} w-full items-center gap-3 text-left`}
                     style={current ? { borderColor: "var(--accent)" } : undefined}
                   >
                     <SetBadge type={ty} n={undefined} />
@@ -985,7 +989,7 @@ export function WorkoutRunner({
               );
             })}
           </ul>
-          <button type="button" onClick={() => sheetRef.current?.close()} className="btn min-h-12">{t("common.cancel")}</button>
+          <button type="button" onClick={() => sheetRef.current?.close()} className={`btn ${tapH}`}>{t("common.cancel")}</button>
         </div>
       </dialog>
 
@@ -1001,7 +1005,7 @@ export function WorkoutRunner({
               <input
                 value={duration} onChange={(e) => setDuration(e.target.value)}
                 inputMode="numeric" autoComplete="off" required maxLength={3}
-                className="input num min-h-12 w-full text-center text-xl"
+                className={`input num ${tapH} w-full text-center text-xl`}
               />
             </label>
             <label className="flex flex-col gap-1.5">
@@ -1009,14 +1013,14 @@ export function WorkoutRunner({
               <input
                 value={rpeLog} onChange={(e) => setRpeLog(e.target.value)}
                 inputMode="numeric" autoComplete="off" required maxLength={2}
-                className="input num min-h-12 w-full text-center text-xl"
+                className={`input num ${tapH} w-full text-center text-xl`}
               />
             </label>
           </div>
           {finishError && <p role="alert" className="text-sm text-danger">{t(finishError)}</p>}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => dialogRef.current?.close()} className="btn min-h-12 sm:min-w-28">{t("common.cancel")}</button>
-            <button disabled={finishing} className="btn btn-primary inline-flex min-h-12 items-center justify-center gap-2">
+            <button type="button" onClick={() => dialogRef.current?.close()} className={`btn ${tapH} sm:min-w-28`}>{t("common.cancel")}</button>
+            <button disabled={finishing} className={`btn btn-primary inline-flex ${tapH} items-center justify-center gap-2`}>
               <Check size={18} aria-hidden />{finishing ? t("common.loading") : t("run.finish.submit")}
             </button>
           </div>

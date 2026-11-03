@@ -29,7 +29,7 @@ export function TeamNav({ teamId, isHead, pending = 0 }: { teamId: string; isHea
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-full px-2 py-1.5 text-[10px] font-medium tracking-wide transition-colors md:flex-none md:flex-row md:gap-2 md:px-4 md:py-2 md:text-sm ${
+            className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-full px-2 py-1.5 text-[11px] font-medium tracking-wide transition-colors md:flex-none md:flex-row md:gap-2 md:px-4 md:py-2 md:text-sm ${
               active
                 ? "bg-[var(--surface-3)] text-[var(--foreground)] shadow-[0_1px_0_rgb(255_255_255/0.08)_inset]"
                 : "text-muted hover:text-[var(--foreground)]"

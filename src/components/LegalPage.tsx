@@ -60,7 +60,7 @@ export async function LegalPage({ doc }: { doc: Doc }) {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pb-10">
       <header className="flex items-center justify-between py-3">
-        <Link href="/" className="inline-flex min-h-10 items-center gap-2" aria-label={t("legal.backToApp")}>
+        <Link href="/" className="inline-flex min-h-11 items-center gap-2" aria-label={t("legal.backToApp")}>
           <ChevronLeft size={20} aria-hidden className="text-[var(--accent)]" />
           <LogoMark size={24} />
           <span className="text-sm text-muted">{t("legal.backToApp")}</span>
