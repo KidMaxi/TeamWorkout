@@ -39,6 +39,10 @@ export default defineMessages(
     "staffKind.sc": "S&C-coach",
     "staffKind.basketball": "Basketbaltrainer",
     "staffKind.medical": "Medisch",
+    "error.title": "Er ging iets mis",
+    "error.body": "De pagina kon niet worden geladen. Controleer je verbinding en probeer het opnieuw.",
+    "error.retry": "Opnieuw proberen",
+    "error.home": "Naar het begin",
   },
   {
     appName: "TeamWorkout",
@@ -78,5 +82,9 @@ export default defineMessages(
     "staffKind.sc": "S&C coach",
     "staffKind.basketball": "Basketball coach",
     "staffKind.medical": "Medical",
+    "error.title": "Something went wrong",
+    "error.body": "The page could not be loaded. Check your connection and try again.",
+    "error.retry": "Try again",
+    "error.home": "Back to start",
   },
 );

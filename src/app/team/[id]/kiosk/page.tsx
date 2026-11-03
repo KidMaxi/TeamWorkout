@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CalendarX, ChevronRight, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
-import { getT } from "@/lib/i18n/server";
+import { can } from "@/lib/roles";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { dateLocale } from "@/lib/i18n";
 import { TEAM_TIME_ZONE, todayInTeamZone } from "@/lib/wellness";
 import { KioskFrame } from "@/components/KioskGrid";
@@ -14,20 +14,22 @@ const DAY = new Intl.DateTimeFormat("sv-SE", { timeZone: TEAM_TIME_ZONE });
 export default async function KioskPickPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!UUID.test(id)) notFound();
-  const { t, locale } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
   if (!user) notFound();
-  if (!can(await getStaffKind(supabase, id, user.id), "manageLibrary")) notFound();
 
   // Gym sessions with a workout, around now; "today" is decided in the team's time zone.
   const now = Date.now();
-  const { data: rows } = await supabase
-    .from("sessions").select("id, title, starts_at, workout_id")
-    .eq("team_id", id).eq("type", "gym").neq("status", "cancelled").not("workout_id", "is", null)
-    .gte("starts_at", new Date(now - 36 * 3600_000).toISOString())
-    .lte("starts_at", new Date(now + 36 * 3600_000).toISOString())
-    .order("starts_at");
+  const [me, { data: rows }] = await Promise.all([
+    getMembership(id, user.id),
+    supabase
+      .from("sessions").select("id, title, starts_at, workout_id")
+      .eq("team_id", id).eq("type", "gym").neq("status", "cancelled").not("workout_id", "is", null)
+      .gte("starts_at", new Date(now - 36 * 3600_000).toISOString())
+      .lte("starts_at", new Date(now + 36 * 3600_000).toISOString())
+      .order("starts_at"),
+  ]);
+  if (!can(me?.staffKind, "manageLibrary")) notFound();
   const today = todayInTeamZone();
   const sessions = (rows ?? []).filter((s) => DAY.format(new Date(s.starts_at as string)) === today);
 

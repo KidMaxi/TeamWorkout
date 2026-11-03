@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getT } from "@/lib/i18n/server";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { Hint } from "@/components/Hint";
 import { SessionsTabs } from "@/components/SessionsTabs";
 import { TeamCalendar, type CalAthlete, type CalSession } from "@/components/TeamCalendar";
@@ -17,29 +17,44 @@ export default async function CalendarPage({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const { t } = await getT();
   const today = localDay(new Date().toISOString());
   const view: CalendarView = isView(sp.view) ? sp.view : "week";
   const date = isYmd(sp.date) ? sp.date : today;
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
+  const [{ t }, user] = await Promise.all([getT(), getAuthUser()]);
+  const me = await getMembership(id, user!.id);
   const isStaff = me?.role === "staff";
 
   const days = view === "day" ? [date] : view === "week" ? weekDays(date) : monthGrid(date);
   const from = zonedToUtc(days[0], "00:00").toISOString();
   const to = zonedToUtc(addDays(days[days.length - 1], 1), "00:00").toISOString();
-  const { data: rows } = await supabase
-    .from("sessions")
-    .select("id, type, starts_at, planned_duration_min, planned_rpe, status, focus, location")
-    .eq("team_id", id).gte("starts_at", from).lt("starts_at", to).order("starts_at");
-  const all = rows ?? [];
 
   // Staff see every exclusion (for the athlete filter); an athlete only sees, and is only shown, what applies to them.
-  const ids = all.map((s) => s.id as string);
-  const exclQuery = ids.length ? supabase.from("session_exclusions").select("session_id, user_id").in("session_id", ids) : null;
-  const { data: excl } = exclQuery ? await (isStaff ? exclQuery : exclQuery.eq("user_id", user!.id)) : { data: [] };
+  // The exclusions are selected through their session's window, so they need not wait for the session rows.
+  const exclBase = supabase
+    .from("session_exclusions")
+    .select("session_id, user_id, sessions!inner(team_id, starts_at)")
+    .eq("sessions.team_id", id).gte("sessions.starts_at", from).lt("sessions.starts_at", to);
+  const loadAthletes = async (): Promise<CalAthlete[]> => {
+    const { data: members } = await supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete");
+    const athleteIds = (members ?? []).map((m) => m.user_id as string);
+    const { data: profiles } = athleteIds.length
+      ? await supabase.from("profiles").select("id, full_name").in("id", athleteIds)
+      : { data: [] };
+    return (profiles ?? [])
+      .map((p) => ({ id: p.id as string, name: (p.full_name as string) || "?" }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  };
+  const [{ data: rows }, { data: excl }, athletes] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("id, type, starts_at, planned_duration_min, planned_rpe, status, focus, location")
+      .eq("team_id", id).gte("starts_at", from).lt("starts_at", to).order("starts_at"),
+    isStaff ? exclBase : exclBase.eq("user_id", user!.id),
+    isStaff ? loadAthletes() : Promise.resolve([] as CalAthlete[]),
+  ]);
+  const all = rows ?? [];
   const exclusions: Record<string, string[]> = {};
   for (const e of excl ?? []) (exclusions[e.session_id as string] ??= []).push(e.user_id as string);
 
@@ -55,18 +70,6 @@ export default async function CalendarPage({
         focus: ((s.focus ?? []) as string[]).filter(isFocus), location: s.location ?? null,
       };
     });
-
-  let athletes: CalAthlete[] = [];
-  if (isStaff) {
-    const { data: members } = await supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete");
-    const athleteIds = (members ?? []).map((m) => m.user_id as string);
-    const { data: profiles } = athleteIds.length
-      ? await supabase.from("profiles").select("id, full_name").in("id", athleteIds)
-      : { data: [] };
-    athletes = (profiles ?? [])
-      .map((p) => ({ id: p.id as string, name: (p.full_name as string) || "?" }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }
 
   return (
     <section className="stagger flex flex-col gap-4">

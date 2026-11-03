@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ClipboardX, Users, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
-import { getT } from "@/lib/i18n/server";
+import { can } from "@/lib/roles";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { dateLocale } from "@/lib/i18n";
 import type { ExerciseKind } from "@/lib/exercises";
 import {
@@ -39,28 +39,47 @@ function Calm({ icon: Icon, title, body }: { icon: typeof ClipboardX; title: str
 export default async function ReviewPage({ params }: { params: Promise<{ id: string; sessionId: string }> }) {
   const { id, sessionId } = await params;
   if (!UUID.test(id) || !UUID.test(sessionId)) notFound();
-  const { t, locale } = await getT();
-  const loc = dateLocale(locale);
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
+  const loc = dateLocale(locale);
   if (!user) notFound();
 
-  if (!can(await getStaffKind(supabase, id, user.id), "manageLibrary")) notFound();
-
-  const { data: session } = await supabase
-    .from("sessions").select("id, type, title, starts_at, workout_id").eq("id", sessionId).eq("team_id", id).neq("status", "cancelled").maybeSingle();
+  // Stage 1: the access check, the session and everything keyed by the session alone.
+  const [me, { data: session }, { data: memberRows }, { data: exclusionRows }, { data: allRuns }, { data: allLogs }] = await Promise.all([
+    getMembership(id, user.id),
+    supabase
+      .from("sessions").select("id, type, title, starts_at, workout_id").eq("id", sessionId).eq("team_id", id).neq("status", "cancelled").maybeSingle(),
+    supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete"),
+    supabase.from("session_exclusions").select("user_id").eq("session_id", sessionId),
+    supabase.from("workout_runs").select("id, session_id, user_id, started_at, finished_at, active_seconds, logged_via, logged_by")
+      .eq("session_id", sessionId),
+    supabase.from("session_logs").select("session_id, user_id, attended, duration_min, rpe, load").eq("session_id", sessionId),
+  ]);
+  if (!can(me?.staffKind, "manageLibrary")) notFound();
   if (!session || session.type !== "gym") notFound();
 
   const sessionsHref = `/team/${id}/sessions`;
-  const [{ data: workout }, { data: blockRows }, { data: memberRows }, { data: exclusionRows }] = await Promise.all([
+  const athleteIds = (memberRows ?? []).map((m) => m.user_id as string);
+  const athleteSet = new Set(athleteIds);
+  const runs = (allRuns ?? []).filter((r) => athleteSet.has(r.user_id as string));
+  const logs = (allLogs ?? []).filter((l) => athleteSet.has(l.user_id as string));
+  const runIds = runs.map((r) => r.id as string);
+
+  // Stage 2: the plan (blocks with their sets and exercises embedded), the names and the logged sets.
+  const [{ data: workout }, { data: blockRows }, { data: profiles }, { data: runSetRows }] = await Promise.all([
     session.workout_id
-      ? supabase.from("workouts").select("*").eq("id", session.workout_id).maybeSingle()
+      ? supabase.from("workouts").select("name").eq("id", session.workout_id).maybeSingle()
       : Promise.resolve({ data: null }),
     session.workout_id
-      ? supabase.from("workout_blocks").select("id, position, exercise_id, notes").eq("workout_id", session.workout_id).order("position")
+      ? supabase.from("workout_blocks")
+          .select("id, position, exercise_id, notes, workout_sets(id, position, reps, target_rpe, fixed_weight_kg, rest_seconds, set_type), exercises(id, name, kind, per_side)")
+          .eq("workout_id", session.workout_id).order("position")
       : Promise.resolve({ data: [] }),
-    supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete"),
-    supabase.from("session_exclusions").select("user_id").eq("session_id", sessionId),
+    athleteIds.length ? supabase.from("profiles").select("id, full_name").in("id", athleteIds) : Promise.resolve({ data: [] }),
+    runIds.length
+      ? supabase.from("run_sets")
+          .select("id, run_id, exercise_id, set_index, side, weight_kg, reps, rpe, set_type").in("run_id", runIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const w = (workout ?? {}) as { name?: string | null; title?: string | null };
@@ -81,7 +100,10 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
     </header>
   );
 
-  const blocksRaw = blockRows ?? [];
+  type EmbSet = { id: string; position: number; reps: number | null; target_rpe: number | null; fixed_weight_kg: number | null; set_type: string };
+  type EmbEx = { id: string; name: string; kind: string; per_side: boolean | null };
+  type EmbBlock = { id: string; position: number; exercise_id: string; workout_sets: EmbSet[] | null; exercises: EmbEx | EmbEx[] | null };
+  const blocksRaw = [...((blockRows ?? []) as unknown as EmbBlock[])].sort((a, b) => a.position - b.position);
   if (!workout || !blocksRaw.length) {
     return (
       <div className="stagger flex flex-col gap-4">
@@ -91,7 +113,6 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const athleteIds = (memberRows ?? []).map((m) => m.user_id as string);
   if (!athleteIds.length) {
     return (
       <div className="stagger flex flex-col gap-4">
@@ -101,26 +122,6 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const exerciseIds = [...new Set(blocksRaw.map((b) => b.exercise_id as string))];
-  const blockIds = blocksRaw.map((b) => b.id as string);
-  const [{ data: setRows }, { data: exerciseRows }, { data: profiles }, { data: runs }, { data: logs }] = await Promise.all([
-    supabase.from("workout_sets").select("id, block_id, position, reps, target_rpe, fixed_weight_kg, rest_seconds, set_type")
-      .in("block_id", blockIds).order("position"),
-    supabase.from("exercises").select("id, name, kind, per_side").in("id", exerciseIds),
-    supabase.from("profiles").select("id, full_name").in("id", athleteIds),
-    supabase.from("workout_runs").select("id, session_id, user_id, started_at, finished_at, active_seconds, logged_via, logged_by")
-      .eq("session_id", sessionId).in("user_id", athleteIds),
-    supabase.from("session_logs").select("session_id, user_id, attended, duration_min, rpe, load")
-      .eq("session_id", sessionId).in("user_id", athleteIds),
-  ]);
-
-  const runIds = (runs ?? []).map((r) => r.id as string);
-  const { data: runSetRows } = runIds.length
-    ? await supabase.from("run_sets")
-        .select("id, run_id, exercise_id, set_index, side, weight_kg, reps, rpe, set_type").in("run_id", runIds)
-    : { data: [] };
-
-  const exercise = new Map((exerciseRows ?? []).map((e) => [e.id as string, e]));
   const name = new Map((profiles ?? []).map((p) => [p.id as string, (p.full_name as string | null) ?? ""]));
   const runOf = new Map((runs ?? []).map((r) => [r.user_id as string, r]));
   const logOf = new Map((logs ?? []).map((l) => [l.user_id as string, l]));
@@ -141,10 +142,10 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
   const planned = new Map<string, number>();
   const plan: PlanBlock[] = [];
   for (const b of blocksRaw) {
-    const ex = exercise.get(b.exercise_id as string);
+    const ex = Array.isArray(b.exercises) ? b.exercises[0] : b.exercises;
     if (!ex) continue;
-    const sets: PlanSet[] = (setRows ?? [])
-      .filter((s) => s.block_id === b.id)
+    const sets: PlanSet[] = [...(b.workout_sets ?? [])]
+      .sort((x, y) => x.position - y.position)
       .map((s) => ({
         id: s.id as string,
         type: asSetType(s.set_type),

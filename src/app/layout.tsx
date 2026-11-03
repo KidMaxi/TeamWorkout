@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RegisterSW } from "./register-sw";
 import { I18nProvider } from "@/lib/i18n/client";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale } from "@/lib/auth-cache";
 import { LEGAL } from "@/lib/legal";
 
 const geistSans = Geist({
@@ -19,9 +19,11 @@ const syne = Syne({
   weight: ["600", "700", "800"],
 });
 
+// Only used for invite codes on the members page: do not preload it on every page, fetch it when first used.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 export const metadata: Metadata = {

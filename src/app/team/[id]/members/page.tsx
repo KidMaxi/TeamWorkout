@@ -2,17 +2,17 @@ import Link from "next/link";
 import { Check, ChevronRight, CircleHelp, Gauge, KeyRound, Lock, MessageSquare, Plus, Shield, ShieldCheck, Users, X } from "lucide-react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import type { Availability } from "@/lib/load";
 import { AvailabilityIcon } from "@/components/icons";
 import { Avatar } from "@/components/Avatar";
-import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, ROLE_KEY, dateLocale } from "@/lib/i18n";
 import { createInvite, deleteInvite, removeMember, updateMember } from "@/app/actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { ParentConsentForm } from "@/components/ConsentCard";
 import { withdrawParentConsent } from "@/app/consent-actions";
 import { StaffKindSelect } from "@/components/StaffKindSelect";
-import { STAFF_KINDS, can, getStaffKind, isStaffKind, type Capability, type StaffKind } from "@/lib/roles";
+import { STAFF_KINDS, can, isStaffKind, type Capability, type StaffKind } from "@/lib/roles";
 
 function ageOf(birth: string | null | undefined): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(birth ?? "");
@@ -31,13 +31,11 @@ const MATRIX_ROWS: Capability[] = [
 
 export default async function MembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t, locale } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
+  const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
+  const me = await getMembership(id, user!.id);
   if (me?.role !== "staff") notFound();
-  const myKind = (await getStaffKind(supabase, id, user!.id)) as StaffKind;
+  const myKind = me.staffKind as StaffKind;
   const isHead = can(myKind, "manageMembers");
   const mayAvail = can(myKind, "setAvailability");
   const mayLimit = can(myKind, "planRules");
@@ -45,11 +43,14 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
 
   const [{ data: members }, { data: profiles }, { data: avail }, { data: limits }, { data: invites }] =
     await Promise.all([
-      supabase.from("team_members").select("*").eq("team_id", id).order("joined_at"),
+      supabase.from("team_members").select("user_id, role, staff_kind, consent_given, consent_at, consent_by, consent_note").eq("team_id", id).order("joined_at"),
       supabase.from("profiles").select("id, full_name, birth_date"),
-      supabase.from("availability").select("*").eq("team_id", id),
-      supabase.from("athlete_limits").select("*").eq("team_id", id),
-      supabase.from("team_invites").select("*").eq("team_id", id).gt("expires_at", new Date().toISOString()),
+      supabase.from("availability").select("user_id, status, note").eq("team_id", id),
+      supabase.from("athlete_limits").select("user_id, max_weekly_load").eq("team_id", id),
+      // Invite codes are only listed for the head coach.
+      isHead
+        ? supabase.from("team_invites").select("code, role, staff_kind, expires_at").eq("team_id", id).gt("expires_at", new Date().toISOString())
+        : Promise.resolve({ data: null }),
     ]);
   const name = new Map(profiles?.map((p) => [p.id, p]));
   const av = new Map(avail?.map((a) => [a.user_id, a]));

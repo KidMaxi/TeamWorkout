@@ -3,7 +3,7 @@ import {
   Activity, Bell, CalendarDays, CalendarPlus, ChevronLeft, ClipboardCheck, Dumbbell, Gauge, HeartPulse, Info,
   ClipboardList, LineChart, Lock, Percent, ShieldAlert, SmilePlus, Tablet, Users, type LucideIcon,
 } from "lucide-react";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@/lib/auth-cache";
 import { LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import type { MessageKey } from "@/lib/i18n";

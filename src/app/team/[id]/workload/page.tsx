@@ -2,13 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getT } from "@/lib/i18n/server";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { Hint } from "@/components/Hint";
 import { dateLocale, SESSION_TYPE_KEY } from "@/lib/i18n";
 import { WorkloadTabs } from "@/components/WorkloadTabs";
 import { WorkloadBoard, type BoardAthlete, type BoardSession, type BoardNote, type BoardWarning } from "@/components/WorkloadBoard";
 import { WeekRulesForm, WorkloadSettingsForm, type RulesValues } from "@/components/WeekRulesForm";
-import { can, getStaffKind } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import {
   baselineDeviation, buildDays, dayWarnings, planVsActual, settingsFromRow, topContributors,
   type ActualLog, type DaySession, type SessionStatus,
@@ -58,10 +58,9 @@ export default async function WorkloadPage({
 }) {
   const { id } = await params;
   const { week: weekParam } = await searchParams;
-  const { t, locale } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const kind = await getStaffKind(supabase, id, user!.id);
+  const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
+  const kind = (await getMembership(id, user!.id))?.staffKind ?? null;
   if (!kind) notFound();
   const canRules = can(kind, "planRules");
   const canNotes = can(kind, "writeNotes");
@@ -77,12 +76,9 @@ export default async function WorkloadPage({
   const toIso = new Date(Date.parse(`${addDays(monday, 8)}T00:00:00Z`)).toISOString();
   const wellnessFrom = addDays(today, -28);
 
-  const settingsRes = await supabase.from("team_workload_settings").select("*").eq("team_id", id).maybeSingle();
-  if (settingsRes.error) throw new Error(settingsRes.error.message);
-  const settings = settingsFromRow(settingsRes.data as Record<string, unknown> | null);
-  const logsFromIso = new Date(Date.parse(`${addDays(monday, -7 * settings.baselineWeeks - 1)}T00:00:00Z`)).toISOString();
-
-  const [membersRes, sessionsRes, rulesRes, notesRes, logsRes] = await Promise.all([
+  // Stage 1: everything that does not depend on the settings. Stage 2 (below) needs the baseline length and the roster.
+  const [settingsRes, membersRes, sessionsRes, rulesRes, notesRes] = await Promise.all([
+    supabase.from("team_workload_settings").select("*").eq("team_id", id).maybeSingle(),
     supabase.from("team_members").select("user_id, consent_given").eq("team_id", id).eq("role", "athlete"),
     // Cancelled sessions count nothing and are not listed.
     supabase.from("sessions").select("id, type, title, starts_at, planned_duration_min, planned_rpe, status").eq("team_id", id)
@@ -90,24 +86,22 @@ export default async function WorkloadPage({
     supabase.from("week_rules").select("user_id, max_trainings, max_gym, max_matches, min_rest_days").eq("team_id", id),
     supabase.from("workload_notes").select("id, user_id, session_id, day, reason, note, created_by, created_at")
       .eq("team_id", id).order("created_at", { ascending: false }).limit(300),
+  ]);
+  if (settingsRes.error) throw new Error(settingsRes.error.message);
+  const settings = settingsFromRow(settingsRes.data as Record<string, unknown> | null);
+  const logsFromIso = new Date(Date.parse(`${addDays(monday, -7 * settings.baselineWeeks - 1)}T00:00:00Z`)).toISOString();
+
+  const members = membersRes.data ?? [];
+  const athleteIds = members.map((m) => m.user_id as string);
+  const consentIds = members.filter((m) => m.consent_given).map((m) => m.user_id as string);
+  const sessionIds = (sessionsRes.data ?? []).filter((s) => daySet.has(localDay(s.starts_at as string))).map((s) => s.id as string);
+  const profileIds = [...new Set([...athleteIds, ...(notesRes.data ?? []).map((n) => n.created_by as string | null).filter((x): x is string => !!x)])];
+  const [logsRes, profilesRes, exclRes, wellnessRes] = await Promise.all([
     // Actual load: this week plus the weeks before it (for the athlete's own average).
     supabase.from("session_logs")
       .select("user_id, session_id, attended, duration_min, rpe, load, sessions!inner(starts_at, status, team_id)")
       .eq("sessions.team_id", id).neq("sessions.status", "cancelled")
       .gte("sessions.starts_at", logsFromIso).lt("sessions.starts_at", toIso).limit(5000),
-  ]);
-  const dbErr = membersRes.error ?? sessionsRes.error ?? rulesRes.error ?? notesRes.error ?? logsRes.error;
-  if (dbErr) throw new Error(dbErr.message);
-
-  const members = membersRes.data ?? [];
-  const athleteIds = members.map((m) => m.user_id as string);
-  const consentIds = members.filter((m) => m.consent_given).map((m) => m.user_id as string);
-  const weekSessions = (sessionsRes.data ?? []).filter((s) => daySet.has(localDay(s.starts_at as string)));
-  const sessionIds = weekSessions.map((s) => s.id as string);
-
-  const noteRows = notesRes.data ?? [];
-  const profileIds = [...new Set([...athleteIds, ...noteRows.map((n) => n.created_by as string | null).filter((x): x is string => !!x)])];
-  const [profilesRes, exclRes, wellnessRes] = await Promise.all([
     profileIds.length
       ? supabase.from("profiles").select("id, full_name").in("id", profileIds)
       : Promise.resolve({ data: [], error: null }),
@@ -120,8 +114,12 @@ export default async function WorkloadPage({
           .in("user_id", consentIds).gte("day", wellnessFrom).order("day", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
   ]);
-  const dbErr2 = profilesRes.error ?? exclRes.error ?? wellnessRes.error;
-  if (dbErr2) throw new Error(dbErr2.message);
+  const dbErr = membersRes.error ?? sessionsRes.error ?? rulesRes.error ?? notesRes.error ?? logsRes.error
+    ?? profilesRes.error ?? exclRes.error ?? wellnessRes.error;
+  if (dbErr) throw new Error(dbErr.message);
+
+  const weekSessions = (sessionsRes.data ?? []).filter((s) => daySet.has(localDay(s.starts_at as string)));
+  const noteRows = notesRes.data ?? [];
 
   const names = new Map((profilesRes.data ?? []).map((p) => [p.id as string, (p.full_name as string) || ""]));
   const consent = new Set(consentIds);

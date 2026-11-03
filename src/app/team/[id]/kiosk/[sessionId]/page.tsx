@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
-import { getT } from "@/lib/i18n/server";
+import { can } from "@/lib/roles";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { KioskFrame, KioskGrid, type KioskAthlete } from "@/components/KioskGrid";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -11,15 +11,22 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function KioskGridPage({ params }: { params: Promise<{ id: string; sessionId: string }> }) {
   const { id, sessionId } = await params;
   if (!UUID.test(id) || !UUID.test(sessionId)) notFound();
-  const { t } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ t }, user] = await Promise.all([getT(), getAuthUser()]);
   if (!user) notFound();
-  if (!can(await getStaffKind(supabase, id, user.id), "manageLibrary")) notFound();
 
   const exitHref = `/team/${id}/sessions`;
-  const { data: session } = await supabase
-    .from("sessions").select("id, type, title, workout_id").eq("id", sessionId).eq("team_id", id).neq("status", "cancelled").maybeSingle();
+  // Checks and every lookup that does not depend on the session's workout, in one round trip.
+  const [me, { data: session }, { data: members }, { data: excl }, { data: runs }, { data: locks }] = await Promise.all([
+    getMembership(id, user.id),
+    supabase.from("sessions").select("id, type, title, workout_id").eq("id", sessionId).eq("team_id", id).neq("status", "cancelled").maybeSingle(),
+    supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete"),
+    supabase.from("session_exclusions").select("user_id").eq("session_id", sessionId),
+    supabase.from("workout_runs").select("user_id, finished_at").eq("session_id", sessionId),
+    // Display only: the iPad shows a hint, the release control lives in team settings.
+    supabase.rpc("kiosk_locked_users", { _team: id }),
+  ]);
+  if (!can(me?.staffKind, "manageLibrary")) notFound();
   if (!session) notFound();
   if (session.type !== "gym" || !session.workout_id) {
     return (
@@ -36,19 +43,12 @@ export default async function KioskGridPage({ params }: { params: Promise<{ id: 
     );
   }
 
-  const [{ data: members }, { data: excl }, { data: runs }, { data: workout }, { data: locks }] = await Promise.all([
-    supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete"),
-    supabase.from("session_exclusions").select("user_id").eq("session_id", sessionId),
-    supabase.from("workout_runs").select("user_id, finished_at").eq("session_id", sessionId),
-    supabase.from("workouts").select("*").eq("id", session.workout_id).maybeSingle(),
-    // Display only: the iPad shows a hint, the release control lives in team settings.
-    supabase.rpc("kiosk_locked_users", { _team: id }),
+  const ids = (members ?? []).map((m) => m.user_id as string);
+  const [{ data: workout }, { data: profiles }] = await Promise.all([
+    supabase.from("workouts").select("name").eq("id", session.workout_id).maybeSingle(),
+    ids.length ? supabase.from("profiles").select("id, full_name").in("id", ids) : Promise.resolve({ data: [] }),
   ]);
   const lockedIds = new Set(((locks ?? []) as { user_id: string }[]).map((l) => l.user_id));
-  const ids = (members ?? []).map((m) => m.user_id as string);
-  const { data: profiles } = ids.length
-    ? await supabase.from("profiles").select("id, full_name").in("id", ids)
-    : { data: [] };
   const names = new Map((profiles ?? []).map((p) => [p.id as string, (p.full_name as string | null)?.trim() || ""]));
   const excluded = new Set((excl ?? []).map((e) => e.user_id as string));
   const runOf = new Map((runs ?? []).map((r) => [r.user_id as string, r]));

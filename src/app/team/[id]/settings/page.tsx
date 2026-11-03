@@ -1,49 +1,51 @@
 import { notFound } from "next/navigation";
 import { Info, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getT } from "@/lib/i18n/server";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { dateLocale } from "@/lib/i18n";
 import { TEAM_TIME_ZONE } from "@/lib/wellness";
 import { deleteTeam, removeMember } from "@/app/actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { can, getStaffKind } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { KioskSettings, type KioskAthlete } from "@/components/KioskSettings";
 
 export default async function TeamSettings({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t, locale } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: team } = await supabase.from("teams").select("name, created_by, kiosk_pin_required").eq("id", id).single();
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
+  const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
+  const [{ data: team }, me] = await Promise.all([
+    supabase.from("teams").select("name, created_by, kiosk_pin_required").eq("id", id).single(),
+    getMembership(id, user!.id),
+  ]);
   if (!team || !me) notFound();
-  const kind = me.role === "staff" ? await getStaffKind(supabase, id, user!.id) : null;
+  const kind = me.staffKind;
   const isHead = can(kind, "manageTeam");
   const canKiosk = can(kind, "manageLibrary");
   const canDelete = isHead && (team.created_by === user!.id || team.created_by === null);
 
   let athletes: KioskAthlete[] = [];
   if (canKiosk) {
-    const { data: rows } = await supabase
-      .from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete").order("joined_at");
+    const [{ data: rows }, { data: locks }] = await Promise.all([
+      supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete").order("joined_at"),
+      // PIN locks (5 wrong tries) that a coach may release; only still-active locks are returned.
+      supabase.rpc("kiosk_locked_users", { _team: id }),
+    ]);
     const ids = (rows ?? []).map((r) => r.user_id as string);
-    const { data: profs } = ids.length
-      ? await supabase.from("profiles").select("id, full_name").in("id", ids)
-      : { data: [] as { id: string; full_name: string | null }[] };
-    const names = new Map((profs ?? []).map((p) => [p.id, p.full_name]));
-    // PIN locks (5 wrong tries) that a coach may release; only still-active locks are returned.
-    const { data: locks } = await supabase.rpc("kiosk_locked_users", { _team: id });
+    // Names and per-athlete PIN flags are independent of each other: fetch them together.
+    const [profsRes, pinRes] = await Promise.all([
+      ids.length
+        ? supabase.from("profiles").select("id, full_name").in("id", ids)
+        : Promise.resolve({ data: [] as { id: string; full_name: string | null }[] }),
+      Promise.all(ids.map((uid) => supabase.rpc("has_athlete_pin", { _user: uid }))),
+    ]);
+    const names = new Map((profsRes.data ?? []).map((p) => [p.id, p.full_name]));
     const clock = new Intl.DateTimeFormat(dateLocale(locale), { timeZone: TEAM_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
     const lockedUntil = new Map(
       ((locks ?? []) as { user_id: string; locked_until: string }[]).map((l) => [l.user_id, clock.format(new Date(l.locked_until))]),
     );
-    athletes = await Promise.all(
-      ids.map(async (uid) => {
-        const { data } = await supabase.rpc("has_athlete_pin", { _user: uid });
-        return { userId: uid, name: names.get(uid) || t("members.unnamed"), hasPin: data === true, lockedUntil: lockedUntil.get(uid) ?? null };
-      }),
-    );
+    athletes = ids.map((uid, i) => ({
+      userId: uid, name: names.get(uid) || t("members.unnamed"), hasPin: pinRes[i].data === true, lockedUntil: lockedUntil.get(uid) ?? null,
+    }));
     athletes.sort((a, b) => a.name.localeCompare(b.name));
   }
 

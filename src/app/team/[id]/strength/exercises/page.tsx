@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
-import { getT } from "@/lib/i18n/server";
+import { can } from "@/lib/roles";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { Hint } from "@/components/Hint";
 import { StrengthTabs } from "@/components/StrengthTabs";
 import { ExerciseLibrary } from "@/components/ExerciseLibrary";
@@ -9,21 +9,21 @@ import type { ExerciseRow } from "@/lib/exercises";
 
 export default async function ExercisesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ t }, user] = await Promise.all([getT(), getAuthUser()]);
   if (!user) notFound();
 
-  const [{ data: team }, { data: me }] = await Promise.all([
+  const [{ data: team }, me] = await Promise.all([
     supabase.from("teams").select("club_id").eq("id", id).single(),
-    supabase.from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).single(),
+    getMembership(id, user.id),
   ]);
   if (!team?.club_id || !me) notFound();
   // "isStaff" here means: may edit the library (S&C or head).
-  const isStaff = me.role === "staff" && can(await getStaffKind(supabase, id, user.id), "manageLibrary");
+  const isStaff = me.role === "staff" && can(me.staffKind, "manageLibrary");
 
   const { data } = await supabase
-    .from("exercises").select("*")
+    .from("exercises")
+    .select("id, club_id, name, instructions, equipment, primary_muscle, other_muscles, kind, per_side, track_pr, track_5rm, media_kind, media_url, archived_at")
     .eq("club_id", team.club_id).is("archived_at", null).order("name");
 
   return (

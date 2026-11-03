@@ -3,7 +3,7 @@ import { Check, ChevronDown, ClipboardList, Clock, Flame, Gauge, MapPin, Message
 import { createClient } from "@/lib/supabase/server";
 import type { SessionType } from "@/lib/load";
 import { SessionTypeIcon } from "@/components/icons";
-import { getT } from "@/lib/i18n/server";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { SESSION_TYPE_KEY, dateLocale } from "@/lib/i18n";
 import { deleteMyLog, logSession } from "@/app/actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -12,7 +12,7 @@ import { RpePicker } from "@/components/RpePicker";
 import { SessionsTabs } from "@/components/SessionsTabs";
 import { PlanSessionCard, SessionManage } from "@/components/SessionPlanner";
 import { SESSION_TYPE_LIST } from "@/lib/load";
-import { canPlanType, getStaffKind } from "@/lib/roles";
+import { canPlanType } from "@/lib/roles";
 import { TIME_ZONE, isFocus, isStatus, localDay, localTime, type SessionStatus } from "@/lib/session-plan";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -22,46 +22,46 @@ const label = "eyebrow flex items-center gap-1.5";
 
 export default async function SessionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t, locale } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
+  const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
+  const [me, { data: team }, { data: sessions }] = await Promise.all([
+    getMembership(id, user!.id),
+    supabase.from("teams").select("club_id").eq("id", id).single(),
+    supabase
+      .from("sessions")
+      .select("id, type, title, starts_at, planned_duration_min, planned_rpe, status, focus, location, coach_note, series_id, updated_at, updated_by, workout_id")
+      .eq("team_id", id).order("starts_at", { ascending: false }).limit(60),
+  ]);
   const isStaff = me?.role === "staff";
-  const kind = await getStaffKind(supabase, id, user!.id);
+  const kind = me?.staffKind ?? null;
   const allowedTypes = SESSION_TYPE_LIST.filter((ty) => canPlanType(kind, ty));
   const canPlan = allowedTypes.length > 0;
   const today = localDay(new Date().toISOString());
-
-  const { data: team } = await supabase.from("teams").select("club_id").eq("id", id).single();
-  const { data: sessions } = await supabase
-    .from("sessions").select("*").eq("team_id", id).order("starts_at", { ascending: false }).limit(60);
-  const { data: logs } = await supabase
-    .from("session_logs").select("*").eq("user_id", user!.id)
-    .in("session_id", (sessions ?? []).map((s) => s.id));
-  const logBySession = new Map(logs?.map((l) => [l.session_id, l]));
-
-  // Club workouts: the plan form picks from them, gym session cards show the linked one.
-  const { data: workouts } = team?.club_id
-    ? await supabase.from("workouts").select("id, name").eq("club_id", team.club_id).is("archived_at", null).order("name")
-    : { data: [] };
-  const linkedIds = [...new Set((sessions ?? []).map((s) => s.workout_id as string | null).filter((v): v is string => !!v))];
-  const { data: linked } = linkedIds.length
-    ? await supabase.from("workouts").select("id, name").in("id", linkedIds)
-    : { data: [] };
-  const workoutName = new Map((linked ?? []).map((w) => [w.id as string, w.name as string]));
-
-  // Athletes who are excluded from a session do not get a start link.
   const isAthlete = me?.role === "athlete";
-  const { data: excl } = isAthlete && (sessions ?? []).length
-    ? await supabase.from("session_exclusions").select("session_id").eq("user_id", user!.id)
-        .in("session_id", (sessions ?? []).map((s) => s.id))
-    : { data: [] };
-  const excluded = new Set((excl ?? []).map((e) => e.session_id as string));
+
+  const sessionIds = (sessions ?? []).map((s) => s.id as string);
+  const linkedIds = [...new Set((sessions ?? []).map((s) => s.workout_id as string | null).filter((v): v is string => !!v))];
   const adjusterIds = [...new Set((sessions ?? []).filter((s) => s.status === "adjusted" && s.updated_by).map((s) => s.updated_by as string))];
-  const { data: adjusters } = adjusterIds.length
-    ? await supabase.from("profiles").select("id, full_name").in("id", adjusterIds)
-    : { data: [] };
+  // Everything below only needs the session list, so it is fetched in one round trip.
+  const none = Promise.resolve({ data: [] as never[] });
+  const [{ data: logs }, { data: workouts }, { data: linked }, { data: excl }, { data: adjusters }] = await Promise.all([
+    sessionIds.length
+      ? supabase.from("session_logs").select("session_id, attended, load, duration_min, rpe, note").eq("user_id", user!.id).in("session_id", sessionIds)
+      : none,
+    // Club workouts: the plan form picks from them, gym session cards show the linked one. Only planners see the form.
+    canPlan && team?.club_id
+      ? supabase.from("workouts").select("id, name").eq("club_id", team.club_id).is("archived_at", null).order("name")
+      : none,
+    linkedIds.length ? supabase.from("workouts").select("id, name").in("id", linkedIds) : none,
+    // Athletes who are excluded from a session do not get a start link.
+    isAthlete && sessionIds.length
+      ? supabase.from("session_exclusions").select("session_id").eq("user_id", user!.id).in("session_id", sessionIds)
+      : none,
+    adjusterIds.length ? supabase.from("profiles").select("id, full_name").in("id", adjusterIds) : none,
+  ]);
+  const logBySession = new Map((logs ?? []).map((l) => [l.session_id, l]));
+  const workoutName = new Map((linked ?? []).map((w) => [w.id as string, w.name as string]));
+  const excluded = new Set((excl ?? []).map((e) => e.session_id as string));
   const adjusterName = new Map((adjusters ?? []).map((p) => [p.id as string, (p.full_name as string) || ""]));
   const now = Date.now();
   const loc = dateLocale(locale);

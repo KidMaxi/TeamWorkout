@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser, getMembership } from "@/lib/auth-cache";
 import { AthleteDetail } from "@/components/AthleteDetail";
 import { athleteLevel, type Availability, type LoadRow, type SessionType } from "@/lib/load";
 import { wellnessAverage, type WellnessEntry } from "@/lib/wellness";
@@ -11,10 +12,7 @@ const WEEKS = 12;
 export default async function AthleteDetailPage({ params }: { params: Promise<{ id: string; userId: string }> }) {
   const { id, userId } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
-  if (me?.role !== "staff") notFound();
+  const user = await getAuthUser();
 
   const now = Date.now();
   const startOfWeek = (t: number) => {
@@ -25,11 +23,11 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
   const firstWeekStart = thisWeekStart - (WEEKS - 1) * 7 * DAY;
   const fromDay = new Date(now - 14 * DAY).toISOString().slice(0, 10);
 
-  const { data: member } = await supabase
-    .from("team_members").select("role, consent_given").eq("team_id", id).eq("user_id", userId).maybeSingle();
-  if (!member || member.role !== "athlete") notFound();
-
-  const [settingsRes, profileRes, availRes, limitRes, logsRes, sessionsRes, wellnessRes, exclRes] = await Promise.all([
+  // One round trip: the viewer's membership, the athlete's membership and every data query. The data is only used once both
+  // checks pass (and wellness only with consent), so nothing is shown that the old sequential version would not have shown.
+  const [me, memberRes, settingsRes, profileRes, availRes, limitRes, logsRes, sessionsRes, wellnessAll, exclRes] = await Promise.all([
+    getMembership(id, user!.id),
+    supabase.from("team_members").select("role, consent_given").eq("team_id", id).eq("user_id", userId).maybeSingle(),
     supabase.from("team_workload_settings").select("*").eq("team_id", id).maybeSingle(),
     supabase.from("profiles").select("full_name, birth_date, height_cm, weight_kg").eq("id", userId).maybeSingle(),
     supabase.from("availability").select("status, note").eq("team_id", id).eq("user_id", userId).maybeSingle(),
@@ -48,14 +46,17 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
       .neq("status", "cancelled")
       .gte("starts_at", new Date(now - 15 * DAY).toISOString())
       .lte("starts_at", new Date(now).toISOString()),
-    member.consent_given
-      ? supabase.from("wellness_checks").select("day, sleep, soreness, fatigue, stress, mood, pain, pain_location")
-          .eq("user_id", userId).gte("day", fromDay).order("day", { ascending: false })
-      : Promise.resolve({ data: [], error: null }),
-    // Sessions the coach took this athlete out of (rest): no RPE is owed for them.
-    supabase.from("session_exclusions").select("session_id").eq("user_id", userId),
+    supabase.from("wellness_checks").select("day, sleep, soreness, fatigue, stress, mood, pain, pain_location")
+      .eq("user_id", userId).gte("day", fromDay).order("day", { ascending: false }),
+    // Sessions the coach took this athlete out of (rest): no RPE is owed for them. Only the last 15 days of this team matter.
+    supabase.from("session_exclusions").select("session_id, sessions!inner(team_id, starts_at)")
+      .eq("user_id", userId).eq("sessions.team_id", id).gte("sessions.starts_at", new Date(now - 15 * DAY).toISOString()),
   ]);
-  const dbErr = settingsRes.error ?? profileRes.error ?? availRes.error ?? limitRes.error ?? logsRes.error ?? sessionsRes.error ?? wellnessRes.error ?? exclRes.error;
+  if (me?.role !== "staff") notFound();
+  const member = memberRes.data;
+  if (!member || member.role !== "athlete") notFound();
+  const wellnessRes = member.consent_given ? wellnessAll : { data: [], error: null };
+  const dbErr = memberRes.error ?? settingsRes.error ?? profileRes.error ?? availRes.error ?? limitRes.error ?? logsRes.error ?? sessionsRes.error ?? wellnessRes.error ?? exclRes.error;
   if (dbErr) throw new Error(dbErr.message);
 
   type Joined = { title: string | null; type: SessionType; starts_at: string };

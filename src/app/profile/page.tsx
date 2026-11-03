@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getT } from "@/lib/i18n/server";
+import { getAuthUser, getT } from "@/lib/auth-cache";
 import { dateLocale } from "@/lib/i18n";
 import { ConsentCard } from "@/components/ConsentCard";
 import { LogoMark } from "@/components/Logo";
@@ -19,27 +19,26 @@ function ageOf(birth: string): number | null {
 }
 
 export default async function ProfilePage() {
-  const { t, locale } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
   if (!user) redirect("/login");
-  const { data: p } = await supabase
-    .from("profiles")
-    .select("full_name, birth_date, height_cm, weight_kg, notify_reminders")
-    .eq("id", user.id)
-    .single();
-
-  const { count: subCount } = await supabase
-    .from("push_subscriptions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
-
-  const { data: athleteRows } = await supabase
-    .from("team_members")
-    .select("team_id, consent_given, consent_at, consent_by, teams(name)")
-    .eq("user_id", user.id)
-    .eq("role", "athlete")
-    .order("joined_at");
+  const [{ data: p }, { count: subCount }, { data: athleteRows }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("full_name, birth_date, height_cm, weight_kg, notify_reminders")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id),
+    supabase
+      .from("team_members")
+      .select("team_id, consent_given, consent_at, consent_by, teams(name)")
+      .eq("user_id", user.id)
+      .eq("role", "athlete")
+      .order("joined_at"),
+  ]);
   let hasPin = false;
   if (athleteRows?.length) {
     const { data } = await supabase.rpc("has_athlete_pin", { _user: user.id });

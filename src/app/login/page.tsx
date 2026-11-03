@@ -3,13 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Mail, Lock, User, LogIn, UserPlus } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 import { Dial } from "@/components/Dial";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { TERMS_VERSION } from "@/lib/legal";
 import { useT } from "@/lib/i18n/client";
+
+// The Supabase browser client (auth, postgrest, realtime, storage) is the bulk of this page's JavaScript and is only
+// needed once the form is submitted: load it on demand, and start the download as soon as the person touches the form.
+const loadSupabase = () => import("@/lib/supabase/client");
 
 function Field({ icon: Icon, ...props }: { icon: typeof Mail } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -38,7 +41,15 @@ export default function LoginPage() {
     const f = new FormData(e.currentTarget);
     const email = String(f.get("email"));
     const password = String(f.get("password"));
-    const supabase = createClient();
+    let supabase: ReturnType<(typeof import("@/lib/supabase/client"))["createClient"]>;
+    try {
+      supabase = (await loadSupabase()).createClient();
+    } catch {
+      // The on-demand chunk could not be fetched (connection dropped): let the person try again.
+      setError(t("common.error.body"));
+      setBusy(false);
+      return;
+    }
     if (mode === "in") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
@@ -80,7 +91,7 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-muted">{t("common.tagline")}</p>
         </div>
 
-        <form onSubmit={onSubmit} className="card glass mt-8 flex w-full flex-col gap-3 p-5">
+        <form onSubmit={onSubmit} onFocus={() => void loadSupabase()} className="card glass mt-8 flex w-full flex-col gap-3 p-5">
           {mode === "up" && <Field icon={User} name="name" required autoComplete="name" placeholder={t("auth.name")} />}
           <Field icon={Mail} name="email" type="email" required autoComplete="email" placeholder={t("auth.email")} />
           <Field

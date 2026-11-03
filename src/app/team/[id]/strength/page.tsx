@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
-import { getT } from "@/lib/i18n/server";
+import { can } from "@/lib/roles";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { Hint } from "@/components/Hint";
 import { todayInTeamZone } from "@/lib/wellness";
 import { Avatar } from "@/components/Avatar";
@@ -17,57 +17,59 @@ export default async function StrengthPage({
 }) {
   const { id } = await params;
   const { athlete: athleteParam } = await searchParams;
-  const { t } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
+  const [{ t }, user] = await Promise.all([getT(), getAuthUser()]);
+  const me = await getMembership(id, user!.id);
   if (!me) notFound();
   const isStaff = me.role === "staff";
-  const kind = isStaff ? await getStaffKind(supabase, id, user!.id) : null;
-  const canLib = can(kind, "manageLibrary");
-
-  const { data: team } = await supabase.from("teams").select("club_id").eq("id", id).single();
-  if (!team) notFound();
+  const canLib = can(me.staffKind, "manageLibrary");
 
   // Athletes the viewer may look at: staff sees all athletes of the team, an athlete only themself.
-  let athletes: { id: string; name: string }[] = [];
-  if (isStaff) {
-    const [{ data: members }, { data: profiles }] = await Promise.all([
-      supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete").order("joined_at"),
-      supabase.from("profiles").select("id, full_name"),
-    ]);
-    const names = new Map(profiles?.map((p) => [p.id as string, (p.full_name as string | null) ?? ""]));
-    athletes = (members ?? []).map((m) => ({ id: m.user_id as string, name: names.get(m.user_id as string) || "?" }));
-  } else {
+  const loadAthletes = async (): Promise<{ id: string; name: string }[]> => {
+    if (isStaff) {
+      const [{ data: members }, { data: profiles }] = await Promise.all([
+        supabase.from("team_members").select("user_id").eq("team_id", id).eq("role", "athlete").order("joined_at"),
+        supabase.from("profiles").select("id, full_name"),
+      ]);
+      const names = new Map(profiles?.map((p) => [p.id as string, (p.full_name as string | null) ?? ""]));
+      return (members ?? []).map((m) => ({ id: m.user_id as string, name: names.get(m.user_id as string) || "?" }));
+    }
     const { data: p } = await supabase.from("profiles").select("full_name").eq("id", user!.id).single();
-    athletes = [{ id: user!.id, name: p?.full_name ?? "?" }];
-  }
+    return [{ id: user!.id, name: p?.full_name ?? "?" }];
+  };
+  const [{ data: team }, athletes] = await Promise.all([
+    supabase.from("teams").select("club_id").eq("id", id).single(),
+    loadAthletes(),
+  ]);
+  if (!team) notFound();
 
   const chosen = athletes.find((a) => a.id === athleteParam) ?? athletes[0];
 
-  const { data: exercises } = await supabase
-    .from("exercises").select("id, name")
-    .eq("club_id", team.club_id).eq("track_5rm", true).is("archived_at", null)
-    .order("name");
+  // The athlete's tests are fetched alongside the tracked exercises and narrowed to them below, instead of waiting for the list.
+  const [{ data: exercises }, { data: testRows }] = await Promise.all([
+    supabase
+      .from("exercises").select("id, name")
+      .eq("club_id", team.club_id).eq("track_5rm", true).is("archived_at", null)
+      .order("name"),
+    chosen
+      ? supabase
+          .from("strength_tests")
+          .select("id, exercise_id, tested_at, weight_kg, reps, rpe, five_rm_kg, estimated, note")
+          .eq("user_id", chosen.id)
+          .order("tested_at", { ascending: false })
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: null }),
+  ]);
   const tracked = (exercises ?? []).map((e) => ({ id: e.id as string, name: e.name as string }));
+  const trackedIds = new Set(tracked.map((e) => e.id));
 
-  let tests: StrengthTest[] = [];
-  if (chosen && tracked.length) {
-    const { data } = await supabase
-      .from("strength_tests")
-      .select("id, exercise_id, tested_at, weight_kg, reps, rpe, five_rm_kg, estimated, note")
-      .eq("user_id", chosen.id)
-      .in("exercise_id", tracked.map((e) => e.id))
-      .order("tested_at", { ascending: false })
-      .order("created_at", { ascending: false });
-    tests = (data ?? []).map((r) => ({
+  const tests: StrengthTest[] = (testRows ?? [])
+    .filter((r) => trackedIds.has(r.exercise_id as string))
+    .map((r) => ({
       id: r.id, exercise_id: r.exercise_id, tested_at: r.tested_at,
       weight_kg: Number(r.weight_kg), reps: r.reps, rpe: Number(r.rpe),
       five_rm_kg: Number(r.five_rm_kg), estimated: !!r.estimated, note: r.note ?? null,
     }));
-  }
 
   return (
     <section className="flex flex-col gap-4">

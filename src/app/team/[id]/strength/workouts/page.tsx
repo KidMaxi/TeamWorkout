@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardList, Pencil, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
-import { getT } from "@/lib/i18n/server";
+import { can } from "@/lib/roles";
+import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { Hint } from "@/components/Hint";
 import { StrengthTabs } from "@/components/StrengthTabs";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -23,18 +23,17 @@ type Row = {
 
 export default async function WorkoutsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t } = await getT();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ t }, user] = await Promise.all([getT(), getAuthUser()]);
   if (!user) notFound();
 
-  const [{ data: team }, { data: me }] = await Promise.all([
+  const [{ data: team }, me] = await Promise.all([
     supabase.from("teams").select("club_id").eq("id", id).single(),
-    supabase.from("team_members").select("role").eq("team_id", id).eq("user_id", user.id).single(),
+    getMembership(id, user.id),
   ]);
   if (!team?.club_id || !me) notFound();
   // "isStaff" here means: may edit the library (S&C or head).
-  const isStaff = me.role === "staff" && can(await getStaffKind(supabase, id, user.id), "manageLibrary");
+  const isStaff = me.role === "staff" && can(me.staffKind, "manageLibrary");
 
   const [{ data }, { count }] = await Promise.all([
     supabase

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale } from "@/lib/auth-cache";
 import { LegalPage } from "@/components/LegalPage";
 import { content } from "@/lib/legal-content/cookies";
 

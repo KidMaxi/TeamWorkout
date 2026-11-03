@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser, getMembership } from "@/lib/auth-cache";
 import { StaffDashboard } from "@/components/StaffDashboard";
 import { AthleteDashboard } from "@/components/AthleteDashboard";
 import { WorkloadTabs } from "@/components/WorkloadTabs";
@@ -19,19 +20,14 @@ export default async function TeamOverview({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: me } = await supabase
-    .from("team_members").select("role").eq("team_id", id).eq("user_id", user!.id).single();
+  const user = await getAuthUser();
+  const me = await getMembership(id, user!.id);
 
   if (me?.role === "staff") {
     const day = todayInTeamZone();
-    const settingsRes = await supabase.from("team_workload_settings").select("*").eq("team_id", id).maybeSingle();
-    if (settingsRes.error) throw new Error(settingsRes.error.message);
-    const settings = settingsFromRow(settingsRes.data as Record<string, unknown> | null);
-    const thisMonday = mondayOf(day);
-    const weekMs = 7 * 86_400_000;
-    const logsFrom = new Date(Date.parse(`${thisMonday}T00:00:00Z`) - (settings.baselineWeeks * 7 + 1) * 86_400_000).toISOString();
-    const [overview, trend, missing, wellnessRes, membersRes, logsRes] = await Promise.all([
+    // Everything except the weekly logs (which need the baseline length from the settings) goes out at once.
+    const [settingsRes, overview, trend, missing, wellnessRes, membersRes] = await Promise.all([
+      supabase.from("team_workload_settings").select("*").eq("team_id", id).maybeSingle(),
       supabase.rpc("team_load_overview", { _team: id }),
       supabase.rpc("team_week_trend", { _team: id, _weeks: 8 }),
       supabase.rpc("team_missing_logs", { _team: id }),
@@ -41,11 +37,16 @@ export default async function TeamOverview({
         .select("user_id, day, sleep, soreness, fatigue, stress, mood, pain, pain_location")
         .eq("day", day),
       supabase.from("team_members").select("user_id, consent_given").eq("team_id", id).eq("role", "athlete"),
-      // Weekly totals per athlete for the comparison with their own recent weeks (cancelled sessions count nothing).
-      supabase.from("session_logs")
-        .select("user_id, attended, load, sessions!inner(starts_at, status, team_id)")
-        .eq("sessions.team_id", id).neq("sessions.status", "cancelled").gte("sessions.starts_at", logsFrom).limit(5000),
     ]);
+    if (settingsRes.error) throw new Error(settingsRes.error.message);
+    const settings = settingsFromRow(settingsRes.data as Record<string, unknown> | null);
+    const thisMonday = mondayOf(day);
+    const weekMs = 7 * 86_400_000;
+    const logsFrom = new Date(Date.parse(`${thisMonday}T00:00:00Z`) - (settings.baselineWeeks * 7 + 1) * 86_400_000).toISOString();
+    // Weekly totals per athlete for the comparison with their own recent weeks (cancelled sessions count nothing).
+    const logsRes = await supabase.from("session_logs")
+      .select("user_id, attended, load, sessions!inner(starts_at, status, team_id)")
+      .eq("sessions.team_id", id).neq("sessions.status", "cancelled").gte("sessions.starts_at", logsFrom).limit(5000);
     const err = overview.error ?? trend.error ?? missing.error;
     if (err) throw new Error(err.message);
     // Own-average comparison: this Monday-Sunday week against the athlete's previous weeks (newest first).
@@ -118,7 +119,11 @@ export default async function TeamOverview({
   const weekYmd = weekDays(today);
   const weekFrom = weekYmd.length ? new Date(Date.parse(`${weekYmd[0]}T00:00:00Z`) - DAY).toISOString() : null;
   const weekTo = weekYmd.length ? new Date(Date.parse(`${weekYmd[weekYmd.length - 1]}T00:00:00Z`) + 2 * DAY).toISOString() : null;
-  const [logsRes, sessionsRes, availRes, wellnessRes, weekRes] = await Promise.all([
+  // Sessions the coach took this athlete out of (own rows only, enforced by RLS and the user filter). Selected through the
+  // session's time window (a superset of the two lists above) so it runs together with them, not after them.
+  const exclFrom = new Date(Math.min(now - 15 * DAY, weekFrom ? Date.parse(weekFrom) : Infinity)).toISOString();
+  const exclTo = new Date(Math.max(now, weekTo ? Date.parse(weekTo) : 0)).toISOString();
+  const [logsRes, sessionsRes, availRes, wellnessRes, weekRes, exclRes] = await Promise.all([
     supabase
       .from("session_logs")
       .select("session_id, load, rpe, duration_min, attended, sessions!inner(title, type, starts_at, team_id)")
@@ -145,19 +150,17 @@ export default async function TeamOverview({
     weekFrom && weekTo
       ? supabase.from("sessions").select("id, title, type, starts_at").eq("team_id", id).neq("status", "cancelled").gte("starts_at", weekFrom).lte("starts_at", weekTo).order("starts_at")
       : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("session_exclusions")
+      .select("session_id, sessions!inner(team_id, starts_at)")
+      .eq("user_id", user!.id).eq("sessions.team_id", id).gte("sessions.starts_at", exclFrom).lte("sessions.starts_at", exclTo),
   ]);
-  const dbErr = logsRes.error ?? sessionsRes.error ?? availRes.error ?? weekRes.error;
+  const dbErr = logsRes.error ?? sessionsRes.error ?? availRes.error ?? weekRes.error ?? exclRes.error;
   if (dbErr) throw new Error(dbErr.message);
 
   const weekSet = new Set(weekYmd);
   const weekSessions = (weekRes.data ?? []).filter((s) => weekSet.has(localDay(s.starts_at as string)));
 
-  // Sessions the coach took this athlete out of (own rows only, enforced by RLS and the user filter).
-  const exclIds = [...new Set([...(sessionsRes.data ?? []).map((s) => s.id as string), ...weekSessions.map((s) => s.id as string)])];
-  const exclRes = exclIds.length
-    ? await supabase.from("session_exclusions").select("session_id").eq("user_id", user!.id).in("session_id", exclIds)
-    : { data: [], error: null };
-  if (exclRes.error) throw new Error(exclRes.error.message);
   const excluded = new Set((exclRes.data ?? []).map((x) => x.session_id as string));
 
   type Joined = { title: string; type: SessionType; starts_at: string };

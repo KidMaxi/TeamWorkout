@@ -19,8 +19,11 @@ export async function middleware(request: NextRequest) {
       },
     },
   );
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user && !request.nextUrl.pathname.startsWith("/login")) {
+  // getClaims() verifies the session JWT locally when the project signs with asymmetric keys (no round trip to Supabase Auth)
+  // and refreshes a token that is about to expire; with a symmetric secret the library itself falls back to a getUser() call.
+  const { data: auth } = await supabase.auth.getClaims();
+  const signedIn = !!auth?.claims;
+  if (!signedIn && !request.nextUrl.pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -29,5 +32,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|api/cron|privacy|terms|cookies|icon.svg|apple-icon.png|opengraph-image.png|icons/).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|api/cron|privacy|terms|cookies|icon.svg|apple-icon.png|opengraph-image.png|icons/).*)"],
 };
