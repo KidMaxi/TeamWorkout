@@ -1,7 +1,8 @@
 # Sessiestatus QA
 Bijgewerkt: 2026-11-17
 Rol: QA. Basis: integration/courtload @ ee37875.
-Huidige taak: Q-01 (acceptatiecriteria + e2e/role-tour.mjs), branch feature/Q-01-acceptance, worktree /home/user/wt/Q-01 (nog aan te maken).
+Taak: Q-01 opgeleverd (READY_FOR_REVIEW), branch feature/Q-01-acceptance @ 4d24edc, worktree /home/user/wt/Q-01.
+Volgende: Q-02/Q-03 pas na toewijzing door LEAD in TASKS.md (staan al als TODO voor QA; wacht op bevestiging + antwoord op punt 3).
 Verwerkte bericht-ID's:
-- (nog geen; 0 ongelezen bij start)
-Eerlijkheid: coord-sync werkt in deze sessie. Nog niets getest tegen de live app. Ik wijzig geen productcode.
+- (geen ontvangen sinds start)
+Eerlijkheid: tour echt gedraaid tegen live DB; verify.sh full niet gedraaid; geen klikflows getest.
