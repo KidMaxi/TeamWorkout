@@ -1,68 +1,36 @@
 @import "tailwindcss";
 
 /*
-  Carbon & Champagne
-  Carbon surfaces, ivory type, champagne hairlines; brand lime is reserved for energy
-  (primary action, active state, the live part of a gauge).
+  Courtload: dark court look taken from the Lovable demo (courtstride-player-care.lovable.app).
+  Charcoal surfaces, warm off-white type, ONE orange accent (primary action, active state, eyebrows),
+  Bebas Neue headlines, Barlow text, square-ish 6px corners and 1px borders. One theme: dark.
 */
 :root {
-  --background: #f6f3ec;
-  --surface: #ffffff;
-  --surface-2: #efebe1;
-  --surface-3: #e5dfd0;
-  --line: #e4ddcd;
-  --foreground: #15171b;
-  --muted: #6b6a64;
+  color-scheme: dark;
+  --radius: 0.375rem;
 
-  --primary: #1d6a47;
-  --primary-hover: #165538;
-  --on-primary: #ffffff;
-  --accent: #9a7b36; /* champagne, darkened for ivory paper */
-  --accent-soft: #e9dfc2;
+  --background: oklch(20.5% 0 0);
+  --surface: oklch(27% 0 0);
+  --surface-2: oklch(31% 0 0);
+  --surface-3: oklch(33% 0 0);
+  --line: oklch(38% 0 0);
+  --foreground: oklch(95.5% 0.01 85);
+  --muted: oklch(72% 0.01 85);
+  --sidebar: oklch(18% 0 0);
 
-  --ok: #1d6a47;
-  --warn: #8a5a12;
-  --danger: #b3261e;
-  --ok-bg: #dcefe3;
-  --warn-bg: #f6e7c6;
-  --danger-bg: #f8dcd8;
-  --neutral-bg: #e5dfd0;
+  --primary: oklch(65% 0.18 40);
+  --primary-hover: oklch(70% 0.18 40);
+  --on-primary: oklch(18% 0 0);
+  --accent: oklch(65% 0.18 40);
+  --accent-soft: oklch(35% 0.03 45);
 
-  --glow: radial-gradient(60% 40% at 50% 0%, rgb(154 123 54 / 0.14), transparent 70%);
-  --card-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0));
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 10px 30px -18px rgb(60 50 20 / 0.35);
-  --grain-opacity: 0.05;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0b0d;
-    --surface: #121317;
-    --surface-2: #1a1c21;
-    --surface-3: #23262d;
-    --line: #2a2d35;
-    --foreground: #f4f0e6;
-    --muted: #9b9ca4;
-
-    --primary: #a3e635;
-    --primary-hover: #b8f154;
-    --on-primary: #0a0b0d;
-    --accent: #d8c48e;
-    --accent-soft: #3a3322;
-
-    --ok: #7bd9a4;
-    --warn: #f0b35a;
-    --danger: #f4857d;
-    --ok-bg: #12301f;
-    --warn-bg: #3a2a0d;
-    --danger-bg: #3e1714;
-    --neutral-bg: #23262d;
-
-    --glow: radial-gradient(60% 40% at 50% 0%, rgb(216 196 142 / 0.12), transparent 70%);
-    --card-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0));
-    --shadow-card: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 18px 40px -22px rgb(0 0 0 / 0.9);
-    --grain-opacity: 0.07;
-  }
+  --ok: oklch(72% 0.17 145);
+  --warn: oklch(80% 0.16 85);
+  --danger: oklch(66% 0.22 27);
+  --ok-bg: color-mix(in oklch, oklch(72% 0.17 145) 16%, var(--surface));
+  --warn-bg: color-mix(in oklch, oklch(80% 0.16 85) 16%, var(--surface));
+  --danger-bg: color-mix(in oklch, oklch(66% 0.22 27) 18%, var(--surface));
+  --neutral-bg: var(--surface-3);
 }
 
 @theme inline {
@@ -74,9 +42,9 @@
   --color-accent: var(--accent);
   --color-danger: var(--danger);
   --color-ok: var(--ok);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-barlow);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-syne);
+  --font-display: var(--font-bebas);
 }
 
 @layer base {
@@ -85,110 +53,93 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    font-family: var(--font-sans), system-ui, sans-serif;
-    font-feature-settings: "tnum" 1, "cv11" 1;
+    font-family: var(--font-barlow), system-ui, sans-serif;
+    font-feature-settings: "tnum" 1;
     -webkit-font-smoothing: antialiased;
     min-height: 100dvh;
   }
-  /* soft champagne light from above + film grain so dark surfaces never look flat */
-  body::before {
-    content: "";
-    position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    background: var(--glow);
-  }
-  body::after {
-    content: "";
-    position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: var(--grain-opacity);
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  }
-  h1, h2, h3 { font-family: var(--font-display), var(--font-sans), sans-serif; letter-spacing: -0.02em; }
+  /* Bebas Neue has one weight: never let the browser fake a bold */
+  h1, h2, h3, .font-display, .display, .num { font-family: var(--font-bebas), Impact, sans-serif; font-synthesis: none; font-weight: 400; }
+  h1, h2, h3 { letter-spacing: 0.01em; line-height: 1.02; }
   a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, [role="switch"]:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
-  th { font-weight: 600; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
-  ::selection { background: var(--accent); color: var(--background); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; }
+  ::selection { background: var(--primary); color: var(--on-primary); }
 }
 
 @layer components {
   /* ---- surfaces ---- */
   .card {
     position: relative;
-    background: var(--card-sheen), var(--surface);
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 1.25rem;
+    border-radius: var(--radius);
     padding: 1rem;
-    box-shadow: var(--shadow-card);
   }
   .card-hero {
-    background:
-      radial-gradient(80% 60% at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
-      var(--card-sheen), var(--surface);
-    border-radius: 1.75rem;
+    background: var(--surface);
+    border-radius: var(--radius);
     padding: 1.25rem;
-    border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+    border-color: var(--line);
+    border-top: 3px solid var(--primary);
   }
-  .hairline { height: 1px; border: 0; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.5; }
+  .hairline { height: 1px; border: 0; background: var(--line); }
 
   /* ---- type ---- */
-  .display { font-family: var(--font-display), var(--font-sans), sans-serif; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
-  .num { font-family: var(--font-display), var(--font-sans), sans-serif; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1; }
-  .eyebrow { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: color-mix(in srgb, var(--accent) 72%, var(--foreground)); } /* AA on ivory paper */
+  .display { letter-spacing: 0.01em; line-height: 1; }
+  .num { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; line-height: 1; }
+  .eyebrow { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--primary); }
 
   /* ---- controls ---- */
   .input {
-    background: color-mix(in srgb, var(--surface-2) 70%, transparent); color: var(--foreground);
-    border: 1px solid var(--line); border-radius: 0.85rem; padding: 0.6rem 0.85rem; min-width: 0;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.15) inset;
+    background: var(--surface-2); color: var(--foreground);
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 0.6rem 0.85rem; min-width: 0;
     transition: border-color 0.15s, background 0.15s;
   }
-  .input:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
-  .input:focus { border-color: var(--accent); outline: none; background: var(--surface-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+  .input:hover { border-color: color-mix(in oklch, var(--primary) 50%, var(--line)); }
+  .input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 28%, transparent); }
   .input:disabled { opacity: 0.55; cursor: not-allowed; }
   /* iOS zooms the page when a focused field is under 16px: keep fields at 16px on touch screens */
   @media (pointer: coarse) { .input { font-size: max(16px, 1em); } }
   .input::placeholder { color: var(--muted); }
-  .input-sm { padding: 0.3rem 0.6rem; border-radius: 0.65rem; }
+  .input-sm { padding: 0.3rem 0.6rem; }
   .btn {
-    background: linear-gradient(180deg, var(--surface-3), var(--surface-2));
+    background: var(--surface-2);
     color: var(--foreground); border: 1px solid var(--line);
-    border-radius: 0.9rem; padding: 0.6rem 1rem; font-weight: 600; cursor: pointer;
-    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset;
+    border-radius: var(--radius); padding: 0.6rem 1rem; font-weight: 500; cursor: pointer;
     transition: transform 0.12s, border-color 0.15s, background 0.15s;
   }
-  .btn:hover { border-color: var(--accent); }
-  .btn:active { transform: scale(0.97); }
+  .btn:hover { border-color: var(--primary); }
+  .btn:active { transform: scale(0.98); }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   .btn[aria-busy="true"] { cursor: progress; }
-  .btn-primary {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 82%, white), var(--primary));
-    color: var(--on-primary); border-color: transparent;
-    box-shadow: 0 1px 0 rgb(255 255 255 / 0.35) inset, 0 8px 24px -10px var(--primary);
-  }
-  .btn-primary:hover { background: var(--primary-hover); border-color: transparent; }
-  .btn-danger { background: var(--danger-bg); color: var(--danger); border-color: transparent; box-shadow: none; }
+  .btn-primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 600; }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
   .btn-danger:hover { border-color: var(--danger); }
-  .link { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+  .link { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklch, var(--primary) 70%, transparent); }
   .link:hover { color: var(--foreground); }
-  .tab { padding: 0.4rem 0.9rem; border-radius: 999px; color: var(--muted); font-weight: 500; transition: color 0.15s, background 0.15s; }
+  .tab { padding: 0.4rem 0.9rem; border-radius: var(--radius); color: var(--muted); font-weight: 500; transition: color 0.15s, background 0.15s; }
   .tab:hover { background: var(--surface-2); color: var(--foreground); }
 
   /* ---- badges and chips ---- */
-  .badge { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.15rem 0.65rem; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+  .badge { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 4px; padding: 0.15rem 0.55rem; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em; white-space: nowrap; }
   .badge::before { content: ""; width: 0.38rem; height: 0.38rem; border-radius: 999px; background: currentColor; opacity: 0.9; }
   .badge-none { background: var(--neutral-bg); color: var(--muted); }
   .badge-ok { background: var(--ok-bg); color: var(--ok); }
   .badge-watch { background: var(--warn-bg); color: var(--warn); }
   .badge-high { background: var(--danger-bg); color: var(--danger); }
-  .chip { display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--line); border-radius: 999px; padding: 0.12rem 0.6rem; font-size: 0.75rem; color: var(--muted); background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+  .chip { display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--line); border-radius: 4px; padding: 0.12rem 0.6rem; font-size: 0.75rem; color: var(--muted); background: var(--surface-2); }
 
   /* ---- dialog ---- */
   dialog.confirm {
-    background: var(--card-sheen), var(--surface); color: var(--foreground);
-    border: 1px solid var(--line); border-radius: 1.5rem; padding: 1.25rem;
-    width: min(92vw, 26rem); margin: auto; box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
+    background: var(--surface); color: var(--foreground);
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem;
+    width: min(92vw, 26rem); margin: auto;
   }
-  dialog.confirm::backdrop { background: rgb(5 5 7 / 0.65); backdrop-filter: blur(6px); }
+  dialog.confirm::backdrop { background: rgb(0 0 0 / 0.65); backdrop-filter: blur(4px); }
 
   /* Sticky primary-action bar for long forms: above the phone bottom nav, near the viewport edge on md+. */
   .action-bar {
@@ -197,13 +148,10 @@
   }
   @media (min-width: 768px) { .action-bar { bottom: 1rem; } }
 
-  /* ---- floating glass navigation ---- */
+  /* ---- navigation bar (formerly floating glass) ---- */
   .glass {
-    background: color-mix(in srgb, var(--surface) 72%, transparent);
-    backdrop-filter: blur(18px) saturate(1.4);
-    -webkit-backdrop-filter: blur(18px) saturate(1.4);
-    border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
-    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 20px 40px -16px rgb(0 0 0 / 0.55);
+    background: var(--sidebar);
+    border: 1px solid var(--line);
   }
 }
 

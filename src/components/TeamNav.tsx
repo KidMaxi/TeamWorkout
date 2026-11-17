@@ -21,7 +21,7 @@ export function TeamNav({ teamId, isHead, pending = 0, showLeaderboard = false }
   return (
     <nav
       aria-label="Team"
-      className="glass fixed inset-x-4 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-md justify-around rounded-full p-1.5 md:static md:mb-6 md:inset-auto md:max-w-none md:justify-start md:gap-1 md:rounded-full md:p-1 md:w-fit"
+      className="glass fixed inset-x-0 bottom-0 z-20 flex justify-around border-x-0 border-b-0 px-1 pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5 md:static md:mb-6 md:w-fit md:justify-start md:gap-1 md:rounded-md md:border md:p-1"
     >
       {items.map(({ href, label, Icon, exact }) => {
         const active = exact ? path === href : path.startsWith(href);
@@ -30,14 +30,14 @@ export function TeamNav({ teamId, isHead, pending = 0, showLeaderboard = false }
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-1 py-1.5 text-[10.5px] font-medium tracking-wide transition-colors md:flex-none md:flex-row md:gap-2 md:px-4 md:py-2 md:text-sm ${
+            className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[10.5px] font-medium tracking-wide transition-colors md:flex-none md:flex-row md:gap-2 md:px-4 md:py-2 md:text-sm ${
               active
-                ? "bg-[var(--surface-3)] text-[var(--foreground)] shadow-[0_1px_0_rgb(255_255_255/0.08)_inset]"
+                ? "bg-[var(--accent-soft)] text-[var(--primary)]"
                 : "text-muted hover:text-[var(--foreground)]"
             }`}
           >
             <span className="relative">
-              <Icon size={20} aria-hidden className={active ? "text-primary" : ""} />
+              <Icon size={20} aria-hidden />
               {exact && pending > 0 && (
                 <span
                   role="img"
@@ -49,7 +49,7 @@ export function TeamNav({ teamId, isHead, pending = 0, showLeaderboard = false }
               )}
             </span>
             <span className="max-w-full truncate">{label}</span>
-            {active && <span aria-hidden className="absolute -top-0.5 h-1 w-4 rounded-full bg-[var(--primary)] shadow-[0_0_10px_var(--primary)] md:hidden" />}
+            {active && <span aria-hidden className="absolute -top-1.5 h-0.5 w-6 bg-[var(--primary)] md:hidden" />}
           </Link>
         );
       })}

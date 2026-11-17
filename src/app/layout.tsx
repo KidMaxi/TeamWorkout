@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Syne } from "next/font/google";
+import { Barlow, Bebas_Neue, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -8,18 +8,18 @@ import { I18nProvider } from "@/lib/i18n/client";
 import { getLocale } from "@/lib/auth-cache";
 import { LEGAL } from "@/lib/legal";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const barlow = Barlow({
+  variable: "--font-barlow",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const syne = Syne({
-  variable: "--font-syne",
+const bebas = Bebas_Neue({
+  variable: "--font-bebas",
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: "400",
 });
 
-// Only used for invite codes on the members page: do not preload it on every page, fetch it when first used.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -37,10 +37,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0a0b0d" },
-    { media: "(prefers-color-scheme: light)", color: "#f6f3ec" },
-  ],
+  themeColor: "#1b1b1b",
+  colorScheme: "dark",
 };
 
 export default async function RootLayout({
@@ -52,7 +50,7 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${syne.variable} antialiased`}
+        className={`${barlow.variable} ${geistMono.variable} ${bebas.variable} antialiased`}
       >
         <I18nProvider locale={locale}>{children}</I18nProvider>
         <RegisterSW />
