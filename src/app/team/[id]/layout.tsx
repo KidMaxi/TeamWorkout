@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, CircleHelp, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
@@ -25,6 +25,18 @@ export default async function TeamLayout({
     getMembership(id, user!.id),
   ]);
   if (!team) notFound();
+  // Not a member of this team: a club admin or a parent can read the team through RLS but has their own screens.
+  if (!me) {
+    const [{ data: admin }, { data: parentOf }] = await Promise.all([
+      team.club_id
+        ? supabase.from("club_admins").select("club_id").eq("club_id", team.club_id).eq("user_id", user!.id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("parent_links").select("child_user").eq("parent_user", user!.id).limit(1),
+    ]);
+    if (admin) redirect("/academy");
+    if (parentOf?.length) redirect("/parent");
+    notFound();
+  }
 
   // Independent of each other: unread-test count and whether the club leaderboard is open for this user.
   const [pending, lbAccess] = await Promise.all([

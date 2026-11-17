@@ -9,7 +9,7 @@ import { signOut } from "@/app/actions";
 export async function ParentHeader() {
   const { t } = await getT();
   return (
-    <header className="flex items-center justify-between gap-2">
+    <header className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
       <Link href="/parent" aria-label={t("common.appName")} className="inline-flex min-h-11 items-center"><Logo size={28} /></Link>
       <div className="flex items-center gap-2">
         <LanguageSwitcher />

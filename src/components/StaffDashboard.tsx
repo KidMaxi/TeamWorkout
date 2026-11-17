@@ -274,7 +274,7 @@ function AthleteCard({
   const tag = playerLabel(player?.jersey, isPosition(player?.position) ? t(`members.pos.${player.position}`) : null);
   const label = t("dashboard.athlete.dial", { name, acute: r.acute_load, cap: Math.round(cap) });
   return (
-    <li className="card flex flex-col gap-3">
+    <li className="card flex min-w-0 flex-col gap-3">
       <div className="flex items-start gap-3">
         <Avatar name={r.full_name} size={44} />
         <div className="min-w-0 flex-1">
@@ -303,8 +303,8 @@ function AthleteCard({
         </div>
         <span className={badge.cls}>{badge.text}</span>
       </div>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex gap-5 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-2 text-sm">
           <div>
             <p className="text-xs text-muted">{t("dashboard.athlete.acute")}</p>
             <p className={`num mt-1 text-lg ${r.over_limit ? "text-danger" : ""}`}>{r.acute_load}</p>

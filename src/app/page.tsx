@@ -26,10 +26,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   // Independent reads, one round trip: the team list, the terms version (for the single-team shortcut) and the staff clubs.
   const [{ t }, { data: memberships }, p, { data: staffRows }, { data: adminRows }, { data: parentRows }] = await Promise.all([
     getT(),
-    supabase.from("team_members").select("role, teams(id, name)").order("joined_at"),
+    // Own rows only: staff can also read the memberships of their colleagues and athletes through RLS.
+    user ? supabase.from("team_members").select("role, teams(id, name)").eq("user_id", user.id).order("joined_at") : Promise.resolve({ data: null }),
     user ? getProfile(user.id) : Promise.resolve(null),
     // Clubs where the user is staff, so a new team can be added to an existing club.
-    supabase.from("team_members").select("teams(club_id, clubs(name))").eq("role", "staff"),
+    user ? supabase.from("team_members").select("teams(club_id, clubs(name))").eq("user_id", user.id).eq("role", "staff") : Promise.resolve({ data: null }),
     // Club admins see the whole academy even without a team of their own.
     user ? supabase.from("club_admins").select("club_id").eq("user_id", user.id) : Promise.resolve({ data: null }),
     // Parents linked to a child.

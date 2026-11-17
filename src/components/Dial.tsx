@@ -53,7 +53,9 @@ export function Dial({
 
   const pt = (angleDeg: number, r: number) => {
     const a = (angleDeg * Math.PI) / 180;
-    return [c + r * Math.cos(a), c + r * Math.sin(a)] as const;
+    // Rounded: Math.cos/sin differ in the last digit between the Node server and the browser, which breaks hydration.
+    const round = (n: number) => Math.round(n * 100) / 100;
+    return [round(c + r * Math.cos(a)), round(c + r * Math.sin(a))] as const;
   };
 
   const tickEls = mini ? [] : Array.from({ length: ticks + 1 }, (_, i) => {
