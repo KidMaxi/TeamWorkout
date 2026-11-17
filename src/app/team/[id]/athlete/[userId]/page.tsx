@@ -27,7 +27,7 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
   // checks pass (and wellness only with consent), so nothing is shown that the old sequential version would not have shown.
   const [me, memberRes, settingsRes, profileRes, availRes, limitRes, logsRes, sessionsRes, wellnessAll, exclRes] = await Promise.all([
     getMembership(id, user!.id),
-    supabase.from("team_members").select("role, consent_given").eq("team_id", id).eq("user_id", userId).maybeSingle(),
+    supabase.from("team_members").select("role, consent_given, jersey_number, position").eq("team_id", id).eq("user_id", userId).maybeSingle(),
     supabase.from("team_workload_settings").select("*").eq("team_id", id).maybeSingle(),
     supabase.from("profiles").select("full_name, birth_date, height_cm, weight_kg").eq("id", userId).maybeSingle(),
     supabase.from("availability").select("status, note").eq("team_id", id).eq("user_id", userId).maybeSingle(),
@@ -147,6 +147,8 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
       heightCm={profileRes.data?.height_cm ?? null}
       weightKg={profileRes.data?.weight_kg ?? null}
       consent={member.consent_given}
+      jersey={member.jersey_number}
+      position={member.position}
       availability={{ status, note: availRes.data?.note ?? null }}
       row={loadRow}
       level={

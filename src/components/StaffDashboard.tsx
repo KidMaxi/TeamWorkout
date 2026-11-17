@@ -8,6 +8,7 @@ import { Dial } from "@/components/Dial";
 import { AvailabilityIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, dateLocale, type Locale, type MessageKey, type TFunction } from "@/lib/i18n";
+import { isPosition, playerLabel } from "@/lib/positions";
 import { wellnessAverage, wellnessFlag, type WellnessEntry } from "@/lib/wellness";
 import {
   applyFilter,
@@ -36,6 +37,7 @@ const FILTERS: { key: DashboardFilter; label: MessageKey; Icon: LucideIcon }[] =
 
 type WellnessMap = Record<string, WellnessEntry | null>;
 type ConsentMap = Record<string, boolean>;
+type PlayerMap = Record<string, { jersey: number | null; position: string | null }>;
 const FLAG_CLS = { ok: "badge badge-ok", watch: "badge badge-watch", low: "badge badge-high" } as const;
 const isLow = (w: WellnessMap | undefined, c: ConsentMap | undefined, id: string) => {
   const e = w?.[id];
@@ -261,14 +263,15 @@ function WellnessRow({ entry, consent, t }: { entry: WellnessEntry | null | unde
 }
 
 function AthleteCard({
-  r, teamId, wellness, consent, showRatio, deviation, t,
-}: { r: AthleteRow; teamId: string; wellness?: WellnessMap; consent?: ConsentMap; showRatio: boolean; deviation: DeviationMap; t: TFunction }) {
+  r, teamId, wellness, consent, player, showRatio, deviation, t,
+}: { r: AthleteRow; teamId: string; wellness?: WellnessMap; consent?: ConsentMap; player?: PlayerMap[string]; showRatio: boolean; deviation: DeviationMap; t: TFunction }) {
   const lvl = LEVEL[r.level];
   const badge = badgeFor(r, showRatio, deviation, t);
   const dialTone: DialTone = showRatio || r.level === "high" ? lvl.tone : "accent";
   const avail = r.availability ?? "available";
   const name = r.full_name || t("dashboard.athlete.unnamed");
   const cap = r.max_weekly_load ?? Math.max(r.chronic_weekly_avg * 1.5, 1);
+  const tag = playerLabel(player?.jersey, isPosition(player?.position) ? t(`members.pos.${player.position}`) : null);
   const label = t("dashboard.athlete.dial", { name, acute: r.acute_load, cap: Math.round(cap) });
   return (
     <li className="card flex flex-col gap-3">
@@ -283,6 +286,7 @@ function AthleteCard({
             <span className="truncate">{name}</span>
             <ChevronRight size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
           </Link>
+          {tag && <p className="num -mt-0.5 mb-0.5 text-xs text-muted">{tag}</p>}
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
             <span className="inline-flex items-center gap-1">
               <AvailabilityIcon status={avail} size={14} />
@@ -337,10 +341,10 @@ function AthleteCard({
 }
 
 export async function StaffDashboard({
-  teamId, rows, weeks, filter, wellness, consent, showRatio = false, deviation = {},
+  teamId, rows, weeks, filter, wellness, consent, players, showRatio = false, deviation = {},
 }: {
   teamId: string; rows: AthleteRow[]; weeks: WeekTrendRow[]; filter: DashboardFilter;
-  wellness?: WellnessMap; consent?: ConsentMap;
+  wellness?: WellnessMap; consent?: ConsentMap; players?: PlayerMap;
   /** Team setting. Off by default: the acute:chronic ratio and its fixed bands stay hidden. */
   showRatio?: boolean;
   /** Each athlete's current week against their own previous weeks (pct, and whether it crosses the team threshold). */
@@ -387,7 +391,7 @@ export async function StaffDashboard({
 
       <div className="flex flex-col gap-3">
         <ul className="grid gap-3 sm:grid-cols-2">
-          {visible.map((r) => <AthleteCard key={r.user_id} r={r} teamId={teamId} wellness={wellness} consent={consent} showRatio={showRatio} deviation={deviation} t={t} />)}
+          {visible.map((r) => <AthleteCard key={r.user_id} r={r} teamId={teamId} wellness={wellness} consent={consent} player={players?.[r.user_id]} showRatio={showRatio} deviation={deviation} t={t} />)}
         </ul>
         {!visible.length && (
           rows.length ? (

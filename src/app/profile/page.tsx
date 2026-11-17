@@ -7,6 +7,7 @@ import { dateLocale } from "@/lib/i18n";
 import { ConsentCard } from "@/components/ConsentCard";
 import { LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { isPosition, playerLabel } from "@/lib/positions";
 import { ProfileForm } from "./ProfileForm";
 
 function ageOf(birth: string): number | null {
@@ -34,7 +35,7 @@ export default async function ProfilePage() {
       .eq("user_id", user.id),
     supabase
       .from("team_members")
-      .select("team_id, consent_given, consent_at, consent_by, teams(name)")
+      .select("team_id, consent_given, consent_at, consent_by, jersey_number, position, teams(name)")
       .eq("user_id", user.id)
       .eq("role", "athlete")
       .order("joined_at"),
@@ -74,6 +75,22 @@ export default async function ProfilePage() {
         consent={
           athleteRows?.length ? (
             <>
+              <section className="card flex flex-col gap-2 text-sm">
+                <h2 className="display text-lg">{t("profile.player.title")}</h2>
+                <ul className="flex flex-col gap-1">
+                  {athleteRows.map((m) => {
+                    const tag = playerLabel(m.jersey_number, isPosition(m.position) ? t(`members.pos.${m.position}`) : null);
+                    const team = (m.teams as unknown as { name: string } | null)?.name ?? "";
+                    return (
+                      <li key={m.team_id} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                        {athleteRows.length > 1 && <span className="text-muted">{team}</span>}
+                        <span className="num">{tag || <span className="text-muted">{t("profile.player.none")}</span>}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-xs text-muted">{t("profile.player.hint")}</p>
+              </section>
               {athleteRows.map((m) => (
                 <ConsentCard
                   key={m.team_id}

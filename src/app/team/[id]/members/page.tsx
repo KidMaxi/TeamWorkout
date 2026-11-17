@@ -12,6 +12,8 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { ParentConsentForm } from "@/components/ConsentCard";
 import { withdrawParentConsent } from "@/app/consent-actions";
 import { StaffKindSelect } from "@/components/StaffKindSelect";
+import { PlayerInfoForm } from "@/components/PlayerInfoForm";
+import { byJerseyThenName, isPosition, playerLabel } from "@/lib/positions";
 import { STAFF_KINDS, can, isStaffKind, kindsFromRow, type Capability, type StaffKind } from "@/lib/roles";
 
 function ageOf(birth: string | null | undefined): number | null {
@@ -26,7 +28,7 @@ function ageOf(birth: string | null | undefined): number | null {
 const label = "eyebrow flex items-center gap-1.5";
 
 const MATRIX_ROWS: Capability[] = [
-  "planGym", "planCourt", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth", "manageMembers", "manageTeam",
+  "planGym", "planCourt", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth", "manageMembers", "managePlayers", "manageTeam",
 ];
 
 export default async function MembersPage({ params }: { params: Promise<{ id: string }> }) {
@@ -39,11 +41,12 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const isHead = can(myKind, "manageMembers");
   const mayAvail = can(myKind, "setAvailability");
   const mayLimit = can(myKind, "planRules");
+  const mayPlayers = can(myKind, "managePlayers");
   const kindOf = (v: unknown): StaffKind => (isStaffKind(v) ? v : "head"); // legacy rows behave as head
 
   const [{ data: members }, { data: profiles }, { data: avail }, { data: limits }, { data: invites }] =
     await Promise.all([
-      supabase.from("team_members").select("user_id, role, staff_kind, extra_kinds, consent_given, consent_at, consent_by, consent_note").eq("team_id", id).order("joined_at"),
+      supabase.from("team_members").select("user_id, role, staff_kind, extra_kinds, jersey_number, position, consent_given, consent_at, consent_by, consent_note").eq("team_id", id).order("joined_at"),
       supabase.from("profiles").select("id, full_name, birth_date"),
       supabase.from("availability").select("user_id, status, note").eq("team_id", id),
       supabase.from("athlete_limits").select("user_id, max_weekly_load").eq("team_id", id),
@@ -55,6 +58,13 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const name = new Map(profiles?.map((p) => [p.id, p]));
   const av = new Map(avail?.map((a) => [a.user_id, a]));
   const lim = new Map(limits?.map((l) => [l.user_id, l]));
+  // Athletes by shirt number (no number last), then name; staff keep their join order after them.
+  const nameOf = (uid: string) => name.get(uid)?.full_name ?? "";
+  const ordered = [
+    ...(members ?? []).filter((m) => m.role === "athlete")
+      .sort((a, b) => byJerseyThenName({ jersey: a.jersey_number, name: nameOf(a.user_id) }, { jersey: b.jersey_number, name: nameOf(b.user_id) })),
+    ...(members ?? []).filter((m) => m.role !== "athlete"),
+  ];
   const now = Date.now();
   const fmt = (iso: string | null) =>
     iso ? new Date(iso).toLocaleDateString(dateLocale(locale), { day: "numeric", month: "short", year: "numeric" }) : "";
@@ -140,7 +150,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
       <div className="flex flex-col gap-3">
         <h2 className="eyebrow !font-sans">{t("members.team")}</h2>
         <ul className="stagger flex flex-col gap-3">
-          {members?.map((m) => {
+          {ordered.map((m) => {
             const p = name.get(m.user_id);
             const a = av.get(m.user_id);
             const status = (a?.status ?? "available") as Availability;
@@ -191,6 +201,17 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                 {isHead && m.role === "staff" && (
                   <div className="border-t pt-4">
                     <StaffKindSelect teamId={id} userId={m.user_id} name={display} kind={kindsFromRow(m)[0]} extra={kindsFromRow(m).slice(1)} />
+                  </div>
+                )}
+                {m.role === "athlete" && (
+                  <div className="flex flex-col gap-3 border-t pt-4">
+                    {mayPlayers ? (
+                      <PlayerInfoForm teamId={id} userId={m.user_id} jersey={m.jersey_number} position={m.position} />
+                    ) : (
+                      <p className="num text-sm">
+                        {playerLabel(m.jersey_number, isPosition(m.position) ? t(`members.pos.${m.position}`) : null) || <span className="text-muted">{t("profile.player.none")}</span>}
+                      </p>
+                    )}
                   </div>
                 )}
                 {m.role === "athlete" && (

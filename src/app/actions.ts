@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { MessageKey } from "@/lib/i18n";
 import { TERMS_VERSION } from "@/lib/legal";
 import { can, getStaffKinds, isStaffKind } from "@/lib/roles";
+import { isJersey, isPosition } from "@/lib/positions";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -129,6 +130,8 @@ export async function updateMember(teamId: string, userId: string, formData: For
   revalidatePath(`/team/${teamId}`, "layout");
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Head coach sets the primary role and the additional roles of a staff member of this team. */
 export async function setStaffKinds(teamId: string, userId: string, primary: string, extra: string[]): Promise<{ ok: boolean; error?: MessageKey }> {
   if (!isStaffKind(primary) || !Array.isArray(extra) || !extra.every((k) => isStaffKind(k) && k !== "head" && k !== primary)) {
@@ -143,6 +146,28 @@ export async function setStaffKinds(teamId: string, userId: string, primary: str
     if (m.includes("last_head")) return { ok: false, error: "roles.error.lastHead" };
     if (m.includes("invalid_kind")) return { ok: false, error: "roles.error.invalid" };
     if (m.includes("not allowed")) return { ok: false, error: "roles.error.notAllowed" };
+    return { ok: false, error: "roles.error.generic" };
+  }
+  revalidatePath(`/team/${teamId}`, "layout");
+  return { ok: true };
+}
+
+/** Trainers (head, sc, basketball) set the shirt number and position of an athlete. Both may be null to clear. */
+export async function setPlayerInfo(teamId: string, userId: string, jersey: number | null, position: string | null): Promise<{ ok: boolean; error?: MessageKey }> {
+  if (!UUID_RE.test(teamId) || !UUID_RE.test(userId)) return { ok: false, error: "roles.error.generic" };
+  if (jersey !== null && !isJersey(jersey)) return { ok: false, error: "roles.error.invalidJersey" };
+  if (position !== null && !isPosition(position)) return { ok: false, error: "roles.error.invalidPosition" };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "roles.error.playerNotAllowed" };
+  if (!can(await getStaffKinds(supabase, teamId, user.id), "managePlayers")) return { ok: false, error: "roles.error.playerNotAllowed" };
+  const { error } = await supabase.rpc("set_player_info", { _team: teamId, _user: userId, _jersey: jersey, _position: position });
+  if (error) {
+    const m = error.message ?? "";
+    if (m.includes("jersey_taken")) return { ok: false, error: "roles.error.jerseyTaken" };
+    if (m.includes("invalid_jersey")) return { ok: false, error: "roles.error.invalidJersey" };
+    if (m.includes("invalid_position")) return { ok: false, error: "roles.error.invalidPosition" };
+    if (m.includes("not allowed")) return { ok: false, error: "roles.error.playerNotAllowed" };
     return { ok: false, error: "roles.error.generic" };
   }
   revalidatePath(`/team/${teamId}`, "layout");

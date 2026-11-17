@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isPosition, playerLabel } from "@/lib/positions";
 import { Ban, ChevronLeft, CircleAlert, CircleHelp, Lock, Pencil, ShieldCheck } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Dial } from "@/components/Dial";
@@ -41,6 +42,8 @@ export type AthleteDetailProps = {
   heightCm: number | null;
   weightKg: number | null;
   consent: boolean;
+  jersey?: number | null;
+  position?: string | null;
   availability: { status: Availability; note: string | null };
   row: LoadRow;
   level: Level;
@@ -328,6 +331,8 @@ export async function AthleteDetail(p: AthleteDetailProps) {
     p.weightKg ? t("detail.weight", { n: p.weightKg }) : null,
   ].filter(Boolean) as string[];
 
+  const player = playerLabel(p.jersey, isPosition(p.position) ? t(`members.pos.${p.position}`) : null);
+
   return (
     <section className="stagger flex flex-col gap-5">
       <Link href={`/team/${p.teamId}`} className="link -mb-2 inline-flex min-h-11 items-center gap-1 self-start text-sm">
@@ -338,6 +343,7 @@ export async function AthleteDetail(p: AthleteDetailProps) {
         <Avatar name={display} size={72} />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h2 className="display break-words text-2xl">{display}</h2>
+          {player && <p className="num text-sm text-muted">{player}</p>}
           <p className="flex items-center gap-2 text-sm" style={{ color: flagged ? availColor : undefined }}>
             <AvailabilityIcon status={p.availability.status} size={16} />
             <span className="font-medium">{t(AVAILABILITY_KEY[p.availability.status])}</span>

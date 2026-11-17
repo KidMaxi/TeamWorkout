@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 // @ts-expect-error node needs the .ts extension; tsconfig does not allow it
 import { can, canPlanType, kindsFromRow, getStaffKinds, getStaffKind, STAFF_KINDS } from "./roles.ts";
 
-const CAPS = ["planGym", "planCourt", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth", "manageMembers", "manageTeam"] as const;
+const CAPS = ["planGym", "planCourt", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth", "manageMembers", "managePlayers", "manageTeam"] as const;
 
 const fakeDb = (row: unknown) => ({
   from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: row }) }) }) }) }),
@@ -75,4 +75,13 @@ test("getStaffKinds / getStaffKind read the row", async () => {
   assert.deepEqual(await getStaffKinds(fakeDb({ role: "athlete", staff_kind: null, extra_kinds: [] }), "t", "u"), []);
   assert.equal(await getStaffKind(fakeDb(null), "t", "u"), null);
   assert.deepEqual(await getStaffKinds(fakeDb({ role: "staff", staff_kind: null }), "t", "u"), ["head"]);
+});
+
+test("managePlayers mirrors is_team_planner: head, sc, basketball; not medical or athletes", () => {
+  assert.equal(can("head", "managePlayers"), true);
+  assert.equal(can("sc", "managePlayers"), true);
+  assert.equal(can("basketball", "managePlayers"), true);
+  assert.equal(can("medical", "managePlayers"), false);
+  assert.equal(can(["medical", "sc"], "managePlayers"), true);
+  assert.equal(can([], "managePlayers"), false);
 });

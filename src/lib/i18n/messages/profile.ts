@@ -22,6 +22,9 @@ export default defineMessages(
     "tile.weight": "Gewicht",
     "section.personal": "Persoonlijk",
     "section.body": "Lichaam",
+    "player.title": "Rugnummer en positie",
+    "player.none": "Nog niet ingesteld",
+    "player.hint": "Je trainer stelt je rugnummer en positie in.",
   },
   {
     title: "Profile",
@@ -44,5 +47,8 @@ export default defineMessages(
     "tile.weight": "Weight",
     "section.personal": "Personal",
     "section.body": "Body",
+    "player.title": "Shirt number and position",
+    "player.none": "Not set yet",
+    "player.hint": "Your trainer sets your shirt number and position.",
   },
 );

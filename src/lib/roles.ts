@@ -15,13 +15,14 @@ export type Capability =
   | "setAvailability"
   | "viewHealth"       // read check-ins/pain (still only with the athlete's consent)
   | "manageMembers"    // invites, kinds, removing members, recording parental consent
+  | "managePlayers"    // shirt number and position of athletes (head, sc, basketball: mirrors is_team_planner)
   | "manageTeam"       // team settings, workload thresholds, deleting the team (owner: the DB only lets the creating head delete it)
   ;
 
 const MATRIX: Record<StaffKind, ReadonlySet<Capability>> = {
-  head: new Set<Capability>(["planGym", "planCourt", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth", "manageMembers", "manageTeam"]),
-  sc: new Set<Capability>(["planGym", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth"]),
-  basketball: new Set<Capability>(["planCourt", "planRules", "writeNotes", "setAvailability", "viewHealth"]),
+  head: new Set<Capability>(["planGym", "planCourt", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth", "manageMembers", "managePlayers", "manageTeam"]),
+  sc: new Set<Capability>(["planGym", "manageLibrary", "planRules", "writeNotes", "setAvailability", "viewHealth", "managePlayers"]),
+  basketball: new Set<Capability>(["planCourt", "planRules", "writeNotes", "setAvailability", "viewHealth", "managePlayers"]),
   medical: new Set<Capability>(["writeNotes", "setAvailability", "viewHealth"]),
 };
 

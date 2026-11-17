@@ -36,7 +36,7 @@ export default async function TeamOverview({
         .from("wellness_checks")
         .select("user_id, day, sleep, soreness, fatigue, stress, mood, pain, pain_location")
         .eq("day", day),
-      supabase.from("team_members").select("user_id, consent_given").eq("team_id", id).eq("role", "athlete"),
+      supabase.from("team_members").select("user_id, consent_given, jersey_number, position").eq("team_id", id).eq("role", "athlete"),
     ]);
     if (settingsRes.error) throw new Error(settingsRes.error.message);
     const settings = settingsFromRow(settingsRes.data as Record<string, unknown> | null);
@@ -81,7 +81,11 @@ export default async function TeamOverview({
     }));
     // Wellness is optional extra data: a failure here must not take the dashboard down.
     const consent: Record<string, boolean> = {};
-    for (const m of membersRes.data ?? []) consent[m.user_id as string] = !!m.consent_given;
+    const players: Record<string, { jersey: number | null; position: string | null }> = {};
+    for (const m of membersRes.data ?? []) {
+      consent[m.user_id as string] = !!m.consent_given;
+      players[m.user_id as string] = { jersey: m.jersey_number, position: m.position };
+    }
     const wellness: Record<string, WellnessEntry | null> = {};
     for (const r of rows) wellness[r.user_id] = null;
     for (const w of wellnessRes.data ?? []) {
@@ -98,7 +102,7 @@ export default async function TeamOverview({
       <>
         <WorkloadTabs teamId={id} />
         <StaffDashboard
-          teamId={id} rows={rows} weeks={trend.data as WeekTrendRow[]} filter={f} wellness={wellness} consent={consent}
+          teamId={id} rows={rows} weeks={trend.data as WeekTrendRow[]} filter={f} wellness={wellness} consent={consent} players={players}
           showRatio={settings.showRatio} deviation={deviation}
         />
       </>
