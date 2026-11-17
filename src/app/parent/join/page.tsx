@@ -18,7 +18,7 @@ export default async function ParentJoinPage() {
           <ChevronLeft size={16} aria-hidden />{t("parent.join.back")}
         </Link>
         <p className="eyebrow">{t("parent.join.eyebrow")}</p>
-        <h1 className="display text-4xl">{t("parent.join.title")}</h1>
+        <h1 className="display text-4xl sm:text-5xl">{t("parent.join.title")}</h1>
         <p className="mt-1 text-sm text-muted">{t("parent.join.intro")}</p>
       </div>
 

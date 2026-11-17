@@ -59,7 +59,7 @@ export default async function AcademyPage({ searchParams }: { searchParams: Prom
   const range = `${dayFmt(nav.start, { day: "numeric", month: "short" })} – ${dayFmt(nav.end, { day: "numeric", month: "short", year: "numeric" })}`;
   const href = (week: string, club = clubId) => `/academy?club=${club}&week=${week}`;
   const fmt = (n: number) => n.toLocaleString(loc);
-  const linkCls = "glass inline-flex min-h-11 items-center justify-center gap-1 rounded-full px-4 text-sm transition-colors hover:text-[var(--foreground)]";
+  const linkCls = "glass inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-4 text-sm transition-colors hover:text-[var(--foreground)]";
 
   const kpiCards = [
     { label: t("academy.kpi.players"), value: k.players, hero: false },
@@ -75,7 +75,7 @@ export default async function AcademyPage({ searchParams }: { searchParams: Prom
           <ChevronLeft size={16} aria-hidden />{t("common.nav.teams")}
         </Link>
         <p className="eyebrow">{t("academy.eyebrow")}{clubName ? ` · ${clubName}` : ""}</p>
-        <h1 className="display text-4xl sm:text-5xl">{t("academy.title")}</h1>
+        <h1 className="display text-4xl sm:text-6xl">{t("academy.title")}</h1>
       </header>
 
       {clubs.size > 1 && (
@@ -101,8 +101,8 @@ export default async function AcademyPage({ searchParams }: { searchParams: Prom
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpiCards.map((c) => (
           <div key={c.label} className={`card flex flex-col gap-2 ${c.hero ? "card-hero" : ""}`}>
-            <span className="eyebrow">{c.label}</span>
-            <span className="num text-4xl">{fmt(c.value)}{c.unit && <span className="ml-1 text-sm font-normal text-muted">{c.unit}</span>}</span>
+            <span className="text-xs font-medium uppercase tracking-[0.1em] text-muted">{c.label}</span>
+            <span className="num text-5xl">{fmt(c.value)}{c.unit && <span className="ml-1 text-sm font-normal text-muted">{c.unit}</span>}</span>
           </div>
         ))}
       </section>
@@ -115,8 +115,8 @@ export default async function AcademyPage({ searchParams }: { searchParams: Prom
             return (
               <div key={i} className="flex flex-col items-center gap-1.5">
                 <span className={`text-xs tabular-nums sm:text-sm ${today ? "font-semibold text-[var(--accent)]" : "text-muted"}`}>{fmt(v)}</span>
-                <div className="flex h-32 w-full items-end rounded-lg bg-[var(--surface-2)] sm:h-40">
-                  <div className="w-full rounded-lg"
+                <div className="flex h-32 w-full items-end rounded-md bg-[var(--surface-2)] sm:h-40">
+                  <div className="w-full rounded-md"
                     style={{ height: `${v > 0 ? Math.max(4, Math.round((v / maxDay) * 100)) : 0}%`, background: today ? "var(--accent)" : "color-mix(in srgb, var(--accent) 40%, var(--muted))" }} />
                 </div>
                 <span className={`eyebrow ${today ? "" : "!text-[var(--muted)]"}`}>{dayLabels[i]}</span>

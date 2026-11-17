@@ -14,8 +14,8 @@ function Section({ id, icon: Icon, title, children }: { id: string; icon: Lucide
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[var(--accent)]"
-          style={{ boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)", background: "var(--accent-soft)" }}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-md text-[var(--accent)]"
+          style={{ background: "var(--accent-soft)" }}
         >
           <Icon size={18} />
         </span>
@@ -97,12 +97,12 @@ export default async function HelpPage() {
             {steps.map((s, i) => (
               <li key={s.title} className="relative flex gap-4 pb-6 last:pb-0">
                 {i < steps.length - 1 && (
-                  <span aria-hidden className="absolute bottom-0 left-5 top-10 w-px -translate-x-1/2" style={{ background: "linear-gradient(var(--accent), transparent)", opacity: 0.5 }} />
+                  <span aria-hidden className="absolute bottom-0 left-5 top-10 w-px -translate-x-1/2" style={{ background: "var(--line)" }} />
                 )}
                 <span
                   aria-hidden
-                  className="num relative grid h-10 w-10 shrink-0 place-items-center rounded-full text-base text-[var(--accent)]"
-                  style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}
+                  className="num relative grid h-10 w-10 shrink-0 place-items-center rounded-md text-base text-[var(--accent)]"
+                  style={{ background: "var(--surface-2)" }}
                 >
                   {i + 1}
                 </span>

@@ -148,7 +148,7 @@ function AthleteCard({ teamId, sessionId, athlete: a }: { teamId: string; sessio
           aria-expanded={open}
           aria-controls={contentId}
           aria-label={t(open ? "review.card.hide" : "review.card.show", { name: a.name })}
-          className="-m-1 flex min-h-12 items-center gap-3 rounded-2xl p-1 text-left"
+          className="-m-1 flex min-h-12 items-center gap-3 rounded-md p-1 text-left"
         >
           <Avatar name={a.name} size={44} />
           <Heading a={a} />
@@ -266,7 +266,7 @@ function BlockSection({
 
   return (
     <section className="flex flex-col gap-2" aria-label={b.name}>
-      <h3 className="flex items-baseline gap-2 text-base font-bold">
+      <h3 className="flex items-baseline gap-2 text-xl">
         <span className="eyebrow">{t("review.block.label", { letter: b.letter })}</span>
         <span className="min-w-0 truncate">{b.name}</span>
       </h3>
@@ -346,7 +346,7 @@ function SetRow({
 
   return (
     <li
-      className="flex flex-col gap-2 rounded-2xl border p-3"
+      className="flex flex-col gap-2 rounded-md border p-3"
       style={{
         background: row.dev ? "color-mix(in srgb, var(--warn-bg) 55%, transparent)" : "color-mix(in srgb, var(--surface-2) 45%, transparent)",
         boxShadow: row.dev ? "inset 3px 0 0 var(--warn)" : undefined,
@@ -536,7 +536,7 @@ function CorrectForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-2xl border p-3">
+    <form onSubmit={submit} className="flex flex-col gap-3 rounded-md border p-3">
       <p className="font-semibold">{t("review.correct.title", { name: a.name })}</p>
       <p className="text-muted">{t("review.correct.hint")}</p>
       <div className="grid grid-cols-2 gap-3">

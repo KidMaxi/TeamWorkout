@@ -174,7 +174,7 @@
 
 /* ---- loading skeletons (loading.tsx): calm, same footprint as the real content ---- */
 @keyframes skeleton-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
-.skeleton { background: var(--surface-3); border-radius: 0.75rem; animation: skeleton-pulse 1.6s ease-in-out infinite; }
+.skeleton { background: var(--surface-3); border-radius: var(--radius); animation: skeleton-pulse 1.6s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .rise, .stagger > *, .dial-arc, .dial-tick, .skeleton { animation: none !important; }

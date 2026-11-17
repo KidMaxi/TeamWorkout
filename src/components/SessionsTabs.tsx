@@ -15,13 +15,13 @@ export function SessionsTabs({ teamId }: { teamId: string }) {
     { href: `${base}/calendar`, label: t("sessions.tab.calendar"), active: onCalendar },
   ];
   return (
-    <nav className="glass flex w-fit gap-1 rounded-full p-1" aria-label={t("sessions.tabs.label")}>
+    <nav className="glass flex w-fit gap-1 rounded-md p-1" aria-label={t("sessions.tabs.label")}>
       {tabs.map((tab) => (
         <Link
           key={tab.href}
           href={tab.href}
           aria-current={tab.active ? "page" : undefined}
-          className={`inline-flex min-h-11 items-center rounded-full px-5 text-sm font-medium transition-colors ${tab.active ? "bg-[var(--primary)] text-[var(--on-primary)]" : "text-muted hover:text-[var(--foreground)]"}`}
+          className={`inline-flex min-h-11 items-center rounded-md px-5 text-sm font-medium transition-colors ${tab.active ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-muted hover:text-[var(--foreground)]"}`}
         >
           {tab.label}
         </Link>

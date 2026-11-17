@@ -148,7 +148,7 @@ function CoachNote({ text, label, more, less, kiosk }: { text: string; label: st
   const [expanded, setExpanded] = useState(false);
   const long = text.length > 120 || text.includes("\n");
   return (
-    <div className="rounded-2xl border p-3 text-sm" style={{ background: "var(--accent-soft)" }}>
+    <div className="rounded-md border p-3 text-sm" style={{ background: "var(--accent-soft)" }}>
       <p className={`whitespace-pre-line ${long && !expanded ? "line-clamp-2" : ""}`}>
         <span className="font-semibold">{label}</span> {text}
       </p>
@@ -637,7 +637,7 @@ export function WorkoutRunner({
 
   const syncBanner =
     pending > 0 ? (
-      <div role="status" className="flex items-center gap-3 rounded-2xl border p-3 text-sm" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
+      <div role="status" className="flex items-center gap-3 rounded-md border p-3 text-sm" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
         <WifiOff size={18} aria-hidden className="shrink-0" />
         <span className="min-w-0 flex-1">{sending ? t("run.sync.sending") : t("run.sync.offline", { n: pending })}</span>
         <button type="button" onClick={() => void flushQueue()} disabled={sending} className={`btn inline-flex ${tapH} items-center px-3 disabled:opacity-60`}>
@@ -740,7 +740,7 @@ export function WorkoutRunner({
       {syncBanner}
 
       {/* sticky timer bar */}
-      <div className="glass sticky top-2 z-20 flex flex-col gap-2 rounded-3xl p-3">
+      <div className="glass sticky top-2 z-20 flex flex-col gap-2 rounded-md p-3">
         <div className="flex items-center gap-3">
           <div className="shrink-0">
             <p className="eyebrow">{paused ? t("run.timer.paused") : t("run.timer.label")}</p>
@@ -875,7 +875,7 @@ export function WorkoutRunner({
                           key={d.key}
                           role="group"
                           aria-label={setLabel}
-                          className="flex flex-col gap-2 rounded-2xl border p-3"
+                          className="flex flex-col gap-2 rounded-md border p-3"
                           style={{ background: clean ? "color-mix(in srgb, var(--ok-bg) 45%, var(--surface))" : "var(--surface-2)" }}
                         >
                           <div className="flex items-center gap-2">

@@ -43,7 +43,7 @@ function Tile({ label, value, unit }: { label: string; value: string; unit?: str
         {value}
         {unit && <span className="ml-0.5 text-xs font-semibold text-muted">{unit}</span>}
       </span>
-      <span className="eyebrow">{label}</span>
+      <span className="text-xs font-medium uppercase tracking-[0.1em] text-muted">{label}</span>
     </div>
   );
 }
@@ -144,8 +144,8 @@ export function ProfileForm({
           <div className="flex items-start gap-3">
             <span
               aria-hidden
-              className="grid size-10 shrink-0 place-items-center rounded-full text-[var(--accent)]"
-              style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent)" }}
+              className="grid size-10 shrink-0 place-items-center rounded-md text-[var(--accent)]"
+              style={{ background: "var(--surface-2)" }}
             >
               <KeyRound size={18} />
             </span>

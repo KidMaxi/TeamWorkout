@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, LogIn, UserPlus } from "lucide-react";
@@ -73,7 +74,11 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative mx-auto flex min-h-dvh w-full max-w-sm flex-col items-center justify-center px-4 py-10">
+    <main className="relative isolate mx-auto flex min-h-dvh w-full max-w-sm flex-col items-center justify-center px-4 py-10">
+      {/* Dark court backdrop: the same photo as the planning banner, almost fully covered by the charcoal tint */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-[var(--background)]">
+        <Image src="/images/court-hero.jpg" alt="" fill priority sizes="100vw" className="object-cover opacity-20" />
+      </div>
       <div className="absolute right-4 top-4"><LanguageSwitcher /></div>
 
       <div className="rise flex w-full flex-col items-center">
@@ -85,7 +90,7 @@ export default function LoginPage() {
         </div>
 
         <div className="-mt-6 text-center">
-          <h1 className="font-display text-xl font-extrabold uppercase tracking-[0.1em]">
+          <h1 className="display text-5xl uppercase tracking-[0.2em]">
             Court<span className="text-accent">load</span>
           </h1>
           <p className="mt-2 text-sm text-muted">{t("common.tagline")}</p>

@@ -96,7 +96,7 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
             return (
               <li
                 key={k}
-                className="flex flex-col items-center gap-0.5 rounded-xl border border-[var(--line)] bg-[var(--surface-2)]/60 py-2"
+                className="flex flex-col items-center gap-0.5 rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 py-2"
                 aria-label={label}
                 title={label}
               >
@@ -114,7 +114,7 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
   return (
     <form onSubmit={submit} className="card flex flex-col gap-4" aria-busy={pending}>
       <div>
-        <h3 className="font-semibold">{t("wellness.card.title")}</h3>
+        <h3 className="text-xl">{t("wellness.card.title")}</h3>
         <p className="mt-0.5 text-sm text-muted">{t("wellness.card.hint")}</p>
       </div>
       <div className="flex flex-col gap-4">

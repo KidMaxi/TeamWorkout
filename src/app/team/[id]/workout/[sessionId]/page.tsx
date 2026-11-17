@@ -15,7 +15,7 @@ function Calm({ icon: Icon, title, body, href, back }: {
   return (
     <section className="rise flex flex-col gap-4">
       <div className="card card-hero flex flex-col items-start gap-3">
-        <span aria-hidden className="grid size-11 place-items-center rounded-full text-[var(--accent)]" style={{ background: "var(--surface-2)" }}>
+        <span aria-hidden className="grid size-11 place-items-center rounded-md text-[var(--accent)]" style={{ background: "var(--surface-2)" }}>
           <Icon size={20} />
         </span>
         <h2 className="display text-2xl leading-tight">{title}</h2>

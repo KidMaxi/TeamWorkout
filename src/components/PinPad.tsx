@@ -73,7 +73,7 @@ export function PinPad({
     return () => window.removeEventListener("keydown", onKey);
   }, [busy, push, back, submit, digits.length, minLength]);
 
-  const key = "btn num grid h-16 min-w-16 place-items-center text-3xl sm:h-20 !rounded-2xl";
+  const key = "btn num grid h-16 min-w-16 place-items-center text-3xl sm:h-20 !rounded-md";
 
   return (
     <div className="mx-auto flex w-full max-w-xs flex-col items-center gap-5">

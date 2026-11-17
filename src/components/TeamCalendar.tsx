@@ -97,7 +97,7 @@ export function TeamCalendar({ teamId, view, date, today, sessions, showLoad, at
   function Chip({ s }: { s: CalSession }) {
     const cancelled = s.status === "cancelled";
     return (
-      <li className={`flex flex-col gap-1 rounded-xl border p-2 text-xs ${cancelled ? "opacity-70" : ""}`} style={{ borderLeft: `3px solid ${TYPE_COLOR[s.type]}`, background: "color-mix(in srgb, var(--surface-2) 70%, transparent)" }}>
+      <li className={`flex flex-col gap-1 rounded-md border p-2 text-xs ${cancelled ? "opacity-70" : ""}`} style={{ borderLeft: `3px solid ${TYPE_COLOR[s.type]}`, background: "var(--surface-2)" }}>
         <span className={`flex items-center gap-1.5 font-semibold ${cancelled ? "text-muted line-through" : ""}`}>
           <SessionTypeIcon type={s.type} size={14} className="shrink-0 text-[var(--accent)]" />
           <span className="truncate">{t(SESSION_TYPE_KEY[s.type])}</span>
@@ -126,11 +126,11 @@ export function TeamCalendar({ teamId, view, date, today, sessions, showLoad, at
     return (
       <section
         aria-label={fmtDay(day, loc, { weekday: "long", day: "numeric", month: "long" })}
-        className={`flex min-w-0 flex-col gap-2 rounded-2xl border p-2.5 ${isToday ? "border-[var(--accent)]" : ""}`}
-        style={{ background: "var(--card-sheen), var(--surface)" }}
+        className={`flex min-w-0 flex-col gap-2 rounded-md border p-2.5 ${isToday ? "border-[var(--accent)]" : ""}`}
+        style={{ background: "var(--surface)" }}
       >
         <div className="flex items-center justify-between gap-2">
-          <Link href={href("day", day)} className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg">
+          <Link href={href("day", day)} className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-md">
             <span className="eyebrow">{fmtDay(day, loc, { weekday: "short" }).replace(".", "")}</span>
             <span className={`num ${bigHeader ? "text-3xl" : "text-xl"} ${isToday ? "text-[var(--accent)]" : ""}`}>{fmtDay(day, loc, { day: "numeric" })}</span>
           </Link>
@@ -155,13 +155,13 @@ export function TeamCalendar({ teamId, view, date, today, sessions, showLoad, at
           <Link href={href(view, shiftDate(view, date, 1))} className={navBtn} aria-label={t("calendar.next")}><ChevronRight size={18} aria-hidden /></Link>
           <Link href={href(view, today)} className="btn inline-flex min-h-11 items-center">{t("calendar.today")}</Link>
         </div>
-        <nav className="glass flex w-fit gap-1 rounded-full p-1" aria-label={t("calendar.views")}>
+        <nav className="glass flex w-fit gap-1 rounded-md p-1" aria-label={t("calendar.views")}>
           {VIEWS.map((v) => (
             <Link
               key={v}
               href={href(v, date)}
               aria-current={v === view ? "page" : undefined}
-              className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium transition-colors ${v === view ? "bg-[var(--primary)] text-[var(--on-primary)]" : "text-muted hover:text-[var(--foreground)]"}`}
+              className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-medium transition-colors ${v === view ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-muted hover:text-[var(--foreground)]"}`}
             >
               {t(`calendar.view.${v}` as MessageKey)}
             </Link>
@@ -208,8 +208,8 @@ export function TeamCalendar({ teamId, view, date, today, sessions, showLoad, at
                   key={d}
                   href={href("day", d)}
                   aria-label={`${t("calendar.openDay", { date: full })}, ${list.length === 1 ? t("calendar.count.one") : t("calendar.count", { n: list.length })}`}
-                  className={`flex min-h-16 flex-col items-center gap-1 rounded-xl border p-1 transition-colors hover:border-[var(--accent)] ${d === today ? "border-[var(--accent)]" : ""} ${inMonth ? "" : "opacity-45"}`}
-                  style={{ background: "color-mix(in srgb, var(--surface) 80%, transparent)" }}
+                  className={`flex min-h-16 flex-col items-center gap-1 rounded-md border p-1 transition-colors hover:border-[var(--accent)] ${d === today ? "border-[var(--accent)]" : ""} ${inMonth ? "" : "opacity-45"}`}
+                  style={{ background: "var(--surface)" }}
                 >
                   <span className={`num text-sm ${d === today ? "text-[var(--accent)]" : ""}`}>{fmtDay(d, loc, { day: "numeric" })}</span>
                   <span className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5" aria-hidden>

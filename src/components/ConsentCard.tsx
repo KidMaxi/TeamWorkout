@@ -44,8 +44,8 @@ export function ConsentCard({ teamId, teamName, given, dateLabel, by, age }: Con
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="grid size-10 shrink-0 place-items-center rounded-full text-[var(--accent)]"
-          style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent)" }}
+          className="grid size-10 shrink-0 place-items-center rounded-md border text-[var(--accent)]"
+          style={{ background: "var(--surface-3)" }}
         >
           {given ? <ShieldCheck size={18} /> : <Lock size={18} />}
         </span>
@@ -58,7 +58,7 @@ export function ConsentCard({ teamId, teamName, given, dateLabel, by, age }: Con
       <p className="text-sm text-muted">{t("consent.card.body1")} {t("consent.card.body2")}</p>
 
       {age === "adult" && (
-        <div className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border px-4" style={{ background: "var(--surface-2)" }}>
+        <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border px-4" style={{ background: "var(--surface-2)" }}>
           <span id={`consent-sw-${teamId}`} className="text-sm font-medium">
             {t("consent.card.switch", { team: teamName })}
           </span>
@@ -80,7 +80,7 @@ export function ConsentCard({ teamId, teamName, given, dateLabel, by, age }: Con
               }}
             >
               <span
-                className="absolute top-0.5 size-6 rounded-full shadow transition-all"
+                className="absolute top-0.5 size-6 rounded-full transition-all"
                 style={{ left: given ? "1.3rem" : "0.15rem", background: given ? "var(--on-primary)" : "var(--muted)" }}
               />
             </span>
@@ -90,14 +90,14 @@ export function ConsentCard({ teamId, teamName, given, dateLabel, by, age }: Con
       )}
 
       {age === "minor" && (
-        <p className="flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm" style={{ background: "var(--surface-2)" }}>
+        <p className="flex items-start gap-2 rounded-md border px-4 py-3 text-sm" style={{ background: "var(--surface-2)" }}>
           <Lock size={16} aria-hidden className="mt-0.5 shrink-0 text-[var(--accent)]" />
           {t("consent.locked.minor")}
         </p>
       )}
 
       {age === "unknown" && (
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border px-4 py-3 text-sm" style={{ background: "var(--surface-2)" }}>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border px-4 py-3 text-sm" style={{ background: "var(--surface-2)" }}>
           <span>{t("consent.needBirth.text")}</span>
           <a href="#birth_date" className="link inline-flex min-h-11 items-center">{t("consent.needBirth.link")}</a>
         </p>

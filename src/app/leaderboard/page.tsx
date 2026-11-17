@@ -63,7 +63,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           <span className="text-sm">{t("common.nav.teams")}</span>
         </Link>
         <p className="eyebrow">{t("leaderboard.eyebrow")}</p>
-        <h1 className="display text-3xl">{t("leaderboard.title")}</h1>
+        <h1 className="display text-4xl sm:text-6xl">{t("leaderboard.title")}</h1>
         {names.get(clubId) && <p className="text-sm text-muted">{names.get(clubId)}</p>}
       </header>
 

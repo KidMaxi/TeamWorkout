@@ -13,7 +13,7 @@ import { TermsGate } from "@/components/TermsGate";
 import { createTeam, joinTeam, signOut } from "./actions";
 
 const iconBtn =
-  "glass inline-flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:text-[var(--foreground)]";
+  "glass inline-flex h-10 w-10 items-center justify-center rounded-md text-muted transition-colors hover:text-[var(--foreground)]";
 
 function InputIcon({ icon: Icon }: { icon: typeof Users }) {
   return <Icon size={16} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />;

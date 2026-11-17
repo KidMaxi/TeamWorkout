@@ -45,7 +45,7 @@ export function InviteParent({ teamId, childId, linked }: { teamId: string; chil
       </div>
       {error && <p role="alert" className="text-sm text-danger">{t(error)}</p>}
       {code && (
-        <div className="flex flex-col gap-3 rounded-2xl border px-4 py-3" style={{ background: "var(--surface-2)" }}>
+        <div className="flex flex-col gap-3 rounded-md border px-4 py-3" style={{ background: "var(--surface-2)" }}>
           <span className="eyebrow">{t("parent.invite.codeLabel")}</span>
           <span className="select-all break-all font-mono text-2xl font-semibold tracking-[0.18em]">{code}</span>
           <div className="flex flex-wrap items-center gap-2">

@@ -24,8 +24,6 @@ const MIN_MINUTES = 1;
 const MAX_MINUTES = 600;
 const SAVED_MS = 800;
 
-const ring = { boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" } as const;
-
 const parseMinutes = (raw: string): number | null => {
   if (!/^\d{1,3}$/.test(raw)) return null;
   const n = Number(raw);
@@ -143,11 +141,11 @@ function LogCard({
   return (
     <div ref={ref} tabIndex={-1} aria-label={name} className="card rise flex flex-col gap-4 focus:outline-none">
       <div className="flex items-center gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--accent)]" style={ring}>
+        <span className="grid size-11 shrink-0 place-items-center rounded-md border text-[var(--accent)]">
           <SessionTypeIcon type={item.type} size={20} />
         </span>
         <div className="min-w-0">
-          <h3 className="truncate text-lg font-semibold leading-tight">{name}</h3>
+          <h3 className="truncate text-xl leading-tight">{name}</h3>
           <p className="text-sm text-muted">{when(item.startsAt, locale)}</p>
         </div>
       </div>
@@ -165,7 +163,7 @@ function LogCard({
         <form onSubmit={submit} className="flex flex-col gap-4" aria-busy={pending}>
           <fieldset className="m-0 min-w-0 border-0 p-0" disabled={pending}>
             <legend className="sr-only">{t("quicklog.attendance.group")}</legend>
-            <div role="radiogroup" className="grid grid-cols-2 gap-1 rounded-2xl border bg-[var(--surface-2)] p-1">
+            <div role="radiogroup" className="grid grid-cols-2 gap-1 rounded-md border bg-[var(--surface-2)] p-1">
               {([[true, "quicklog.attendance.present", Check], [false, "quicklog.attendance.absent", X]] as const).map(([val, key, Icon]) => (
                 <label key={key} className="relative block">
                   <input
@@ -175,7 +173,7 @@ function LogCard({
                     onChange={() => { setDraft({ ...draft, attended: val }); setError(null); }}
                     className="peer sr-only"
                   />
-                  <span className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl font-semibold text-muted transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)] ${val ? "peer-checked:bg-[var(--primary)] peer-checked:text-[var(--on-primary)]" : "peer-checked:bg-[var(--surface-3)] peer-checked:text-foreground"}`}>
+                  <span className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-md font-semibold text-muted transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)] ${val ? "peer-checked:bg-[var(--accent-soft)] peer-checked:text-[var(--primary)]" : "peer-checked:bg-[var(--surface-3)] peer-checked:text-foreground"}`}>
                     <Icon size={16} aria-hidden />{t(key)}
                   </span>
                 </label>
@@ -220,7 +218,7 @@ function LogCard({
               />
               <p id={`${noteId}-help`} className="flex justify-between gap-3 text-xs text-muted">
                 <span>{t("quicklog.note.help")}</span>
-                <span className="num shrink-0 !text-xs !font-semibold" aria-hidden>{t("quicklog.note.count", { n: draft.note.length, max: NOTE_MAX })}</span>
+                <span className="num shrink-0 !text-xs" aria-hidden>{t("quicklog.note.count", { n: draft.note.length, max: NOTE_MAX })}</span>
               </p>
             </div>
           ) : (
@@ -300,7 +298,7 @@ export function QuickLog({ teamId, items }: { teamId: string; items: QuickLogIte
                         type="button"
                         onClick={() => { setOpenId(i.id); setAdvanced(true); }}
                         aria-label={t("quicklog.openRow", { name })}
-                        className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl px-2 text-left text-sm transition-colors hover:bg-[var(--surface-2)]"
+                        className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-left text-sm transition-colors hover:bg-[var(--surface-2)]"
                       >
                         <SessionTypeIcon type={i.type} size={18} className="shrink-0 text-[var(--accent)]" />
                         <span className="min-w-0 flex-1 truncate">

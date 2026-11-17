@@ -290,8 +290,8 @@ export function WorkoutEditor({
         {blocks.length === 0 && pickable.length > 0 && (
           <div className="card flex flex-col items-center gap-3 px-5 py-8 text-center text-sm">
             <span
-              aria-hidden className="grid size-14 place-items-center rounded-full text-[var(--accent)]"
-              style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}
+              aria-hidden className="grid size-14 place-items-center rounded-md border text-[var(--accent)]"
+              style={{ background: "var(--surface-3)" }}
             >
               <Dumbbell size={24} />
             </span>
@@ -327,7 +327,7 @@ export function WorkoutEditor({
         )}
       </div>
 
-      <div className="glass sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 flex items-center gap-3 rounded-2xl p-3 md:bottom-4">
+      <div className="glass sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-10 flex items-center gap-3 rounded-md p-3 md:bottom-4">
         <div className="min-w-0 flex-1 text-sm" aria-live="polite">
           {shownError ? (
             <p role="alert" className="text-danger">{shownError}</p>
@@ -433,10 +433,9 @@ function BlockCard({
       <div className="flex items-start gap-2">
         <span
           aria-hidden
-          className="mt-0.5 grid size-11 shrink-0 place-items-center rounded-full text-[var(--accent)]"
+          className="mt-0.5 grid size-11 shrink-0 place-items-center rounded-md border text-[var(--accent)]"
           style={{
-            background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))",
-            boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)",
+            background: "var(--surface-3)",
           }}
         >
           <span className="num text-lg">{L}</span>
@@ -485,7 +484,7 @@ function BlockCard({
       <div className="flex flex-col gap-2">
         <button
           type="button" onClick={openNote} aria-expanded={noteOpen} aria-controls={`${noteId}-panel`}
-          className="flex min-h-11 w-full items-center gap-2 rounded-xl px-1 text-left text-muted transition-colors hover:text-[var(--foreground)]"
+          className="flex min-h-11 w-full items-center gap-2 rounded-md px-1 text-left text-muted transition-colors hover:text-[var(--foreground)]"
         >
           <StickyNote size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
           <span className={`min-w-0 flex-1 truncate ${block.notes && !noteOpen ? "text-[var(--foreground)]" : ""}`}>
@@ -519,7 +518,7 @@ function BlockCard({
           const typeName = t(`workouts.type.${s.type}`);
           const rpeLocked = s.type === "warmup" || s.type === "failure";
           return (
-            <li key={s.key} className="flex flex-col gap-2 rounded-2xl border p-3" style={{ background: "color-mix(in srgb, var(--surface-2) 55%, transparent)" }}>
+            <li key={s.key} className="flex flex-col gap-2 rounded-md border p-3" style={{ background: "color-mix(in srgb, var(--surface-2) 55%, transparent)" }}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <button
@@ -684,7 +683,7 @@ function SetTypeSheet({
           </div>
         </div>
         {legend && (
-          <ul id={legendId} className="flex flex-col gap-1 rounded-2xl border p-3 text-xs text-muted">
+          <ul id={legendId} className="flex flex-col gap-1 rounded-md border p-3 text-xs text-muted">
             {SET_TYPES.map((k) => <li key={k}>{t(`workouts.type.${k}.desc`)}</li>)}
           </ul>
         )}
@@ -696,7 +695,7 @@ function SetTypeSheet({
                 <button
                   type="button" aria-current={k === current || undefined}
                   onClick={() => { onPick(k); close(); }}
-                  className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border px-4 text-left font-semibold transition-colors hover:border-[var(--accent)] ${k === current ? "!border-[var(--accent)] bg-[var(--accent-soft)]" : ""}`}
+                  className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-4 text-left font-semibold transition-colors hover:border-[var(--accent)] ${k === current ? "!border-[var(--accent)] bg-[var(--accent-soft)]" : ""}`}
                 >
                   <span className="num grid size-9 shrink-0 place-items-center rounded-full text-base" style={{ color: st.color, background: st.bg }}>
                     {k === "normal" ? "1" : t(`workouts.type.${k}.badge`)}
@@ -761,7 +760,7 @@ function ExercisePicker({
       </button>
       <dialog
         ref={ref}
-        className="confirm !w-[min(94vw,32rem)] !max-h-[88dvh] overflow-y-auto !rounded-3xl !p-5"
+        className="confirm !w-[min(94vw,32rem)] !max-h-[88dvh] overflow-y-auto !rounded-md !p-5"
         onClose={() => setOpen(false)}
         aria-label={`${t("workouts.picker.title")} (${label})`}
       >
@@ -820,7 +819,7 @@ function PickerBody({
             <li key={e.id}>
               <button
                 type="button" onClick={() => onPick(e)} aria-current={e.id === selectedId || undefined}
-                className={`flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border px-4 py-2 text-left transition-colors hover:border-[var(--accent)] ${e.id === selectedId ? "!border-[var(--accent)] bg-[var(--accent-soft)]" : ""}`}
+                className={`flex min-h-14 w-full items-center justify-between gap-3 rounded-md border px-4 py-2 text-left transition-colors hover:border-[var(--accent)] ${e.id === selectedId ? "!border-[var(--accent)] bg-[var(--accent-soft)]" : ""}`}
               >
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate font-semibold">{e.name}</span>

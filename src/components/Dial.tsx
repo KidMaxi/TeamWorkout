@@ -71,7 +71,6 @@ export function Dial({
         x1={x1} y1={y1} x2={x2} y2={y2}
         stroke={lit ? color : "var(--line)"}
         strokeWidth={major ? 2 : 1}
-        strokeLinecap="round"
         opacity={lit ? (major ? 1 : 0.7) : 1}
         className="dial-tick"
       />
@@ -83,7 +82,7 @@ export function Dial({
     const angle = startAngle + m * 270;
     const [x1, y1] = pt(angle, mini ? arcR + stroke : tickOuter + 1);
     const [x2, y2] = pt(angle, mini ? arcR - stroke : arcR - 8);
-    return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--accent)" strokeWidth={2.5} strokeLinecap="round" />;
+    return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--foreground)" strokeWidth={2.5} />;
   })();
 
   return (
@@ -92,16 +91,16 @@ export function Dial({
         {tickEls}
         {/* track */}
         <circle
-          cx={c} cy={c} r={arcR} fill="none" stroke="var(--line)" strokeWidth={stroke} strokeLinecap="round"
+          cx={c} cy={c} r={arcR} fill="none" stroke="var(--line)" strokeWidth={stroke}
           strokeDasharray={`${arcLen} ${len}`} transform={`rotate(${startAngle} ${c} ${c})`}
         />
         {/* progress */}
         <circle
-          cx={c} cy={c} r={arcR} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
+          cx={c} cy={c} r={arcR} fill="none" stroke={color} strokeWidth={stroke}
           strokeDasharray={`${arcLen} ${len}`} strokeDashoffset={off}
           transform={`rotate(${startAngle} ${c} ${c})`}
           className="dial-arc"
-          style={{ ["--dial-len" as string]: arcLen, ["--dial-off" as string]: off, filter: mini ? undefined : `drop-shadow(0 0 6px ${color})` }}
+          style={{ ["--dial-len" as string]: arcLen, ["--dial-off" as string]: off }}
         />
         {markerEl}
       </svg>

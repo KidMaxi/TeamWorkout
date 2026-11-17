@@ -306,7 +306,7 @@ export default async function WorkloadPage({
   const rangeFmt = new Intl.DateTimeFormat(loc, { timeZone: "UTC", day: "numeric", month: "short" });
   const range = t("workload.week.range", { from: rangeFmt.format(at(monday)), to: rangeFmt.format(at(addDays(monday, 6))) });
   const base = `/team/${id}/workload`;
-  const nav = "inline-grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:text-[var(--foreground)]";
+  const nav = "inline-grid size-11 shrink-0 place-items-center rounded-md text-muted transition-colors hover:text-[var(--foreground)]";
 
   return (
     <section className="flex flex-col gap-5">
@@ -337,7 +337,7 @@ export default async function WorkloadPage({
             <div
               role="img"
               aria-label={t("workload.summary.aria", statusCount)}
-              className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full"
+              className="flex h-3 w-full gap-0.5 overflow-hidden rounded-md"
               style={{ background: "var(--surface-3)" }}
             >
               {SEGMENTS.filter((s) => statusCount[s.key] > 0).map((s) => (
@@ -347,7 +347,7 @@ export default async function WorkloadPage({
           )}
           <div className="grid grid-cols-4 gap-2">
             {SEGMENTS.map((s) => (
-              <div key={s.key} className="flex flex-col items-center gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-3 text-center">
+              <div key={s.key} className="flex flex-col items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-3 text-center">
                 <p className="num text-2xl" style={{ color: statusCount[s.key] && s.key !== "unknown" ? s.color : undefined }}>{statusCount[s.key]}</p>
                 <p className="text-[11px] leading-tight text-muted">{t(s.label)}</p>
               </div>

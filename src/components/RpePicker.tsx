@@ -69,7 +69,7 @@ export function RpePicker({ value, defaultValue = null, onChange, name = "rpe", 
             />
             <span
               aria-hidden
-              className="num grid min-h-[3.25rem] cursor-pointer place-items-center rounded-2xl border border-[var(--line)] bg-[var(--surface-2)]/60 text-xl shadow-[inset_0_-4px_0_var(--c)] transition-colors hover:border-[var(--accent)] peer-checked:border-transparent peer-checked:bg-[var(--c)] peer-checked:text-[var(--on-primary)] peer-checked:shadow-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]"
+              className="num grid min-h-[3.25rem] cursor-pointer place-items-center rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 text-xl shadow-[inset_0_-4px_0_var(--c)] transition-colors hover:border-[var(--accent)] peer-checked:border-transparent peer-checked:bg-[var(--c)] peer-checked:text-[var(--on-primary)] peer-checked:shadow-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]"
             >
               {n}
             </span>

@@ -62,9 +62,9 @@ export type AthleteDetailProps = {
 
 function Tile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-[var(--line)] bg-[var(--surface-2)]/60 px-1.5 py-3 text-center">
+    <div className="flex min-w-0 flex-col justify-between gap-2 rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase leading-tight tracking-widest text-muted">{label}</p>
       <div className="flex min-h-7 items-center">{children}</div>
-      <p className="text-[11px] leading-tight text-muted">{label}</p>
     </div>
   );
 }
@@ -90,14 +90,14 @@ function Hero({ row, level, showRatio, deviation, t }: {
       >
         <p className="num" style={{ fontSize: String(acute).length > 4 ? "2.1rem" : "2.8rem" }}>{acute}</p>
       </Dial>
-      <div className="grid w-full grid-cols-4 gap-2">
-        <Tile label={t("detail.tile.acute")}><span className="num text-xl">{acute}</span></Tile>
-        <Tile label={t("detail.tile.chronic")}><span className="num text-xl">{chronic}</span></Tile>
+      <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
+        <Tile label={t("detail.tile.acute")}><span className="num text-4xl">{acute}</span></Tile>
+        <Tile label={t("detail.tile.chronic")}><span className="num text-4xl">{chronic}</span></Tile>
         {showRatio ? (
           <Tile label={t("detail.tile.ratio")}>
             {row.acwr !== null ? (
-              <span className="flex flex-col items-center gap-1">
-                <span className="num text-xl">{row.acwr.toFixed(2)}</span>
+              <span className="flex flex-col items-start gap-1.5">
+                <span className="num text-4xl">{row.acwr.toFixed(2)}</span>
                 <span className={L.cls}>{t(L.key)}</span>
               </span>
             ) : (
@@ -107,8 +107,8 @@ function Hero({ row, level, showRatio, deviation, t }: {
         ) : (
           <Tile label={t("detail.tile.deviation")}>
             {deviation?.pct != null ? (
-              <span className="flex flex-col items-center gap-1">
-                <span className="num text-xl">{deviation.pct > 0 ? "+" : ""}{Math.round(deviation.pct)}%</span>
+              <span className="flex flex-col items-start gap-1.5">
+                <span className="num text-4xl">{deviation.pct > 0 ? "+" : ""}{Math.round(deviation.pct)}%</span>
                 <span className="badge badge-none">{t("detail.deviation.own")}</span>
               </span>
             ) : (
@@ -117,7 +117,7 @@ function Hero({ row, level, showRatio, deviation, t }: {
           </Tile>
         )}
         <Tile label={t("detail.tile.limit")}>
-          <span className="num text-xl">{row.max_weekly_load ?? "–"}</span>
+          <span className="num text-4xl">{row.max_weekly_load ?? "–"}</span>
         </Tile>
       </div>
       {showRatio ? (
@@ -141,7 +141,7 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDetailProps["weekly"
     new Date(iso + "T00:00:00Z").toLocaleDateString(dateLocale(locale), { day: "numeric", month: "numeric", timeZone: "UTC" });
   return (
     <div className="card">
-      <h3 className="mb-5 font-semibold">{t("detail.weekly.title")}</h3>
+      <h3 className="mb-5 text-xl">{t("detail.weekly.title")}</h3>
       <div className="relative">
         <ol className="flex h-24 items-end gap-1" aria-label={t("detail.weekly.aria")}>
           {weekly.map((w, i) => {
@@ -150,13 +150,10 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDetailProps["weekly"
             return (
               <li key={w.week_start} className="flex h-full min-w-0 flex-1 items-end justify-center">
                 <div
-                  className="relative w-full max-w-4 rounded-full"
+                  className="relative w-full max-w-4 rounded-t-sm"
                   style={{
                     height: `${Math.max((w.total_load / max) * scale, w.total_load ? 4 : 1)}%`,
-                    background: current
-                      ? "linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 55%, transparent))"
-                      : "linear-gradient(180deg, color-mix(in srgb, var(--accent) 40%, var(--surface-3)), color-mix(in srgb, var(--accent) 14%, var(--surface-2)))",
-                    boxShadow: current ? "0 0 14px -2px var(--primary)" : undefined,
+                    background: current ? "var(--primary)" : "var(--line)",
                   }}
                   role="img"
                   aria-label={text}
@@ -204,7 +201,7 @@ function Meter({ value, label, t }: { value: number; label: string; t: TFunction
         {[1, 2, 3, 4, 5].map((n) => (
           <span
             key={n}
-            className="h-2 flex-1 rounded-full"
+            className="h-2 flex-1 rounded-sm"
             style={{ background: n <= value ? "var(--accent)" : "var(--line)" }}
           />
         ))}
@@ -222,13 +219,12 @@ function Wellness({
       <div className="card flex items-start gap-3">
         <span
           aria-hidden
-          className="grid size-10 shrink-0 place-items-center rounded-full text-muted"
-          style={{ boxShadow: "0 0 0 1px var(--line)" }}
+          className="grid size-10 shrink-0 place-items-center rounded-md border text-muted"
         >
           <Lock size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold">{t("detail.wellness.locked.title")}</h3>
+          <h3 className="text-xl">{t("detail.wellness.locked.title")}</h3>
           <p className="mt-1 text-sm text-muted">{t("detail.wellness.locked.body")}</p>
           <Link href={`/team/${teamId}/members`} className="link mt-1 inline-flex min-h-11 items-center text-sm">
             {t("detail.wellness.locked.cta")}
@@ -240,7 +236,7 @@ function Wellness({
   if (!entries.length) {
     return (
       <div className="card">
-        <h3 className="font-semibold">{t("detail.wellness.title")}</h3>
+        <h3 className="text-xl">{t("detail.wellness.title")}</h3>
         <p className="mt-2 text-sm text-muted">{t("detail.wellness.empty")}</p>
       </div>
     );
@@ -253,7 +249,7 @@ function Wellness({
   return (
     <div className="card flex flex-col gap-5">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-semibold">{t("detail.wellness.title")}</h3>
+        <h3 className="text-xl">{t("detail.wellness.title")}</h3>
         <p className="flex items-baseline gap-2 text-xs text-muted">
           {t("detail.wellness.avg")} <span className="num text-xl text-[var(--foreground)]">{fmt1(avg)}</span>
         </p>
@@ -265,7 +261,7 @@ function Wellness({
           <>
             {WELLNESS_ITEMS.map((k) => <Meter key={k} value={today[k]} label={t(ITEM_KEY[k])} t={t} />)}
             {today.pain ? (
-              <p className="mt-1 flex items-start gap-2 rounded-xl bg-[var(--danger-bg)] px-3 py-2 text-sm font-medium text-danger">
+              <p className="mt-1 flex items-start gap-2 rounded-md bg-[var(--danger-bg)] px-3 py-2 text-sm font-medium text-danger">
                 <CircleAlert size={16} aria-hidden className="mt-0.5 shrink-0" />
                 <span className="min-w-0 break-words">
                   {today.painLocation ? t("detail.wellness.painWhere", { where: today.painLocation }) : t("detail.wellness.pain")}
@@ -292,7 +288,7 @@ function Wellness({
                   role="img"
                   aria-label={text}
                   title={text}
-                  className="w-full rounded-full"
+                  className="w-full rounded-t-sm"
                   style={{ height: `${Math.max((e.avg / 5) * 100, 8)}%`, background: FLAG_COLOR[flag] }}
                 />
               </li>

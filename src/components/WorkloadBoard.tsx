@@ -172,15 +172,15 @@ function WeekTotals({ a }: { a: BoardAthlete }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
+        <div className="rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
           <p className="num text-lg">{nf(planned)}</p>
           <p className="text-[11px] leading-tight text-muted">{t("workload.totals.planned")}</p>
         </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
+        <div className="rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
           <p className="num text-lg">{nf(actual)}</p>
           <p className="text-[11px] leading-tight text-muted">{t("workload.totals.actual")}</p>
         </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
+        <div className="rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
           <p className="num text-lg">{diff ?? "–"}</p>
           <p className="text-[11px] leading-tight text-muted">{t("workload.totals.diff")}</p>
         </div>
@@ -271,7 +271,7 @@ function NoteForm({ teamId, a, sessions, today }: { teamId: string; a: BoardAthl
   }
   return (
     <form
-      className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] p-3"
+      className="flex flex-col gap-3 rounded-md border border-[var(--line)] p-3"
       action={(fd) => {
         start(async () => {
           const r = await addWorkloadNote(teamId, a.id, fd);
@@ -323,7 +323,7 @@ function Notes({ teamId, a, sessions, today, isHead }: { teamId: string; a: Boar
       {a.notes.length ? (
         <ul className="flex flex-col gap-2">
           {a.notes.map((n) => (
-            <li key={n.id} className="flex items-start gap-2 rounded-2xl border border-[var(--line)] px-3 py-2" style={{ background: "var(--surface-2)" }}>
+            <li key={n.id} className="flex items-start gap-2 rounded-md border border-[var(--line)] px-3 py-2" style={{ background: "var(--surface-2)" }}>
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
                   <span className="chip">{t(REASON_NOTE_KEY[n.reason])}</span>
@@ -390,7 +390,7 @@ function SessionToggle({ teamId, athlete, session, excluded, editable }: {
     title: session.title, name: athlete.name,
   });
   return (
-    <li className={`flex items-center gap-3 rounded-2xl border px-3 py-2 ${excluded ? "opacity-70" : ""}`} style={{ background: "var(--surface-2)" }}>
+    <li className={`flex items-center gap-3 rounded-md border px-3 py-2 ${excluded ? "opacity-70" : ""}`} style={{ background: "var(--surface-2)" }}>
       <SessionTypeIcon type={session.type} size={18} className={excluded ? "text-muted" : "text-[var(--accent)]"} />
       <div className="min-w-0 flex-1">
         <p className={`truncate text-sm font-medium ${excluded ? "text-muted line-through" : ""}`}>{session.title}</p>

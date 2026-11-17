@@ -67,7 +67,7 @@ export function PinDialog({ triggerLabel, triggerAriaLabel, title, twice = false
       </button>
       <dialog
         ref={ref}
-        className="confirm !rounded-3xl !p-6"
+        className="confirm !rounded-md !p-6"
         aria-labelledby={`${id}-t`}
         onClose={reset}
       >

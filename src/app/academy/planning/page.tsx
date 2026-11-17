@@ -10,6 +10,8 @@ import { canPlanType, kindsFromRow } from "@/lib/roles";
 import { defaultDay, toPlanItem, weekBoundsUtc, type RawSession } from "@/lib/academy-plan";
 import { AcademyPlanner, type PlanDay } from "@/components/AcademyPlanner";
 import { AcademyPlanForm, type FormTeam } from "@/components/AcademyPlanForm";
+import { Hero } from "@/components/Hero";
+import { todayLabel } from "@/app/today-label";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Search = { club?: string | string[]; week?: string | string[] };
@@ -93,16 +95,18 @@ export default async function AcademyPlanningPage({ searchParams }: { searchPara
   const range = `${fmt(nav.start, { day: "numeric", month: "short" })} – ${fmt(nav.end, { day: "numeric", month: "short", year: "numeric" })}`;
   const href = (week: string, club = clubId) => `/academy/planning?club=${club}&week=${week}`;
   const clubName = clubs.get(clubId) ?? "";
-  const linkCls = "glass inline-flex min-h-11 items-center justify-center gap-1 rounded-full px-4 text-sm transition-colors hover:text-[var(--foreground)]";
+  const linkCls = "glass inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-4 text-sm transition-colors hover:text-[var(--foreground)]";
 
   return (
     <main className="stagger mx-auto flex min-h-dvh max-w-6xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6">
+      <Hero eyebrow={todayLabel(locale)} title={t("acplan.hero.title")} subtitle={t("acplan.hero.subtitle")} />
+
       <header className="flex flex-col gap-1">
         <Link href={`/academy?club=${clubId}&week=${nav.start}`} className="inline-flex min-h-11 w-fit items-center gap-1 text-sm text-muted hover:text-[var(--foreground)]">
           <ChevronLeft size={16} aria-hidden />{t("acplan.back")}
         </Link>
         <p className="eyebrow">{t("acplan.eyebrow")}{clubName ? ` · ${clubName}` : ""}</p>
-        <h1 className="display text-4xl sm:text-5xl">{t("acplan.title")}</h1>
+        <h1 className="display text-4xl sm:text-6xl">{t("acplan.title")}</h1>
       </header>
 
       {clubs.size > 1 && (

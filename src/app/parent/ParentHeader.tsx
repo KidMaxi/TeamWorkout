@@ -17,7 +17,7 @@ export async function ParentHeader() {
           <button
             aria-label={t("common.logout")}
             title={t("common.logout")}
-            className="glass inline-flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:text-[var(--foreground)]"
+            className="glass inline-flex h-10 w-10 items-center justify-center rounded-md text-muted transition-colors hover:text-[var(--foreground)]"
           >
             <LogOut size={18} aria-hidden />
           </button>

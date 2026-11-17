@@ -16,7 +16,7 @@ function Calm({ icon: Icon, title, body, exitHref, href, back }: {
   return (
     <KioskFrame exitHref={exitHref}>
       <section className="rise card card-hero mx-auto flex w-full max-w-xl flex-col items-start gap-3">
-        <span aria-hidden className="grid size-11 place-items-center rounded-full text-[var(--accent)]" style={{ background: "var(--surface-2)" }}>
+        <span aria-hidden className="grid size-11 place-items-center rounded-md text-[var(--accent)]" style={{ background: "var(--surface-2)" }}>
           <Icon size={20} />
         </span>
         <h1 className="display text-3xl leading-tight">{title}</h1>

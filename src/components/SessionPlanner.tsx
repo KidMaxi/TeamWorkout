@@ -44,7 +44,7 @@ function ScopeRadios({ value, onChange }: { value: Scope; onChange: (s: Scope) =
       {(["this", "series"] as const).map((s) => (
         <label key={s} className="relative block cursor-pointer">
           <input type="radio" name="scope" checked={value === s} onChange={() => onChange(s)} className="peer sr-only" />
-          <span className={`flex min-h-11 items-center gap-2.5 rounded-xl border px-3 text-sm peer-checked:border-[var(--accent)] peer-checked:bg-[var(--accent-soft)] ${focusRing}`}>
+          <span className={`flex min-h-11 items-center gap-2.5 rounded-md border px-3 text-sm peer-checked:border-[var(--accent)] peer-checked:bg-[var(--accent-soft)] ${focusRing}`}>
             <span aria-hidden className={`grid size-4 shrink-0 place-items-center rounded-full border ${value === s ? "border-[var(--accent)]" : ""}`}>
               {value === s && <span className="size-2 rounded-full bg-[var(--accent)]" />}
             </span>
@@ -198,7 +198,7 @@ function SessionForm({
       )}
 
       {error && <p role="alert" className="col-span-2 text-sm text-danger">{t(error)}</p>}
-      <div className={`col-span-2 mt-1 ${session ? "sticky bottom-0 z-10 -mx-5 -mb-2 border-t bg-[var(--surface)] px-5 py-3" : "action-bar glass rounded-2xl p-2"}`}>
+      <div className={`col-span-2 mt-1 ${session ? "sticky bottom-0 z-10 -mx-5 -mb-2 border-t bg-[var(--surface)] px-5 py-3" : "action-bar glass rounded-md p-2"}`}>
         <button disabled={pending || (repeat === "weekly" && !session && (tooMany || until < date))} className="btn btn-primary inline-flex min-h-12 w-full items-center justify-center gap-2">
           {session ? <Check size={18} aria-hidden /> : <Plus size={18} aria-hidden />}
           {pending ? t("common.loading") : session ? t("common.save") : t("sessions.plan")}
@@ -271,7 +271,7 @@ export function SessionManage({ teamId, session, allowedTypes, workouts, today }
   const effScope: Scope = session.inSeries ? scope : "this";
   const cancelled = session.status === "cancelled";
   const btn = "btn inline-flex min-h-11 items-center gap-2 text-sm";
-  const dlg = "confirm !rounded-3xl !p-5 max-h-[90dvh] overflow-y-auto";
+  const dlg = "confirm !rounded-md !p-5 max-h-[90dvh] overflow-y-auto";
   const title = target === "cancelled" ? "sessions.dialog.cancel" : target === "planned" ? "sessions.dialog.restore" : "sessions.dialog.adjusted";
   const body = target === "cancelled" ? "sessions.dialog.cancelBody" : target === "planned" ? "sessions.dialog.restoreBody" : "sessions.dialog.adjustedBody";
 

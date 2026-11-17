@@ -15,13 +15,13 @@ export function StrengthTabs({ teamId }: { teamId: string }) {
     { href: `${base}/workouts`, label: t("strength.tab.workouts"), active: path.startsWith(`${base}/workouts`) },
   ];
   return (
-    <nav className="glass mb-4 flex w-fit gap-1 rounded-full p-1" aria-label={t("strength.title")}>
+    <nav className="glass mb-4 flex w-fit gap-1 rounded-md p-1" aria-label={t("strength.title")}>
       {tabs.map((tab) => (
         <Link
           key={tab.href}
           href={tab.href}
           aria-current={tab.active ? "page" : undefined}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${tab.active ? "bg-[var(--primary)] text-[var(--on-primary)]" : "text-muted hover:text-[var(--foreground)]"}`}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${tab.active ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-muted hover:text-[var(--foreground)]"}`}
         >
           {tab.label}
         </Link>

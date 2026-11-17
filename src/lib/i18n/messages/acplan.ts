@@ -4,6 +4,8 @@ export default defineMessages(
   {
     eyebrow: "Academy",
     title: "Academy planning",
+    "hero.title": "Een nieuwe dag op het veld.",
+    "hero.subtitle": "Academy · gym · avondtraining",
     back: "Academy-overzicht",
     link: "Planning",
     "club.pick": "Club",
@@ -51,6 +53,8 @@ export default defineMessages(
   {
     eyebrow: "Academy",
     title: "Academy planning",
+    "hero.title": "A new day on the court.",
+    "hero.subtitle": "Academy · gym · evening training",
     back: "Academy overview",
     link: "Planning",
     "club.pick": "Club",

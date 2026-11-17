@@ -71,7 +71,7 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const range = `${dayFmt(nav.start, { day: "numeric", month: "short" })} – ${dayFmt(nav.end, { day: "numeric", month: "short", year: "numeric" })}`;
   const href = (week: string, c = child.id) => `/parent?child=${c}&week=${week}`;
   const fmt = (n: number) => n.toLocaleString(loc);
-  const linkCls = "glass inline-flex min-h-11 items-center justify-center gap-1 rounded-full px-4 text-sm transition-colors hover:text-[var(--foreground)]";
+  const linkCls = "glass inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-4 text-sm transition-colors hover:text-[var(--foreground)]";
 
   const planned = ((sess ?? []) as PlannedSession[]).map((s) => ({ ...s, day: amsterdamDay(s.starts_at) }));
   const typeKey = (ty: string) => (ty in SESSION_TYPE_KEY ? SESSION_TYPE_KEY[ty as keyof typeof SESSION_TYPE_KEY] : SESSION_TYPE_KEY.other);
@@ -104,7 +104,7 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
 
       <div className="flex flex-col gap-1">
         <p className="eyebrow">{t("parent.eyebrow")}{sub ? ` · ${sub}` : ""}</p>
-        <h1 className="display text-4xl">{t("parent.weekTitle", { name: possessive(child.name, locale) })}</h1>
+        <h1 className="display text-4xl sm:text-5xl">{t("parent.weekTitle", { name: possessive(child.name, locale) })}</h1>
       </div>
 
       <nav aria-label={t("parent.week.nav")} className="flex flex-wrap items-center gap-2">
@@ -118,8 +118,8 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
       <section className="grid grid-cols-2 gap-3">
         {kpiCards.map((c) => (
           <div key={c.label} className={`card flex flex-col gap-2 ${c.hero ? "card-hero col-span-2" : ""}`}>
-            <span className="eyebrow">{c.label}</span>
-            <span className="num text-4xl">{fmt(c.value)}{c.unit && <span className="ml-1 text-sm font-normal text-muted">{c.unit}</span>}</span>
+            <span className="text-xs font-medium uppercase tracking-[0.1em] text-muted">{c.label}</span>
+            <span className="num text-5xl">{fmt(c.value)}{c.unit && <span className="ml-1 text-sm font-normal text-muted">{c.unit}</span>}</span>
           </div>
         ))}
       </section>
@@ -132,8 +132,8 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
             return (
               <div key={i} className="flex flex-col items-center gap-1.5">
                 <span className={`text-xs tabular-nums ${today ? "font-semibold text-[var(--accent)]" : "text-muted"}`}>{fmt(v)}</span>
-                <div className="flex h-28 w-full items-end rounded-lg bg-[var(--surface-2)]">
-                  <div className="w-full rounded-lg"
+                <div className="flex h-28 w-full items-end rounded-md bg-[var(--surface-2)]">
+                  <div className="w-full rounded-md"
                     style={{ height: `${v > 0 ? Math.max(4, Math.round((v / maxDay) * 100)) : 0}%`, background: today ? "var(--accent)" : "color-mix(in srgb, var(--accent) 40%, var(--muted))" }} />
                 </div>
                 <span className={`eyebrow ${today ? "" : "!text-[var(--muted)]"}`}>{dayLabels[i]}</span>
@@ -157,7 +157,7 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
                   </span>
                   <ul className="flex flex-col gap-2">
                     {list.map((s) => (
-                      <li key={s.id} className="flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm" style={{ background: "var(--surface-2)" }}>
+                      <li key={s.id} className="flex items-center gap-3 rounded-md border px-4 py-3 text-sm" style={{ background: "var(--surface-2)" }}>
                         <span className="num shrink-0">{timeFmt.format(new Date(s.starts_at))}</span>
                         <span className="flex min-w-0 flex-1 flex-col">
                           <span className="truncate font-semibold">{s.title || t(typeKey(s.type))}</span>

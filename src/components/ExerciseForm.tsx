@@ -41,7 +41,7 @@ export function ExerciseForm({ teamId, exercise }: { teamId: string; exercise?: 
       </button>
       <dialog
         ref={ref}
-        className="confirm !w-[min(94vw,36rem)] !max-h-[92dvh] overflow-y-auto !rounded-3xl !p-5"
+        className="confirm !w-[min(94vw,36rem)] !max-h-[92dvh] overflow-y-auto !rounded-md !p-5"
         onClose={() => setOpen(false)}
         aria-label={editing ? t("exercises.form.editTitle") : t("exercises.form.addTitle")}
       >
@@ -164,14 +164,14 @@ function FormBody({ teamId, exercise, onDone }: { teamId: string; exercise?: Exe
 
       <fieldset className="flex flex-col gap-2">
         <legend className={`${label} mb-1`}>{t("exercises.form.media")}</legend>
-        <div className="grid grid-cols-3 gap-1 rounded-2xl border p-1" style={{ background: "var(--surface-2)" }}>
+        <div className="grid grid-cols-3 gap-1 rounded-md border p-1" style={{ background: "var(--surface-2)" }}>
           {(["none", "image", "video"] as const).map((k) => (
             <label key={k} className="cursor-pointer">
               <input
                 type="radio" name="media_kind" value={k} checked={mediaKind === k}
                 onChange={() => setMediaKind(k)} className="peer sr-only"
               />
-              <span className="flex min-h-11 items-center justify-center rounded-xl px-1 text-center text-xs font-semibold text-muted peer-checked:bg-[var(--primary)] peer-checked:text-[var(--on-primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]">
+              <span className="flex min-h-11 items-center justify-center rounded-md px-1 text-center text-xs font-semibold text-muted peer-checked:bg-[var(--primary)] peer-checked:text-[var(--on-primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]">
                 {t(k === "none" ? "exercises.form.mediaNone" : k === "image" ? "exercises.form.mediaImage" : "exercises.form.mediaVideo")}
               </span>
             </label>
@@ -206,7 +206,7 @@ function Check2({ name, text, hint, defaultChecked, disabled }: {
 }) {
   return (
     <label
-      className={`flex min-h-12 items-center gap-3 rounded-2xl border px-4 py-2 ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+      className={`flex min-h-12 items-center gap-3 rounded-md border px-4 py-2 ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
       style={{ background: "var(--surface-2)" }}
     >
       <span className="flex min-w-0 flex-1 flex-col">

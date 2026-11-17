@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <SkeletonPage>
       <TabsSkel n={2} />
-      <Bar h="2.75rem" className="!rounded-2xl" />
+      <Bar h="2.75rem" className="!rounded-md" />
       <CardSkel lines={2} />
       <CardSkel lines={2} />
       <CardSkel lines={2} />

@@ -5,11 +5,12 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Dial } from "@/components/Dial";
+import { Hero } from "@/components/Hero";
 import { AvailabilityIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, dateLocale, type Locale, type MessageKey, type TFunction } from "@/lib/i18n";
 import { isPosition, playerLabel } from "@/lib/positions";
-import { wellnessAverage, wellnessFlag, type WellnessEntry } from "@/lib/wellness";
+import { TEAM_TIME_ZONE, wellnessAverage, wellnessFlag, type WellnessEntry } from "@/lib/wellness";
 import {
   applyFilter,
   sortByRisk,
@@ -61,15 +62,17 @@ function Stat({
 }: { label: string; value: string | number; tone?: "danger" | "warn"; Icon: LucideIcon }) {
   const color = tone === "danger" ? "text-danger" : tone === "warn" ? "text-[var(--warn)]" : "";
   return (
-    <div className="flex flex-col items-center gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface-2)]/60 px-2 py-3 text-center">
-      <Icon size={16} aria-hidden className={tone ? color : "text-[var(--accent)]"} />
-      <p className={`num text-2xl ${color}`}>{value}</p>
-      <p className="text-[11px] leading-tight text-muted">{label}</p>
+    <div className="flex min-w-0 flex-col gap-2 rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-2.5 py-3 sm:px-3">
+      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase leading-tight tracking-wider text-muted sm:text-[11px] sm:tracking-widest">
+        <Icon size={13} aria-hidden className={`hidden shrink-0 sm:block ${tone ? color : "text-[var(--accent)]"}`} />
+        <span className="min-w-0">{label}</span>
+      </p>
+      <p className={`num text-3xl sm:text-5xl ${color}`}>{value}</p>
     </div>
   );
 }
 
-function Hero({
+function LoadCard({
   weeks, available, total, alerts, high, missing, wellnessCount, showRatio, t,
 }: {
   weeks: WeekTrendRow[]; available: number; total: number; alerts: number; high: number; missing: number;
@@ -165,7 +168,7 @@ function TrendChart({ weeks, t, locale }: { weeks: WeekTrendRow[]; t: TFunction;
   return (
     <div className="card">
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h3 className="font-semibold">{t("dashboard.trend.title")}</h3>
+        <h3 className="text-xl">{t("dashboard.trend.title")}</h3>
         {avg > 0 && (
           <span className="flex items-center gap-1.5 text-[11px] text-muted">
             <span aria-hidden className="w-4 border-t border-dashed border-[var(--accent)]" /> {t("dashboard.trend.avg")} {Math.round(avg)}
@@ -188,13 +191,10 @@ function TrendChart({ weeks, t, locale }: { weeks: WeekTrendRow[]; t: TFunction;
             return (
               <li key={w.week_start} className="flex h-full flex-1 items-end justify-center">
                 <div
-                  className="relative w-full max-w-5 rounded-full"
+                  className="relative w-full max-w-5 rounded-t-sm"
                   style={{
                     height: `${Math.max((w.total_load / max) * scale, w.total_load ? 3 : 1)}%`,
-                    background: current
-                      ? "linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 55%, transparent))"
-                      : "linear-gradient(180deg, color-mix(in srgb, var(--accent) 40%, var(--surface-3)), color-mix(in srgb, var(--accent) 14%, var(--surface-2)))",
-                    boxShadow: current ? "0 0 14px -2px var(--primary)" : undefined,
+                    background: current ? "var(--primary)" : "var(--line)",
                   }}
                   role="img"
                   aria-label={text}
@@ -251,7 +251,7 @@ function WellnessRow({ entry, consent, t }: { entry: WellnessEntry | null | unde
         <span className={FLAG_CLS[flag]} aria-hidden>{t(`wellness.flag.${flag}`)}</span>
       </span>
       {entry.pain && (
-        <span className="mt-1.5 flex w-fit max-w-full items-start gap-1 rounded-xl bg-[var(--danger-bg)] px-2.5 py-1 text-xs font-semibold text-danger">
+        <span className="mt-1.5 flex w-fit max-w-full items-start gap-1 rounded-md bg-[var(--danger-bg)] px-2.5 py-1 text-xs font-semibold text-danger">
           <CircleAlert size={12} aria-hidden className="mt-0.5 shrink-0" />
           <span className="min-w-0 break-words">
             {entry.painLocation ? t("wellness.staff.painWhere", { where: entry.painLocation }) : t("wellness.staff.pain")}
@@ -365,13 +365,19 @@ export async function StaffDashboard({
 
   return (
     <section className="stagger flex flex-col gap-5">
-      <Hero weeks={weeks} available={available} total={rows.length} alerts={alerts} high={high} missing={missing} wellnessCount={wellnessCount} showRatio={showRatio} t={t} />
+      <Hero
+        eyebrow={new Date().toLocaleDateString(dateLocale(locale), { weekday: "long", day: "numeric", month: "long", timeZone: TEAM_TIME_ZONE })}
+        title={t("dashboard.overview.title")}
+        subtitle={t("dashboard.overview.subtitle")}
+      />
+
+      <LoadCard weeks={weeks} available={available} total={rows.length} alerts={alerts} high={high} missing={missing} wellnessCount={wellnessCount} showRatio={showRatio} t={t} />
 
       {attention.length > 0 && <Attention rows={attention} lowIds={lowIds} showRatio={showRatio} deviation={deviation} t={t} />}
 
       <TrendChart weeks={weeks} t={t} locale={locale} />
 
-      <nav aria-label={t("dashboard.filter.label")} className="glass flex max-w-full gap-1 self-start overflow-x-auto rounded-full p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav aria-label={t("dashboard.filter.label")} className="glass flex max-w-full gap-1 self-start overflow-x-auto rounded-md p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {FILTERS.map(({ key, label, Icon }) => {
           const active = filter === key;
           return (
@@ -379,8 +385,8 @@ export async function StaffDashboard({
               key={key}
               href={key === "all" ? `/team/${teamId}` : `/team/${teamId}?filter=${key}`}
               aria-current={active ? "page" : undefined}
-              className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors ${
-                active ? "bg-[var(--primary)] text-[var(--on-primary)]" : "text-muted hover:text-[var(--foreground)]"
+              className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3.5 text-sm font-medium transition-colors ${
+                active ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-muted hover:text-[var(--foreground)]"
               }`}
             >
               <Icon size={14} aria-hidden /> {t(label)}

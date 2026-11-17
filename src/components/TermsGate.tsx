@@ -22,8 +22,8 @@ export async function TermsGate() {
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="grid size-10 shrink-0 place-items-center rounded-full text-[var(--accent)]"
-          style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}
+          className="grid size-10 shrink-0 place-items-center rounded-md border text-[var(--accent)]"
+          style={{ background: "var(--surface-3)" }}
         >
           <FileText size={18} />
         </span>

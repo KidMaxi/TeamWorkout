@@ -22,7 +22,7 @@ export function CardSkel({ lines = 2, hero = false }: { lines?: number; hero?: b
 export function TabsSkel({ n = 3 }: { n?: number }) {
   return (
     <div aria-hidden className="flex gap-2">
-      {Array.from({ length: n }, (_, i) => <Bar key={i} w="5.5rem" h="2.25rem" className="!rounded-full" />)}
+      {Array.from({ length: n }, (_, i) => <Bar key={i} w="5.5rem" h="2.25rem" className="!rounded-md" />)}
     </div>
   );
 }

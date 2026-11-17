@@ -123,7 +123,7 @@ export function StrengthTests({
           return (
             <li key={ex.id} className="card flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
-                <h3 className="min-w-0 truncate font-semibold">{ex.name}</h3>
+                <h3 className="min-w-0 truncate text-xl">{ex.name}</h3>
                 {cur && !readOnly && (
                   <ConfirmButton
                     action={deleteStrengthTest.bind(null, teamId, cur.id)}
@@ -245,7 +245,7 @@ export function StrengthTests({
               <input name="note" value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} className="input min-h-11 w-full" />
             </label>
 
-            <div className="col-span-2 rounded-2xl border p-3" style={{ background: "var(--surface-2)" }} aria-live="polite">
+            <div className="col-span-2 rounded-md border p-3" style={{ background: "var(--surface-2)" }} aria-live="polite">
               <p className={label}>{t("strength.form.preview")}</p>
               {est ? (
                 <p className="num mt-1 text-2xl">
@@ -277,7 +277,7 @@ export function StrengthTests({
 
       {/* calculator */}
       <section className="card card-hero flex flex-col gap-4" aria-labelledby="calc-title">
-        <h2 id="calc-title" className="flex items-center gap-2 font-semibold">
+        <h2 id="calc-title" className="flex items-center gap-2 text-xl">
           <Calculator size={18} aria-hidden className="text-[var(--accent)]" />{t("strength.calc.title")}
         </h2>
         {!activeCalc || !base ? (
@@ -333,7 +333,7 @@ export function StrengthTests({
                         const w = weightFor(base, n, r);
                         const on = n === calcReps && r === calcRpe;
                         return (
-                          <td key={r} className={`num py-1.5 text-base ${on ? "rounded-lg bg-[var(--primary)] text-[var(--on-primary)]" : ""}`}>
+                          <td key={r} className={`num py-1.5 text-base ${on ? "rounded-md bg-[var(--primary)] text-[var(--on-primary)]" : ""}`}>
                             {w === null ? "–" : fmt(w)}
                           </td>
                         );

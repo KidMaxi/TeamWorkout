@@ -2,15 +2,20 @@ import Link from "next/link";
 import { ArrowRight, Ban, CalendarCheck } from "lucide-react";
 import { WellnessCard } from "@/components/WellnessCard";
 import { Dial } from "@/components/Dial";
+import { Hero } from "@/components/Hero";
 import { QuickLog } from "@/components/QuickLog";
 import { AvailabilityIcon, SessionTypeIcon } from "@/components/icons";
 import { getT } from "@/lib/i18n/server";
 import { AVAILABILITY_KEY, SESSION_TYPE_KEY, dateLocale, type Locale, type TFunction } from "@/lib/i18n";
 import type { Availability, SessionType } from "@/lib/load";
-import { TEAM_TIME_ZONE, type WellnessEntry } from "@/lib/wellness";
+import { TEAM_TIME_ZONE, todayInTeamZone, type WellnessEntry } from "@/lib/wellness";
 
 export type AthleteDashboardProps = {
   teamId: string;
+  /** Shown in the greeting banner; the greeting drops the name when missing. */
+  firstName?: string;
+  /** Shown in the banner subtitle after today's training count. */
+  teamName?: string;
   availability: { status: Availability; note: string | null } | null;
   pending: { id: string; type: SessionType; title: string; starts_at: string; plannedDurationMin: number; plannedRpe: number | null }[];
   /** Oldest first; the last entry is the current week. week_start is YYYY-MM-DD (Monday). */
@@ -38,10 +43,16 @@ export type AthleteDashboardProps = {
 
 const QUICK_MAX = 3;
 
+/** Amsterdam hour: morning 5-11, afternoon 12-17, otherwise evening. */
+function dayPart(now: Date): "morning" | "afternoon" | "evening" {
+  const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: TEAM_TIME_ZONE }).format(now));
+  return h >= 5 && h < 12 ? "morning" : h >= 12 && h < 18 ? "afternoon" : "evening";
+}
+
 const dateFmt = (iso: string, locale: Locale) =>
   new Date(iso).toLocaleDateString(dateLocale(locale), { weekday: "short", day: "numeric", month: "short" });
 
-function Hero({
+function LoadCard({
   last7Load, attendedThisWeek, weekly, t,
 }: { last7Load: number; attendedThisWeek: number; weekly: AthleteDashboardProps["weekly"]; t: TFunction }) {
   const max = Math.max(...weekly.map((w) => w.total_load), last7Load, 1);
@@ -59,7 +70,7 @@ function Hero({
       >
         <p className="num" style={{ fontSize: String(last7Load).length > 4 ? "2.25rem" : "3rem" }}>{last7Load}</p>
       </Dial>
-      <div className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface-2)]/60 px-4 py-2 text-sm">
+      <div className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-4 py-2 text-sm">
         <CalendarCheck size={16} aria-hidden className="text-[var(--accent)]" />
         <span className="num text-lg">{attendedThisWeek}</span>
         <span className="text-muted">{t("athlete.tiles.attended")} {t("athlete.tiles.attendedSub")}</span>
@@ -80,8 +91,8 @@ function AvailabilityStrip({ availability, t }: { availability: AthleteDashboard
       style={flagged ? { background: status === "limited" ? "var(--warn-bg)" : "var(--danger-bg)", borderColor: color } : undefined}
     >
       <span
-        className="grid size-10 shrink-0 place-items-center rounded-full"
-        style={{ color, boxShadow: `0 0 0 1px color-mix(in srgb, ${color} 55%, transparent)` }}
+        className="grid size-10 shrink-0 place-items-center rounded-md border"
+        style={{ color, borderColor: `color-mix(in srgb, ${color} 55%, transparent)` }}
       >
         <AvailabilityIcon status={status} size={20} />
       </span>
@@ -100,7 +111,7 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDashboardProps["week
     new Date(iso + "T00:00:00Z").toLocaleDateString(dateLocale(locale), { day: "numeric", month: "numeric", timeZone: "UTC" });
   return (
     <div className="card">
-      <h3 className="mb-4 font-semibold">{t("athlete.weekly.title")}</h3>
+      <h3 className="mb-4 text-xl">{t("athlete.weekly.title")}</h3>
       <ol className="flex h-24 items-end gap-1.5" aria-label={t("athlete.weekly.aria")}>
         {weekly.map((w, i) => {
           const current = i === weekly.length - 1;
@@ -108,13 +119,10 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDashboardProps["week
           return (
             <li key={w.week_start} className="flex h-full flex-1 items-end justify-center">
               <div
-                className="relative w-full max-w-5 rounded-full"
+                className="relative w-full max-w-5 rounded-t-sm"
                 style={{
                   height: `${Math.max((w.total_load / max) * scale, w.total_load ? 4 : 1)}%`,
-                  background: current
-                    ? "linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 55%, transparent))"
-                    : "linear-gradient(180deg, color-mix(in srgb, var(--accent) 40%, var(--surface-3)), color-mix(in srgb, var(--accent) 14%, var(--surface-2)))",
-                  boxShadow: current ? "0 0 14px -2px var(--primary)" : undefined,
+                  background: current ? "var(--primary)" : "var(--line)",
                 }}
                 role="img"
                 aria-label={text}
@@ -151,7 +159,7 @@ function ThisWeek({ week, t, locale }: { week: NonNullable<AthleteDashboardProps
   ].filter((x): x is string => !!x);
   return (
     <section className="card flex flex-col gap-3" aria-label={t("athlete.week.title")}>
-      <h3 className="font-semibold">{t("athlete.week.title")}</h3>
+      <h3 className="text-xl">{t("athlete.week.title")}</h3>
       {week.sessions.length ? (
         <>
           <ul className="flex flex-col" aria-label={t("athlete.week.aria")}>
@@ -186,12 +194,28 @@ function ThisWeek({ week, t, locale }: { week: NonNullable<AthleteDashboardProps
 }
 
 export async function AthleteDashboard({
-  teamId, availability, pending, weekly, recentLogs, last7Load, attendedThisWeek, wellness, week,
+  teamId, firstName, teamName, availability, pending, weekly, recentLogs, last7Load, attendedThisWeek, wellness, week,
 }: AthleteDashboardProps) {
   const { t, locale } = await getT();
+  const now = new Date();
+  const part = dayPart(now);
+  const name = firstName?.trim();
+  const today = todayInTeamZone(now);
+  const sameDay = (iso: string) => todayInTeamZone(new Date(iso)) === today;
+  const todayCount = week ? week.sessions.filter((s) => !s.excluded && sameDay(s.starts_at)).length : null;
+  const subtitle = [
+    todayCount === null ? null : todayCount === 0 ? t("athlete.hero.todayNone") : todayCount === 1 ? t("athlete.hero.todayOne") : t("athlete.hero.today", { n: todayCount }),
+    teamName?.trim() || null,
+  ].filter(Boolean).join(" · ");
   return (
     <section className="stagger flex flex-col gap-5">
-      <Hero last7Load={last7Load} attendedThisWeek={attendedThisWeek} weekly={weekly} t={t} />
+      <Hero
+        eyebrow={now.toLocaleDateString(dateLocale(locale), { weekday: "long", day: "numeric", month: "long", timeZone: TEAM_TIME_ZONE })}
+        title={name ? t(`athlete.greeting.${part}`, { name }) : t(`athlete.greeting.${part}.anon`)}
+        subtitle={subtitle || undefined}
+      />
+
+      <LoadCard last7Load={last7Load} attendedThisWeek={attendedThisWeek} weekly={weekly} t={t} />
 
       {wellness && !wellness.today && <WellnessCard teamId={teamId} today={null} />}
 

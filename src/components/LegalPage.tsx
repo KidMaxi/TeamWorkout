@@ -34,7 +34,7 @@ function BlockView({ block, scrollLabel }: { block: Block; scrollLabel: string }
   }
   const { head, rows } = block.table;
   return (
-    <div className="-mx-1 overflow-x-auto rounded-lg" role="region" aria-label={scrollLabel} tabIndex={0}>
+    <div className="-mx-1 overflow-x-auto rounded-md" role="region" aria-label={scrollLabel} tabIndex={0}>
       <table className="w-full min-w-[34rem] border-collapse text-left text-xs leading-relaxed">
         <thead>
           <tr>{head.map((h) => <th key={h} scope="col" className="border-b px-2 py-2 align-bottom">{h}</th>)}</tr>
@@ -76,7 +76,7 @@ export async function LegalPage({ doc }: { doc: Doc }) {
         </div>
 
         {!LEGAL.reviewed && (
-          <div role="note" className="flex gap-3 rounded-2xl border p-4 text-sm" style={{ background: "var(--warn-bg)", color: "var(--warn)", borderColor: "var(--warn)" }}>
+          <div role="note" className="flex gap-3 rounded-md border p-4 text-sm" style={{ background: "var(--warn-bg)", color: "var(--warn)", borderColor: "var(--warn)" }}>
             <TriangleAlert size={18} aria-hidden className="mt-0.5 shrink-0" />
             <p><strong>{t("legal.draft.title")}.</strong> {t("legal.draft.text")}</p>
           </div>

@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <SkeletonPage className="mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-4 pb-10 pt-4 sm:px-6">
       <div className="flex items-center gap-3">
-        <Bar w="2rem" h="2rem" className="!rounded-full" />
+        <Bar w="2rem" h="2rem" className="!rounded-md" />
         <Bar w="9rem" h="1.5rem" />
       </div>
       <CardSkel lines={1} />

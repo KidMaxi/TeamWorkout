@@ -122,7 +122,7 @@ export function WorkloadSettingsForm({ teamId, settings }: { teamId: string; set
   );
   return (
     <details className="card group flex flex-col gap-3">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-md [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-2">
           <SlidersHorizontal size={18} aria-hidden className="text-[var(--accent)]" />
           <span className="display text-xl">{t("workload.settings.title")}</span>
@@ -150,7 +150,7 @@ export function WorkloadSettingsForm({ teamId, settings }: { teamId: string; set
             </label>
           ))}
         </div>
-        <label className="flex min-h-11 items-start gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface-2)]/60 p-3">
+        <label className="flex min-h-11 items-start gap-3 rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 p-3">
           <input
             type="checkbox"
             name="show_ratio"
@@ -162,7 +162,7 @@ export function WorkloadSettingsForm({ teamId, settings }: { teamId: string; set
             <span className="text-xs text-muted">{t("workload.settings.showRatioHelp")}</span>
           </span>
         </label>
-        <div className="action-bar glass flex justify-end rounded-2xl p-2">
+        <div className="action-bar glass flex justify-end rounded-md p-2">
           <button disabled={pending} className="btn btn-primary inline-flex min-h-11 w-full items-center justify-center gap-2 sm:w-auto">
             <Check size={16} aria-hidden />{t("workload.settings.save")}
           </button>

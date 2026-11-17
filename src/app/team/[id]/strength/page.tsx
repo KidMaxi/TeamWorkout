@@ -86,7 +86,7 @@ export default async function StrengthPage({
                   <Link
                     href={`/team/${id}/strength?athlete=${a.id}`}
                     aria-current={active ? "page" : undefined}
-                    className={`flex min-h-11 items-center gap-2 rounded-full border py-1 pl-1 pr-4 text-sm font-medium transition-colors ${
+                    className={`flex min-h-11 items-center gap-2 rounded-md border py-1 pl-1 pr-4 text-sm font-medium transition-colors ${
                       active
                         ? "border-transparent bg-[var(--primary)] text-[var(--on-primary)]"
                         : "bg-[var(--surface-2)] text-muted hover:text-[var(--foreground)]"

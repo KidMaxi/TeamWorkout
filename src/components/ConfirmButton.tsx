@@ -53,7 +53,7 @@ export function ConfirmButton({ action, icon, label, iconOnly, title, body, requ
         <Icon size={iconOnly ? 18 : 18} aria-hidden />
         {!iconOnly && label}
       </button>
-      <dialog ref={ref} className="confirm !rounded-3xl !p-6" onClose={() => setTyped("")}>
+      <dialog ref={ref} className="confirm !rounded-md !p-6" onClose={() => setTyped("")}>
         <form action={formAction} className="flex flex-col gap-4">
           <span
             aria-hidden

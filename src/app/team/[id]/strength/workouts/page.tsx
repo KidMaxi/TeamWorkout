@@ -69,11 +69,8 @@ export default async function WorkoutsPage({ params }: { params: Promise<{ id: s
         <div className="card card-hero flex flex-col items-center gap-3 py-8 text-center text-sm">
           <span
             aria-hidden
-            className="grid size-12 place-items-center rounded-full text-[var(--accent)]"
-            style={{
-              background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))",
-              boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)",
-            }}
+            className="grid size-12 place-items-center rounded-md text-[var(--accent)]"
+            style={{ background: "var(--surface-2)" }}
           >
             <ClipboardList size={22} />
           </span>

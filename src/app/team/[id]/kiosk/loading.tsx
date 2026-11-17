@@ -6,7 +6,7 @@ export default function Loading() {
     <SkeletonPage>
       <Bar w="50%" h="2.5rem" />
       <div className="grid gap-3 sm:grid-cols-2">
-        {Array.from({ length: 4 }, (_, i) => <Bar key={i} h="6rem" className="!rounded-3xl" />)}
+        {Array.from({ length: 4 }, (_, i) => <Bar key={i} h="6rem" className="!rounded-md" />)}
       </div>
     </SkeletonPage>
   );

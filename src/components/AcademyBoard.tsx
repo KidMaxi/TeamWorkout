@@ -99,7 +99,7 @@ export function AcademyBoard({ rows, fit, dayLabels, todayIndex }: { rows: Acade
             {flags.map((f) => {
               const txt = reasonText(f.status, f.reason, f.detail);
               return (
-                <li key={`${f.teamId}:${f.userId}`} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-[var(--line)] px-3 py-2">
+                <li key={`${f.teamId}:${f.userId}`} className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-[var(--line)] px-3 py-2">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{f.name} <span className="text-xs font-normal text-muted">· {f.teamName}</span></p>
                     {txt && <p className="break-words text-xs text-muted">{txt}</p>}
@@ -157,7 +157,7 @@ export function AcademyBoard({ rows, fit, dayLabels, todayIndex }: { rows: Acade
             {g.players.map((p) => {
               const max = Math.max(1, ...p.day_au);
               return (
-                <li key={p.user_id} className="rounded-xl border border-[var(--line)] p-3">
+                <li key={p.user_id} className="rounded-md border border-[var(--line)] p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium">

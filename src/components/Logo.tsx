@@ -28,7 +28,7 @@ export function LogoMark({ size = 28, className, title }: MarkProps) {
 export function Logo({
   size = 32,
   className = "",
-  wordmarkClassName = "font-display text-xl font-extrabold uppercase tracking-[0.14em]",
+  wordmarkClassName = "font-display text-2xl uppercase tracking-[0.08em]",
 }: {
   size?: number;
   className?: string;

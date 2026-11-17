@@ -81,8 +81,8 @@ export function KioskSettings({
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--accent)]"
-          style={{ background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}
+          className="grid size-11 shrink-0 place-items-center rounded-md border text-[var(--accent)]"
+          style={{ background: "var(--surface-3)" }}
         >
           <Tablet size={20} />
         </span>
@@ -99,7 +99,7 @@ export function KioskSettings({
 
       <hr className="hairline" />
 
-      {canRequire && <div className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border px-4 py-2" style={{ background: "var(--surface-2)" }}>
+      {canRequire && <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border px-4 py-2" style={{ background: "var(--surface-2)" }}>
         <span className="min-w-0">
           <span id="kiosk-pin-sw" className="block text-sm font-medium">{t("pins.require.label")}</span>
           <span className="block text-xs text-muted">{t("pins.require.hint")}</span>
@@ -119,7 +119,7 @@ export function KioskSettings({
             style={{ background: required ? "var(--primary)" : "var(--surface-3)", borderColor: required ? "transparent" : "var(--line)" }}
           >
             <span
-              className="absolute top-0.5 size-6 rounded-full shadow transition-all"
+              className="absolute top-0.5 size-6 rounded-full transition-all"
               style={{ left: required ? "1.3rem" : "0.15rem", background: required ? "var(--on-primary)" : "var(--muted)" }}
             />
           </span>
@@ -134,7 +134,7 @@ export function KioskSettings({
       </p>
 
       {required && missing > 0 && (
-        <p className="badge badge-watch !whitespace-normal !rounded-2xl !px-3 !py-2 !text-xs" role="status">
+        <p className="badge badge-watch !whitespace-normal !rounded-md !px-3 !py-2 !text-xs" role="status">
           <TriangleAlert size={14} aria-hidden className="shrink-0" />
           {missing === 1 ? t("pins.warn.missingOne") : t("pins.warn.missing", { n: missing })}
         </p>

@@ -61,8 +61,8 @@ export default async function TeamSettings({ params }: { params: Promise<{ id: s
         <div className="flex items-center gap-3">
           <span
             aria-hidden
-            className="grid size-11 shrink-0 place-items-center rounded-full text-danger"
-            style={{ background: "var(--danger-bg)", boxShadow: "0 0 0 1px color-mix(in srgb, var(--danger) 35%, transparent)" }}
+            className="grid size-11 shrink-0 place-items-center rounded-md text-danger"
+            style={{ background: "var(--danger-bg)" }}
           >
             <TriangleAlert size={20} />
           </span>

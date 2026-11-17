@@ -89,11 +89,8 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
         <div className="flex items-start gap-3">
           <span
             aria-hidden
-            className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--accent)]"
-            style={{
-              background: "linear-gradient(145deg, var(--surface-3), var(--surface-2))",
-              boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)",
-            }}
+            className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--accent)]"
+            style={{ background: "var(--surface-2)" }}
           >
             <KeyRound size={20} />
           </span>
@@ -139,7 +136,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                 {invites.map((i) => {
                   const left = Math.max(1, Math.ceil((new Date(i.expires_at).getTime() - now) / 86_400_000));
                   return (
-                    <li key={i.code} className="flex items-center gap-3 rounded-2xl border px-4 py-3" style={{ background: "var(--surface-2)" }}>
+                    <li key={i.code} className="flex items-center gap-3 rounded-md border px-4 py-3" style={{ background: "var(--surface-2)" }}>
                       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                         <span className="select-all break-all font-mono text-xl font-semibold tracking-[0.18em]">{i.code}</span>
                         <span className="flex flex-wrap items-center gap-2">
@@ -153,7 +150,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                         <button
                           aria-label={t("danger.invite.revoke")}
                           title={t("danger.invite.revoke")}
-                          className="inline-grid size-10 place-items-center rounded-full text-muted transition-colors hover:bg-[var(--danger-bg)] hover:text-danger"
+                          className="inline-grid size-10 place-items-center rounded-md text-muted transition-colors hover:bg-[var(--danger-bg)] hover:text-danger"
                         >
                           <X size={18} aria-hidden />
                         </button>
@@ -201,7 +198,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                       href={`/team/${id}/athlete/${m.user_id}`}
                       aria-label={t("detail.open", { name: display })}
                       title={t("detail.open", { name: display })}
-                      className="inline-grid size-10 shrink-0 place-items-center rounded-full text-muted transition-colors hover:text-[var(--foreground)]"
+                      className="inline-grid size-10 shrink-0 place-items-center rounded-md text-muted transition-colors hover:text-[var(--foreground)]"
                     >
                       <ChevronRight size={20} aria-hidden />
                     </Link>

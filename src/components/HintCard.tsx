@@ -25,7 +25,7 @@ export function HintCard({ id, text, title, href, linkLabel, label, dismissLabel
       role="note"
       className="card flex items-start gap-3 !border-[color-mix(in_srgb,var(--accent)_35%,var(--line))] !py-3"
     >
-      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full" style={{ boxShadow: "0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}>
+      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border">
         <CircleHelp size={16} aria-hidden className="text-[var(--accent)]" />
       </span>
       <div className="min-w-0 flex-1 text-sm">

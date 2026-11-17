@@ -72,7 +72,7 @@ export function AcademyPlanner({ items, days, today, defaultDay, teams }: {
           </div>
         )}
         {list.length === 0 ? (
-          <p className="rounded-xl border border-dashed px-2 py-3 text-center text-xs text-muted">–</p>
+          <p className="rounded-md border border-dashed px-2 py-3 text-center text-xs text-muted">–</p>
         ) : list.map((s) => <SessionCard key={s.id} s={s} day={d.ymd} />)}
       </div>
     );

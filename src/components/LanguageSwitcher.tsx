@@ -22,7 +22,7 @@ export function LanguageSwitcher({ className = "" }: { className?: string }) {
           aria-pressed={locale === l}
           title={t(`common.language.${l}`)}
           onClick={() => start(async () => { await setLocale(l); router.refresh(); })}
-          className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 font-semibold uppercase ${locale === l ? "bg-[var(--primary)] text-[var(--on-primary)]" : "text-muted hover:text-[var(--foreground)]"}`}
+          className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 font-semibold uppercase ${locale === l ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-muted hover:text-[var(--foreground)]"}`}
         >
           {l}
         </button>
