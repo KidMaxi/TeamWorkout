@@ -12,6 +12,7 @@ Alle scripts zijn **rolled back**: elk eindigt met `raise exception 'RESULT ...'
 | session_set_summary.sql | session_set_summary (warm-up telt niet, wie ziet wat) | kop |
 | set_player_info.sql | set_player_info (rechten, rugnummer uniek/bereik, positie) | kop |
 | kiosk_pin_release.sql | kiosk_locked_users, kiosk_release_pin (alleen head/S&C), hash onleesbaar | kop |
+| policy_write_split.sql | schrijfrechten van de policies die FOR ALL waren (availability, team_workload_settings, workouts) na B-03a | kop |
 
 Opruimcontrole (na een run): `select count(*) from auth.users where email like '%@t.local'` en `... from public.clubs where name='TestClub'` moeten 0 zijn.
 
