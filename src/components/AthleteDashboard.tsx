@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Ban, CalendarCheck } from "lucide-react";
+import { ArrowRight, Ban, CalendarCheck, ChevronDown } from "lucide-react";
 import { WellnessCard } from "@/components/WellnessCard";
 import { Dial } from "@/components/Dial";
 import { Hero } from "@/components/Hero";
@@ -42,6 +42,7 @@ export type AthleteDashboardProps = {
 };
 
 const QUICK_MAX = 3;
+const RECENT_SHOWN = 3;
 
 /** Amsterdam hour: morning 5-11, afternoon 12-17, otherwise evening. */
 function dayPart(now: Date): "morning" | "afternoon" | "evening" {
@@ -59,16 +60,16 @@ function LoadCard({
   const prev = weekly.slice(0, -1);
   const avg = prev.length ? prev.reduce((s, w) => s + w.total_load, 0) / prev.length : 0;
   return (
-    <div className="card card-hero flex flex-col items-center gap-5">
+    <div className="flex flex-col items-center gap-4">
       <p className="eyebrow self-start">{t("athlete.hero.eyebrow")}</p>
       <Dial
         value={last7Load / max}
         marker={avg > 0 ? avg / max : undefined}
-        size={220}
+        size={180}
         tone="primary"
         label={t("athlete.hero.aria", { load: last7Load, avg: Math.round(avg) })}
       >
-        <p className="num" style={{ fontSize: String(last7Load).length > 4 ? "2.25rem" : "3rem" }}>{last7Load}</p>
+        <p className="num" style={{ fontSize: String(last7Load).length > 4 ? "1.75rem" : "2.25rem" }}>{last7Load}</p>
       </Dial>
       <div className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-4 py-2 text-sm">
         <CalendarCheck size={16} aria-hidden className="text-[var(--accent)]" />
@@ -79,27 +80,41 @@ function LoadCard({
   );
 }
 
+/** One line. Only when there is a note does it open (tap) to show the full text. */
 function AvailabilityStrip({ availability, t }: { availability: AthleteDashboardProps["availability"]; t: TFunction }) {
   const status = availability?.status ?? "available";
   const note = availability?.note;
   const flagged = status !== "available";
   const color = status === "limited" ? "var(--warn)" : status === "unavailable" ? "var(--danger)" : "var(--accent)";
+  const head = (
+    <>
+      <span className="shrink-0" style={{ color }}>
+        <AvailabilityIcon status={status} size={20} />
+      </span>
+      <span className="min-w-0 flex-1 truncate">
+        <span className="font-semibold">{t(AVAILABILITY_KEY[status])}</span>
+        {note && <span className="text-sm text-muted"> · {note}</span>}
+        {!note && flagged && <span className="text-sm text-muted"> · {t("athlete.status.note")}</span>}
+      </span>
+    </>
+  );
   return (
     <div
-      className="card flex items-center gap-3 !py-3"
+      className="card !p-0"
       role={flagged ? "status" : undefined}
       style={flagged ? { background: status === "limited" ? "var(--warn-bg)" : "var(--danger-bg)", borderColor: color } : undefined}
     >
-      <span
-        className="grid size-10 shrink-0 place-items-center rounded-md border"
-        style={{ color, borderColor: `color-mix(in srgb, ${color} 55%, transparent)` }}
-      >
-        <AvailabilityIcon status={status} size={20} />
-      </span>
-      <div className="min-w-0">
-        <p className="font-semibold">{t(AVAILABILITY_KEY[status])}</p>
-        {(note || flagged) && <p className={`text-sm ${note ? "" : "text-muted"}`}>{note || t("athlete.status.note")}</p>}
-      </div>
+      {note ? (
+        <details className="group">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-md px-4 [&::-webkit-details-marker]:hidden">
+            {head}
+            <ChevronDown size={18} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="px-4 pb-3 text-sm [overflow-wrap:anywhere]">{note}</p>
+        </details>
+      ) : (
+        <div className="flex min-h-12 items-center gap-3 px-4">{head}</div>
+      )}
     </div>
   );
 }
@@ -110,8 +125,8 @@ function WeeklyBars({ weekly, t, locale }: { weekly: AthleteDashboardProps["week
   const labelOf = (iso: string) =>
     new Date(iso + "T00:00:00Z").toLocaleDateString(dateLocale(locale), { day: "numeric", month: "numeric", timeZone: "UTC" });
   return (
-    <div className="card">
-      <h3 className="mb-4 text-xl">{t("athlete.weekly.title")}</h3>
+    <div>
+      <h3 className="mb-4 text-base font-semibold">{t("athlete.weekly.title")}</h3>
       <ol className="flex h-24 items-end gap-1.5" aria-label={t("athlete.weekly.aria")}>
         {weekly.map((w, i) => {
           const current = i === weekly.length - 1;
@@ -193,6 +208,29 @@ function ThisWeek({ week, t, locale }: { week: NonNullable<AthleteDashboardProps
   );
 }
 
+function RecentItem({ l, t, locale }: { l: AthleteDashboardProps["recentLogs"][number]; t: TFunction; locale: Locale }) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-[var(--line)] py-2.5 last:border-b-0">
+      <span className={`flex min-w-0 items-center gap-2.5 ${l.attended ? "" : "text-muted"}`}>
+        <SessionTypeIcon type={l.type} />
+        <span className="truncate">
+          <span className="text-muted">{dateFmt(l.starts_at, locale)}</span>{" "}
+          {l.title || t(SESSION_TYPE_KEY[l.type])}
+        </span>
+      </span>
+      {l.attended ? (
+        <span className="chip tabular-nums">
+          {t("athlete.recent.calc", { min: l.duration_min, rpe: l.rpe, load: l.load })}
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 text-xs text-muted">
+          <Ban size={14} aria-hidden /> {t("athlete.recent.absent")}
+        </span>
+      )}
+    </li>
+  );
+}
+
 export async function AthleteDashboard({
   teamId, firstName, teamName, availability, pending, weekly, recentLogs, last7Load, attendedThisWeek, wellness, week,
 }: AthleteDashboardProps) {
@@ -215,10 +253,6 @@ export async function AthleteDashboard({
         subtitle={subtitle || undefined}
       />
 
-      <LoadCard last7Load={last7Load} attendedThisWeek={attendedThisWeek} weekly={weekly} t={t} />
-
-      {wellness && !wellness.today && <WellnessCard teamId={teamId} today={null} />}
-
       <QuickLog
         teamId={teamId}
         items={pending.slice(0, QUICK_MAX).map((s) => ({
@@ -232,43 +266,48 @@ export async function AthleteDashboard({
         </Link>
       )}
 
-      {wellness?.today && <WellnessCard teamId={teamId} today={wellness.today} />}
+      {wellness && <WellnessCard teamId={teamId} today={wellness.today} />}
 
       <AvailabilityStrip availability={availability} t={t} />
 
       {week && <ThisWeek week={week} t={t} locale={locale} />}
 
-      <WeeklyBars weekly={weekly} t={t} locale={locale} />
-
-      <section className="flex flex-col gap-1" aria-label={t("athlete.recent.title")}>
-        <p className="eyebrow mb-1 px-1">{t("athlete.recent.title")}</p>
-        {recentLogs.length ? (
-          <ul className="card flex flex-col !py-1 text-sm">
-            {recentLogs.map((l, i) => (
-              <li key={i} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-[var(--line)] py-2.5 last:border-b-0">
-                <span className={`flex min-w-0 items-center gap-2.5 ${l.attended ? "" : "text-muted"}`}>
-                  <SessionTypeIcon type={l.type} />
-                  <span className="truncate">
-                    <span className="text-muted">{dateFmt(l.starts_at, locale)}</span>{" "}
-                    {l.title || t(SESSION_TYPE_KEY[l.type])}
-                  </span>
-                </span>
-                {l.attended ? (
-                  <span className="chip tabular-nums">
-                    {t("athlete.recent.calc", { min: l.duration_min, rpe: l.rpe, load: l.load })}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-xs text-muted">
-                    <Ban size={14} aria-hidden /> {t("athlete.recent.absent")}
-                  </span>
+      <details className="card group !p-0">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-md px-4 [&::-webkit-details-marker]:hidden">
+          <span className="text-lg font-semibold">{t("athlete.load.summary")}</span>
+          <span className="flex items-center gap-2 text-sm text-muted">
+            <span className="num text-base text-[var(--foreground)]">{last7Load}</span>
+            {t("athlete.load.unit")}
+            <ChevronDown size={18} aria-hidden className="shrink-0 transition-transform group-open:rotate-180" />
+          </span>
+        </summary>
+        <div className="flex flex-col gap-6 border-t border-[var(--line)] px-4 pb-4 pt-4">
+          <LoadCard last7Load={last7Load} attendedThisWeek={attendedThisWeek} weekly={weekly} t={t} />
+          <WeeklyBars weekly={weekly} t={t} locale={locale} />
+          <section className="flex flex-col gap-1" aria-label={t("athlete.recent.title")}>
+            <p className="eyebrow mb-1">{t("athlete.recent.title")}</p>
+            {recentLogs.length ? (
+              <>
+                <ul className="flex flex-col text-sm">
+                  {recentLogs.slice(0, RECENT_SHOWN).map((l, i) => <RecentItem key={i} l={l} t={t} locale={locale} />)}
+                </ul>
+                {recentLogs.length > RECENT_SHOWN && (
+                  <details className="group/more">
+                    <summary className="link flex min-h-11 w-fit cursor-pointer list-none items-center gap-1.5 text-sm [&::-webkit-details-marker]:hidden">
+                      {t("athlete.recent.all", { n: recentLogs.length - RECENT_SHOWN })}
+                    </summary>
+                    <ul className="flex flex-col text-sm">
+                      {recentLogs.slice(RECENT_SHOWN).map((l, i) => <RecentItem key={i} l={l} t={t} locale={locale} />)}
+                    </ul>
+                  </details>
                 )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="px-1 text-sm text-muted">{t("athlete.recent.empty")}</p>
-        )}
-      </section>
+              </>
+            ) : (
+              <p className="text-sm text-muted">{t("athlete.recent.empty")}</p>
+            )}
+          </section>
+        </div>
+      </details>
     </section>
   );
 }

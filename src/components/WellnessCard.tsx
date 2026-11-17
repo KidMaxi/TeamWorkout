@@ -68,45 +68,44 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
   }
 
   if (entry && !editing) {
+    // One line: today's check-in is done. The details open in the edit form.
     return (
-      <div className="card flex flex-col gap-3 !py-3.5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-semibold">{t("wellness.card.done")}</p>
-            <p className="num text-sm text-muted" aria-label={t("wellness.card.avg", { avg: wellnessAverage(entry) })}>
-              {wellnessAverage(entry)}<span className="text-xs"> / 5</span>
-            </p>
-            {entry.pain && (
-              <p className="mt-1.5 flex items-start gap-1.5 text-sm text-danger">
-                <CircleAlert size={14} aria-hidden className="mt-0.5 shrink-0" />
-                <span className="min-w-0 break-words">
-                  {entry.painLocation ? t("wellness.pain.markWhere", { where: entry.painLocation }) : t("wellness.pain.mark")}
-                </span>
-              </p>
-            )}
-          </div>
-          <button type="button" onClick={open} className="btn inline-flex min-h-11 items-center gap-1.5">
+      <div className="card !py-2.5">
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <p className="flex min-w-0 items-center gap-2">
+            <Check size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
+            <span className="min-w-0 truncate font-semibold">{t("wellness.card.today")}</span>
+            <span className="num text-sm text-muted" aria-label={t("wellness.card.avg", { avg: wellnessAverage(entry) })}>
+              {wellnessAverage(entry)}<span className="text-xs">/5</span>
+            </span>
+          </p>
+          <button type="button" onClick={open} className="btn inline-flex min-h-11 shrink-0 items-center gap-1.5">
             <Pencil size={14} aria-hidden /> {t("wellness.card.edit")}
           </button>
         </div>
-        <ul className="grid grid-cols-5 gap-1.5">
-          {WELLNESS_ITEMS.map((k) => {
-            const Icon = ICON[k];
-            const label = t("wellness.card.value", { item: t(`wellness.item.${k}`), n: entry[k] });
-            return (
-              <li
-                key={k}
-                className="flex flex-col items-center gap-0.5 rounded-md border border-[var(--line)] bg-[var(--surface-2)] py-2"
-                aria-label={label}
-                title={label}
-              >
-                <Icon size={14} aria-hidden className="text-[var(--accent)]" />
-                <span className="num text-base">{entry[k]}</span>
-              </li>
-            );
-          })}
-        </ul>
+        {entry.pain && (
+          <p className="mt-1 flex items-start gap-1.5 text-sm text-danger">
+            <CircleAlert size={14} aria-hidden className="mt-0.5 shrink-0" />
+            <span className="min-w-0 break-words">
+              {entry.painLocation ? t("wellness.pain.markWhere", { where: entry.painLocation }) : t("wellness.pain.mark")}
+            </span>
+          </p>
+        )}
         <p className="sr-only" role="status">{saved ? t("wellness.card.saved") : ""}</p>
+      </div>
+    );
+  }
+
+  if (!entry && !editing) {
+    // Not filled in yet: one line, the five questions open on tap.
+    return (
+      <div className="card !py-2.5">
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <p className="min-w-0 truncate font-semibold">{t("wellness.card.today")}</p>
+          <button type="button" onClick={open} className="btn btn-primary inline-flex min-h-11 shrink-0 items-center gap-1.5">
+            {t("wellness.card.fill")}
+          </button>
+        </div>
       </div>
     );
   }
@@ -191,11 +190,9 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
       </div>
       {error && <p role="alert" className="text-sm text-danger">{t(error)}</p>}
       <div className="flex gap-2">
-        {entry && (
-          <button type="button" onClick={() => setEditing(false)} disabled={pending} className="btn min-h-12">
-            {t("wellness.card.cancel")}
-          </button>
-        )}
+        <button type="button" onClick={() => setEditing(false)} disabled={pending} className="btn min-h-12">
+          {t("wellness.card.cancel")}
+        </button>
         <button type="submit" disabled={!complete || pending} className="btn btn-primary inline-flex min-h-12 flex-1 items-center justify-center gap-2">
           <Check size={16} aria-hidden /> {pending ? t("common.loading") : t("wellness.card.save")}
         </button>

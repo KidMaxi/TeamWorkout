@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition, type ReactNode } from "react";
 import {
   CalendarClock, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Flame, HeartPulse, Layers, Lock, Moon, Plus, Repeat, TrendingUp,
   TriangleAlert,
 } from "lucide-react";
-import { Avatar } from "@/components/Avatar";
 import { SessionTypeIcon } from "@/components/icons";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { WeekRulesForm, type RulesValues } from "@/components/WeekRulesForm";
@@ -431,8 +430,47 @@ function SessionToggle({ teamId, athlete, session, excluded, editable }: {
   );
 }
 
-function AthleteCard({ a, teamId, sessions, defaults, settings, canRules, canNotes, isHead, today }: {
-  a: BoardAthlete; teamId: string; sessions: BoardSession[]; defaults: RulesValues; settings: WorkloadSettings;
+/** Small "?" button that reveals an explanation. Renders two flex items: put it in a wrapping flex row. */
+export function Help({ children }: { children: ReactNode }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        aria-label={t("workload.rules.help")}
+        title={t("workload.rules.help")}
+        onClick={() => setOpen((o) => !o)}
+        className="-m-1.5 grid size-11 shrink-0 place-items-center rounded-md text-muted transition-colors hover:text-[var(--foreground)]"
+      >
+        <CircleHelp size={16} aria-hidden className={open ? "text-[var(--primary)]" : ""} />
+      </button>
+      {open && <div id={id} className="basis-full text-xs text-muted">{children}</div>}
+    </>
+  );
+}
+
+/** The one line shown under a player that needs attention: the first reason only. */
+function reasonLine(a: BoardAthlete, t: (k: MessageKey, v?: Record<string, string | number>) => string): string | null {
+  const pain = a.warnings.find((w) => w.kind === "pain");
+  if (a.status !== "over" && a.status !== "watch" && !pain) return null;
+  if (pain) return warningText(pain, t).text;
+  const over = a.checks.find((c) => c.state === "over");
+  if (over) return `${t(METER_KEY[over.key], { n: over.actual, max: over.limit })}, ${t(STATE_KEY.over)}`;
+  if (a.warnings[0]) return warningText(a.warnings[0], t).text;
+  if (!a.locked && a.reasons[0]) return t(REASON_KEY[a.reasons[0]]);
+  if (a.advice === "reduceOne") return t("workload.advice.reduceOne");
+  if (a.advice === "considerRest") return t("workload.advice.considerRest");
+  const at = a.checks.find((c) => c.state === "at");
+  if (at) return `${t(METER_KEY[at.key], { n: at.actual, max: at.limit })}, ${t(STATE_KEY.at)}`;
+  return null;
+}
+
+function AthleteRow({ a, teamId, sessions, settings, canRules, canNotes, isHead, today }: {
+  a: BoardAthlete; teamId: string; sessions: BoardSession[]; settings: WorkloadSettings;
   canRules: boolean; canNotes: boolean; isHead: boolean; today: string;
 }) {
   const { t } = useT();
@@ -444,60 +482,76 @@ function AthleteCard({ a, teamId, sessions, defaults, settings, canRules, canNot
     : a.advice === "considerRest" ? (a.pain ? "workload.advice.considerRestPain" : "workload.advice.considerRest")
     : null;
   const panelId = `week-${a.id}`;
-  const empty: RulesValues = { maxTrainings: null, maxGym: null, maxMatches: null, minRestDays: null };
+  const metaId = `week-meta-${a.id}`;
+  const { planned, actual } = a.totals;
+  const reason = reasonLine(a, t);
+  const reasonCls = a.status === "over" || a.pain ? "text-[var(--danger)]" : "text-[var(--warn)]";
+  const showActual = actual > 0;
+  const load = showActual ? actual : planned;
+  const pct = planned > 0 ? Math.min(actual / planned, 1) * 100 : actual > 0 ? 100 : 0;
 
   return (
-    <li className="card flex flex-col gap-3">
-      <div className="flex items-start gap-3">
-        <Avatar name={a.name} size={44} />
-        <div className="min-w-0 flex-1">
-          <Link
-            href={`/team/${teamId}/athlete/${a.id}`}
-            aria-label={t("workload.sessions.open", { name: a.name })}
-            className="-my-1 flex min-h-11 items-center justify-between gap-1 font-semibold"
-          >
-            <span className="truncate">{a.name}</span>
-            <ChevronRight size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
-          </Link>
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <ReadinessChip a={a} />
-          </div>
-        </div>
-        <span className={st.cls}>{t(st.key)}</span>
-      </div>
-
-      <ul className="flex flex-wrap gap-1.5" aria-label={t("workload.week.list", { name: a.name })}>
-        <li className="chip">{t("workload.meter.total", { n: a.total })}</li>
-        {a.checks.map((c) => (
-          <li key={c.key} className={`chip ${STATE_CLS[c.state]}`}>
-            {t(METER_KEY[c.key], { n: c.actual, max: c.limit })}
-            <span className="sr-only">, {t(STATE_KEY[c.state])}</span>
-          </li>
-        ))}
-        {a.override && <li className="chip"><CircleCheck size={12} aria-hidden />{t("workload.rules.custom")}</li>}
-      </ul>
-
-      <DayStrip a={a} />
-      <WeekTotals a={a} />
-      <Warnings a={a} settings={settings} />
-
-      {adviceKey && <p className="text-sm">{t(adviceKey)}</p>}
-
+    <li>
       <button
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
+        aria-describedby={metaId}
         aria-label={t(open ? "workload.sessions.collapse" : "workload.sessions.expand", { name: a.name })}
         onClick={() => setOpen((o) => !o)}
-        className="btn inline-flex min-h-11 items-center justify-center gap-2 self-start"
+        className="flex min-h-[4.25rem] w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-[var(--surface-2)]"
       >
-        <ChevronDown size={16} aria-hidden className={`transition-transform ${open ? "rotate-180" : ""}`} />
-        {t("workload.sessions.weekBtn")}
+        <span className="flex items-center gap-2">
+          <span className="min-w-0 flex-1 truncate font-semibold">{a.name}</span>
+          <span id={metaId} className="flex shrink-0 items-center gap-2">
+            <span className={st.cls}>{t(st.key)}</span>
+            {reason && <span className="sr-only">. {reason}</span>}
+          </span>
+          <ChevronDown size={16} aria-hidden className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+        </span>
+        {reason && <span aria-hidden className={`truncate text-xs ${reasonCls}`}>{reason}</span>}
+        <span className="flex items-center gap-3" aria-hidden>
+          <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full" style={{ background: "var(--surface-3)" }}>
+            <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "var(--primary)" }} />
+          </span>
+          <span className="flex w-16 shrink-0 items-baseline justify-end gap-1">
+            <span className={`num text-lg ${showActual ? "" : "text-muted"}`}>{nf(load)}</span>
+          </span>
+        </span>
+        <span className="sr-only">
+          {t(showActual ? "workload.totals.actual" : "workload.totals.planned")} {nf(load)}
+        </span>
       </button>
 
       {open && (
-        <div id={panelId} className="flex flex-col gap-4 border-t pt-4">
+        <div id={panelId} className="flex flex-col gap-4 border-t border-[var(--line)] px-4 pb-4 pt-4">
+          <Link
+            href={`/team/${teamId}/athlete/${a.id}`}
+            aria-label={t("workload.sessions.open", { name: a.name })}
+            className="link -my-1 inline-flex min-h-11 items-center gap-1 self-start text-sm"
+          >
+            {a.name}<ChevronRight size={14} aria-hidden />
+          </Link>
+
+          <Warnings a={a} settings={settings} />
+          {adviceKey && <p className="text-sm">{t(adviceKey)}</p>}
+
+          <div className="flex flex-wrap items-center gap-1.5" aria-label={t("workload.week.list", { name: a.name })}>
+            <span className="chip">{t("workload.meter.total", { n: a.total })}</span>
+            {a.checks.map((c) => (
+              <span key={c.key} className={`chip ${STATE_CLS[c.state]}`}>
+                {t(METER_KEY[c.key], { n: c.actual, max: c.limit })}
+                <span className="sr-only">, {t(STATE_KEY[c.state])}</span>
+              </span>
+            ))}
+            {a.override && <span className="chip"><CircleCheck size={12} aria-hidden />{t("workload.rules.custom")}</span>}
+            <ReadinessChip a={a} />
+          </div>
+
+          <DayStrip a={a} />
+          <WeekTotals a={a} />
           <TopSessions a={a} />
+
           <div className="flex flex-col gap-2">
             <h3 className="eyebrow !font-sans">{t("workload.sessions.title")}</h3>
             {sessions.length ? (
@@ -534,9 +588,31 @@ function AthleteCard({ a, teamId, sessions, defaults, settings, canRules, canNot
             )}
           </div>
 
-          {canRules && (
-            <div className="flex flex-col gap-2">
-              <h3 className="eyebrow !font-sans">{t("workload.rules.override")}</h3>
+          {canNotes && <Notes teamId={teamId} a={a} sessions={sessions} today={today} isHead={isHead} />}
+        </div>
+      )}
+    </li>
+  );
+}
+
+/** Per-athlete limits, one collapsed row per player. Lives inside the "Rules" panel. */
+export function AthleteRules({ teamId, athletes, defaults }: { teamId: string; athletes: BoardAthlete[]; defaults: RulesValues }) {
+  const { t } = useT();
+  const empty: RulesValues = { maxTrainings: null, maxGym: null, maxMatches: null, minRestDays: null };
+  if (!athletes.length) return null;
+  return (
+    <ul className="flex flex-col divide-y divide-[var(--line)] rounded-md border border-[var(--line)]">
+      {[...athletes].sort((x, y) => x.name.localeCompare(y.name)).map((a) => (
+        <li key={a.id}>
+          <details className="group">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 [&::-webkit-details-marker]:hidden">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.name}</span>
+              <span className="chip shrink-0">
+                {a.override ? <><CircleCheck size={12} aria-hidden />{t("workload.rules.custom")}</> : t("workload.rules.usesDefault")}
+              </span>
+              <ChevronDown size={16} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-[var(--line)] p-3">
               <WeekRulesForm
                 key={JSON.stringify(a.override)}
                 teamId={teamId}
@@ -546,37 +622,27 @@ function AthleteCard({ a, teamId, sessions, defaults, settings, canRules, canNot
                 hasOverride={!!a.override}
               />
             </div>
-          )}
-
-          {canNotes && <Notes teamId={teamId} a={a} sessions={sessions} today={today} isHead={isHead} />}
-        </div>
-      )}
-    </li>
+          </details>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-export function WorkloadBoard({ teamId, athletes, sessions, defaults, settings, canRules, canNotes, isHead, today }: {
-  teamId: string; athletes: BoardAthlete[]; sessions: BoardSession[]; defaults: RulesValues; settings: WorkloadSettings;
+export function WorkloadBoard({ teamId, athletes, sessions, settings, canRules, canNotes, isHead, today }: {
+  teamId: string; athletes: BoardAthlete[]; sessions: BoardSession[]; settings: WorkloadSettings;
   canRules: boolean; canNotes: boolean; isHead: boolean; today: string;
 }) {
   const { t } = useT();
   if (!athletes.length) return <p className="text-muted">{t("workload.empty.athletes")}</p>;
   return (
-    <div className="flex flex-col gap-3">
-      <ul className="stagger flex flex-col gap-3">
-        {athletes.map((a) => (
-          <AthleteCard
-            key={a.id} a={a} teamId={teamId} sessions={sessions} defaults={defaults} settings={settings}
-            canRules={canRules} canNotes={canNotes} isHead={isHead} today={today}
-          />
-        ))}
-      </ul>
-      <p className="flex items-start gap-2 text-xs text-muted">
-        <span>{t("workload.rules.explain")}</span>
-        <Link href="/help" aria-label={t("workload.rules.help")} className="link -m-3 grid size-11 shrink-0 place-items-center">
-          <CircleHelp size={14} aria-hidden />
-        </Link>
-      </p>
-    </div>
+    <ul className="card flex flex-col divide-y divide-[var(--line)] !p-0 overflow-hidden">
+      {athletes.map((a) => (
+        <AthleteRow
+          key={a.id} a={a} teamId={teamId} sessions={sessions} settings={settings}
+          canRules={canRules} canNotes={canNotes} isHead={isHead} today={today}
+        />
+      ))}
+    </ul>
   );
 }

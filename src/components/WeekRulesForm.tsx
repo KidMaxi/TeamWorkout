@@ -114,18 +114,18 @@ const SETTING_FIELDS: {
 ];
 
 /** Team thresholds for the day-level warnings (head coach only). Collapsed by default. */
-export function WorkloadSettingsForm({ teamId, settings }: { teamId: string; settings: WorkloadSettings }) {
+export function WorkloadSettingsForm({ teamId, settings, bare = false }: { teamId: string; settings: WorkloadSettings; bare?: boolean }) {
   const { t } = useT();
   const [state, formAction, pending] = useActionState<WorkloadResult | null, FormData>(
     async (_prev, fd) => saveWorkloadSettings(teamId, fd),
     null,
   );
   return (
-    <details className="card group flex flex-col gap-3">
+    <details className={`group flex flex-col gap-3 ${bare ? "border-t border-[var(--line)] pt-3" : "card"}`}>
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-md [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-2">
           <SlidersHorizontal size={18} aria-hidden className="text-[var(--accent)]" />
-          <span className="display text-xl">{t("workload.settings.title")}</span>
+          <span className={bare ? "text-base font-semibold" : "display text-xl"}>{t("workload.settings.title")}</span>
         </span>
         <ChevronDown size={18} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
       </summary>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  Ban, ChevronRight, CircleAlert, CircleHelp, ClipboardList, HeartPulse, Lock, TriangleAlert, UserCheck, Users, UserPlus,
+  Ban, ChevronDown, ChevronRight, CircleAlert, CircleHelp, ClipboardList, HeartPulse, Lock, TriangleAlert, UserCheck, Users, UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
@@ -40,22 +40,12 @@ type WellnessMap = Record<string, WellnessEntry | null>;
 type ConsentMap = Record<string, boolean>;
 type PlayerMap = Record<string, { jersey: number | null; position: string | null }>;
 const FLAG_CLS = { ok: "badge badge-ok", watch: "badge badge-watch", low: "badge badge-high" } as const;
-const isLow = (w: WellnessMap | undefined, c: ConsentMap | undefined, id: string) => {
-  const e = w?.[id];
-  return !!(c?.[id] && e && wellnessFlag(e) === "low");
-};
 
 type DeviationMap = Record<string, { pct: number | null; flagged: boolean }>;
 /** Neutral badge text for the own-average comparison, e.g. "+42%". */
 const pctText = (pct: number) => `${pct > 0 ? "+" : ""}${Math.round(pct)}%`;
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
-
-function shortName(full: string, fallback: string) {
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return fallback;
-  return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.` : parts[0];
-}
 
 function Stat({
   label, value, tone, Icon,
@@ -72,12 +62,32 @@ function Stat({
   );
 }
 
-function LoadCard({
-  weeks, available, total, alerts, high, missing, wellnessCount, showRatio, t,
+function Tiles({
+  available, total, alerts, high, missing, wellnessCount, t,
 }: {
-  weeks: WeekTrendRow[]; available: number; total: number; alerts: number; high: number; missing: number;
-  wellnessCount: { filled: number; total: number } | null; showRatio: boolean; t: TFunction;
+  available: number; total: number; alerts: number; high: number; missing: number;
+  wellnessCount: { filled: number; total: number } | null; t: TFunction;
 }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-3 gap-2">
+        <Stat Icon={UserCheck} label={t("dashboard.tiles.available")} value={`${available}/${total}`} />
+        <Stat Icon={TriangleAlert} label={t("dashboard.tiles.alerts")} value={alerts} tone={high ? "danger" : alerts ? "warn" : undefined} />
+        <Stat Icon={ClipboardList} label={t("dashboard.tiles.missing")} value={missing} tone={missing ? "warn" : undefined} />
+      </div>
+      {wellnessCount && wellnessCount.total > 0 && (
+        <p className="flex items-center gap-2 px-1 text-sm text-muted">
+          <HeartPulse size={16} aria-hidden className="text-[var(--accent)]" />
+          {t("wellness.staff.tile")}
+          <span className="num text-base text-[var(--foreground)]">{wellnessCount.filled}/{wellnessCount.total}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Collapsed by default: the team gauge and the weekly bars, for the coach who wants the trend. */
+function WeekDetails({ weeks, showRatio, t, locale }: { weeks: WeekTrendRow[]; showRatio: boolean; t: TFunction; locale: Locale }) {
   const thisWeek = weeks.at(-1)?.total_load ?? 0;
   const max = Math.max(...weeks.map((w) => w.total_load), 1);
   const prev = weeks.slice(-5, -1);
@@ -90,27 +100,26 @@ function LoadCard({
     : t("dashboard.hero.aria.none", { load: thisWeek });
   const digits = String(thisWeek).length;
   return (
-    <div className="card card-hero flex flex-col items-center gap-5">
-      <p className="eyebrow self-start">{t("dashboard.hero.eyebrow")}</p>
-      <Dial value={thisWeek / max} marker={hasBaseline ? avg / max : undefined} size={232} tone={tone} label={label}>
-        <div>
-          <p className="num" style={{ fontSize: digits > 4 ? "2.25rem" : "3rem" }}>{thisWeek}</p>
-          <p className="mt-1.5 text-[11px] uppercase tracking-widest text-muted">{t("dashboard.hero.caption")}</p>
-        </div>
-      </Dial>
-      <div className="grid w-full grid-cols-3 gap-2">
-        <Stat Icon={UserCheck} label={t("dashboard.tiles.available")} value={`${available}/${total}`} />
-        <Stat Icon={TriangleAlert} label={t("dashboard.tiles.alerts")} value={alerts} tone={high ? "danger" : alerts ? "warn" : undefined} />
-        <Stat Icon={ClipboardList} label={t("dashboard.tiles.missing")} value={missing} tone={missing ? "warn" : undefined} />
+    <details className="card group !p-0">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-md px-4 [&::-webkit-details-marker]:hidden">
+        <span className="text-lg font-semibold">{t("dashboard.trend.summary")}</span>
+        <span className="flex items-center gap-2 text-sm text-muted">
+          <span className="num text-base text-[var(--foreground)]">{thisWeek}</span>
+          {t("dashboard.hero.caption")}
+          <ChevronDown size={18} aria-hidden className="shrink-0 transition-transform group-open:rotate-180" />
+        </span>
+      </summary>
+      <div className="flex flex-col items-center gap-5 border-t border-[var(--line)] px-4 pb-4 pt-4">
+        <p className="eyebrow self-start">{t("dashboard.hero.eyebrow")}</p>
+        <Dial value={thisWeek / max} marker={hasBaseline ? avg / max : undefined} size={180} tone={tone} label={label}>
+          <div>
+            <p className="num" style={{ fontSize: digits > 4 ? "1.75rem" : "2.25rem" }}>{thisWeek}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-widest text-muted">{t("dashboard.hero.caption")}</p>
+          </div>
+        </Dial>
+        <TrendChart weeks={weeks} t={t} locale={locale} />
       </div>
-      {wellnessCount && wellnessCount.total > 0 && (
-        <p className="flex items-center gap-2 self-start text-sm text-muted">
-          <HeartPulse size={16} aria-hidden className="text-[var(--accent)]" />
-          {t("wellness.staff.tile")}
-          <span className="num text-base text-[var(--foreground)]">{wellnessCount.filled}/{wellnessCount.total}</span>
-        </p>
-      )}
-    </div>
+    </details>
   );
 }
 
@@ -125,39 +134,6 @@ function badgeFor(r: AthleteRow, showRatio: boolean, deviation: DeviationMap, t:
   return { cls: "badge badge-none", text: t("dashboard.dev.badge", { pct: pctText(d.pct) }) };
 }
 
-function Attention({ rows, lowIds, showRatio, deviation, t }: {
-  rows: AthleteRow[]; lowIds: Set<string>; showRatio: boolean; deviation: DeviationMap; t: TFunction;
-}) {
-  return (
-    <section aria-label={t("dashboard.attention.title")}>
-      <p className="eyebrow mb-2 px-1">{t("dashboard.attention.title")}</p>
-      <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {rows.map((r) => {
-          const badge = badgeFor(r, showRatio, deviation, t);
-          return (
-            <li key={r.user_id} className="card flex w-40 shrink-0 snap-start flex-col gap-2 !p-3">
-              <div className="flex items-center gap-2">
-                <Avatar name={r.full_name} size={36} />
-                <p className="min-w-0 flex-1 truncate text-sm font-semibold">{shortName(r.full_name, t("dashboard.athlete.unnamed"))}</p>
-                {lowIds.has(r.user_id) && (
-                  <HeartPulse size={14} aria-label={t("wellness.staff.attention")} role="img" className="shrink-0 text-[var(--danger)]" />
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className={badge.cls}>{badge.text}</span>
-                <span className="text-right">
-                  <span className="num text-lg">{r.acute_load}</span>
-                  <span className="ml-1 text-[11px] text-muted">{t("dashboard.athlete.acute")}</span>
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
 function TrendChart({ weeks, t, locale }: { weeks: WeekTrendRow[]; t: TFunction; locale: Locale }) {
   const max = Math.max(...weeks.map((w) => w.total_load), 1);
   const loc = dateLocale(locale);
@@ -166,9 +142,9 @@ function TrendChart({ weeks, t, locale }: { weeks: WeekTrendRow[]; t: TFunction;
   const maxIdx = weeks.findIndex((w) => w.total_load === max);
   const scale = 86; // percent of plot height used by the tallest bar, leaves room for its value
   return (
-    <div className="card">
+    <div className="w-full">
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h3 className="text-xl">{t("dashboard.trend.title")}</h3>
+        <h3 className="text-base font-semibold">{t("dashboard.trend.title")}</h3>
         {avg > 0 && (
           <span className="flex items-center gap-1.5 text-[11px] text-muted">
             <span aria-hidden className="w-4 border-t border-dashed border-[var(--accent)]" /> {t("dashboard.trend.avg")} {Math.round(avg)}
@@ -262,80 +238,155 @@ function WellnessRow({ entry, consent, t }: { entry: WellnessEntry | null | unde
   );
 }
 
-function AthleteCard({
+type Fit = "ok" | "less" | "out" | "unknown";
+const FIT: Record<Fit, { key: MessageKey; cls: string; rank: number }> = {
+  out: { key: "dashboard.fit.out", cls: "badge badge-high", rank: 0 },
+  less: { key: "dashboard.fit.less", cls: "badge badge-watch", rank: 1 },
+  unknown: { key: "dashboard.fit.unknown", cls: "badge badge-none", rank: 2 },
+  ok: { key: "dashboard.fit.ok", cls: "badge badge-ok", rank: 3 },
+};
+
+/** Fit / less fit / not fit from availability, today's check-in (only with consent) and the load signal. Indicative; staff decide. */
+function fitOf(r: AthleteRow, entry: WellnessEntry | null | undefined, consent: boolean): Fit {
+  if (r.availability === "unavailable") return "out";
+  const known = consent && entry ? entry : null;
+  if (r.availability === "limited" || r.level === "high" || known?.pain || (known && wellnessFlag(known) === "low")) return "less";
+  if (!r.availability && !known && r.level === "none") return "unknown";
+  return "ok";
+}
+
+const LOAD_WORD: Record<"normal" | "high" | "low" | "none", MessageKey> = {
+  normal: "dashboard.row.load.normal", high: "dashboard.row.load.high", low: "dashboard.row.load.low", none: "dashboard.row.load.none",
+};
+
+/** Plain word for this week's load against the athlete's own average, from the existing level logic. */
+function loadWord(r: AthleteRow): keyof typeof LOAD_WORD {
+  if (!r.has_baseline) return "none";
+  if (r.level === "high") return "high";
+  if (r.level === "watch") return r.acute_load >= r.chronic_weekly_avg ? "high" : "low";
+  return "normal";
+}
+
+const BAR_COLOR: Record<DialTone, string> = {
+  primary: "var(--primary)", accent: "var(--accent)", warn: "var(--warn)", danger: "var(--danger)",
+};
+
+function AthleteRowItem({
   r, teamId, wellness, consent, player, showRatio, deviation, t,
 }: { r: AthleteRow; teamId: string; wellness?: WellnessMap; consent?: ConsentMap; player?: PlayerMap[string]; showRatio: boolean; deviation: DeviationMap; t: TFunction }) {
   const lvl = LEVEL[r.level];
   const badge = badgeFor(r, showRatio, deviation, t);
   const dialTone: DialTone = showRatio || r.level === "high" ? lvl.tone : "accent";
-  const avail = r.availability ?? "available";
   const name = r.full_name || t("dashboard.athlete.unnamed");
   const cap = r.max_weekly_load ?? Math.max(r.chronic_weekly_avg * 1.5, 1);
   const tag = playerLabel(player?.jersey, isPosition(player?.position) ? t(`members.pos.${player.position}`) : null);
-  const label = t("dashboard.athlete.dial", { name, acute: r.acute_load, cap: Math.round(cap) });
+  const label = t("dashboard.athlete.dial", { name, acute: Math.round(r.acute_load), cap: Math.round(cap) });
+  const given = !!consent?.[r.user_id];
+  const entry = wellness?.[r.user_id];
+  const fit = FIT[fitOf(r, entry, given)];
+  const known = given && entry ? entry : null;
+  const reasons = [
+    known?.pain ? (known.painLocation ? t("wellness.staff.painWhere", { where: known.painLocation }) : t("wellness.staff.pain")) : null,
+    known && !known.pain && wellnessFlag(known) === "low" ? t("wellness.staff.attention") : null,
+    r.availability_note || null,
+    r.missing > 0 ? t("dashboard.row.missing", { n: r.missing }) : null,
+  ].filter((x): x is string => !!x);
+  // Bar: this week's load against the athlete's own weekly average (the notch).
+  const barMax = Math.max(r.acute_load, r.chronic_weekly_avg * 1.5, 1);
+  const word = loadWord(r);
+  const wordCls = word === "high" ? "text-[var(--warn)]" : "text-muted";
   return (
-    <li className="card flex min-w-0 flex-col gap-3">
-      <div className="flex items-start gap-3">
-        <Avatar name={r.full_name} size={44} />
-        <div className="min-w-0 flex-1">
-          <Link
-            href={`/team/${teamId}/athlete/${r.user_id}`}
-            aria-label={t("wellness.staff.open", { name })}
-            className="-my-1 flex min-h-11 items-center justify-between gap-1 font-semibold"
-          >
-            <span className="truncate">{name}</span>
-            <ChevronRight size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
-          </Link>
-          {tag && <p className="num -mt-0.5 mb-0.5 text-xs text-muted">{tag}</p>}
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+    <li>
+      <details className="card group !p-0">
+        <summary className="flex min-h-[4.25rem] cursor-pointer list-none items-center gap-3 rounded-md px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <Avatar name={r.full_name} size={40} />
+          <div className="min-w-0 flex-1">
+            <p className="flex items-baseline gap-1.5">
+              <span className="truncate font-semibold">{name}</span>
+              {player?.jersey != null && <span className="num shrink-0 text-xs text-muted">#{player.jersey}</span>}
+            </p>
+            {reasons.length > 0 && (
+              <p className={`truncate text-xs ${known?.pain || fit === FIT.out ? "text-danger" : "text-muted"}`}>{reasons.join(" · ")}</p>
+            )}
+            <p className="mt-1.5 flex items-center gap-2 text-xs">
+              <span aria-hidden className="relative h-1.5 w-16 shrink-0 rounded-full bg-[var(--surface-3)] sm:w-24">
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full"
+                  style={{ width: `${Math.max(clamp01(r.acute_load / barMax) * 100, r.acute_load ? 4 : 0)}%`, background: BAR_COLOR[dialTone] }}
+                />
+                {r.has_baseline && (
+                  <span className="absolute -inset-y-0.5 w-0.5 bg-[var(--foreground)] opacity-70" style={{ left: `${clamp01(r.chronic_weekly_avg / barMax) * 100}%` }} />
+                )}
+              </span>
+              <span className={`num text-sm ${r.over_limit ? "text-danger" : ""}`}>{Math.round(r.acute_load)}</span>
+              <span className={wordCls}>{t(LOAD_WORD[word])}</span>
+            </p>
+          </div>
+          <span className="flex shrink-0 flex-col items-end gap-2">
+            <span className={fit.cls}>{t(fit.key)}</span>
+            <ChevronDown size={18} aria-hidden className="text-muted transition-transform group-open:rotate-180" />
+          </span>
+        </summary>
+        <div className="flex flex-col gap-3 border-t border-[var(--line)] px-3 pb-3 pt-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap gap-x-5 gap-y-2 text-sm">
+              <div>
+                <p className="text-xs text-muted">{t("dashboard.row.acute")}</p>
+                <p className={`num mt-1 text-lg ${r.over_limit ? "text-danger" : ""}`}>{Math.round(r.acute_load)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted">{t("dashboard.row.chronic")}</p>
+                <p className="num mt-1 text-lg">{Math.round(r.chronic_weekly_avg)}</p>
+              </div>
+              {r.max_weekly_load && (
+                <div>
+                  <p className="flex items-center gap-1 text-xs text-muted">
+                    {t("dashboard.athlete.max")}
+                    <Link href="/help#limits" className="link -my-3 inline-grid min-h-11 min-w-11 place-items-center" aria-label={t("dashboard.help.limits")}>
+                      <CircleHelp size={12} aria-hidden />
+                    </Link>
+                  </p>
+                  <p className="num mt-1 text-lg">{Math.round(r.max_weekly_load)}</p>
+                </div>
+              )}
+            </div>
+            <Dial
+              value={clamp01(r.acute_load / cap)}
+              marker={r.has_baseline ? clamp01(r.chronic_weekly_avg / cap) : undefined}
+              size={64}
+              ticks={24}
+              tone={dialTone}
+              label={label}
+            >
+              <span className="num text-sm">{Math.round(r.acute_load)}</span>
+            </Dial>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted">
+            <span className={badge.cls}>{badge.text}</span>
             <span className="inline-flex items-center gap-1">
-              <AvailabilityIcon status={avail} size={14} />
-              {t(AVAILABILITY_KEY[avail])}
+              <AvailabilityIcon status={r.availability ?? "available"} size={14} />
+              {t(AVAILABILITY_KEY[r.availability ?? "available"])}
             </span>
-            {r.availability_note && <span>{r.availability_note}</span>}
-          </p>
-          {wellness && consent && <WellnessRow entry={wellness[r.user_id]} consent={!!consent[r.user_id]} t={t} />}
+            {tag && <span className="num">{tag}</span>}
+          </div>
+          {wellness && consent && (
+            <div className="flex flex-col"><WellnessRow entry={wellness[r.user_id]} consent={given} t={t} /></div>
+          )}
           {r.missing > 0 && (
-            <span className="chip mt-1.5 !text-[var(--warn)]">
+            <span className="chip !text-[var(--warn)] w-fit">
               <ClipboardList size={12} aria-hidden /> {t("dashboard.athlete.missing", { n: r.missing })}
             </span>
           )}
+          <Link
+            href={`/team/${teamId}/athlete/${r.user_id}`}
+            aria-label={t("wellness.staff.open", { name })}
+            className="btn inline-flex min-h-11 w-full items-center justify-between gap-2"
+          >
+            <span className="truncate">{t("wellness.staff.open", { name })}</span>
+            <ChevronRight size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
+          </Link>
         </div>
-        <span className={badge.cls}>{badge.text}</span>
-      </div>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-2 text-sm">
-          <div>
-            <p className="text-xs text-muted">{t("dashboard.athlete.acute")}</p>
-            <p className={`num mt-1 text-lg ${r.over_limit ? "text-danger" : ""}`}>{r.acute_load}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted">{t("dashboard.athlete.chronic")}</p>
-            <p className="num mt-1 text-lg">{r.chronic_weekly_avg}</p>
-          </div>
-          {r.max_weekly_load && (
-            <div>
-              <p className="flex items-center gap-1 text-xs text-muted">
-                {t("dashboard.athlete.max")}
-                <Link href="/help#limits" className="link -my-3 inline-grid min-h-11 min-w-11 place-items-center" aria-label={t("dashboard.help.limits")}>
-                  <CircleHelp size={12} aria-hidden />
-                </Link>
-              </p>
-              <p className="num mt-1 text-lg">{r.max_weekly_load}</p>
-            </div>
-          )}
-        </div>
-        <Dial
-          value={clamp01(r.acute_load / cap)}
-          marker={r.has_baseline ? clamp01(r.chronic_weekly_avg / cap) : undefined}
-          size={64}
-          ticks={24}
-          tone={dialTone}
-          label={label}
-        >
-          <span className="num text-sm">{r.acute_load}</span>
-        </Dial>
-      </div>
+      </details>
     </li>
   );
 }
@@ -355,13 +406,16 @@ export async function StaffDashboard({
   const high = rows.filter((r) => r.level === "high").length;
   const available = rows.filter((r) => (r.availability ?? "available") === "available").length;
   const missing = rows.reduce((s, r) => s + r.missing, 0);
-  const visible = sortByRisk(applyFilter(rows, filter));
-  const lowIds = new Set(rows.filter((r) => isLow(wellness, consent, r.user_id)).map((r) => r.user_id));
-  const attention = sortByRisk(rows.filter((r) => r.level === "high" || r.level === "watch" || r.level === "out" || lowIds.has(r.user_id)));
+  const fitRank = (r: AthleteRow) => FIT[fitOf(r, wellness?.[r.user_id], !!consent?.[r.user_id])].rank;
+  // Not fit first, then less fit, then the rest; within a group the existing risk order.
+  const visible = sortByRisk(applyFilter(rows, filter)).sort((a, b) => fitRank(a) - fitRank(b));
   const consenting = consent ? rows.filter((r) => consent[r.user_id]) : [];
   const wellnessCount = wellness && consent
     ? { filled: consenting.filter((r) => wellness[r.user_id]).length, total: consenting.length }
     : null;
+
+  // A short team needs no filter, unless one is already active via the URL (then it must stay clearable).
+  const showFilters = rows.length >= 6 || filter !== "all";
 
   return (
     <section className="stagger flex flex-col gap-5">
@@ -371,33 +425,33 @@ export async function StaffDashboard({
         subtitle={t("dashboard.overview.subtitle")}
       />
 
-      <LoadCard weeks={weeks} available={available} total={rows.length} alerts={alerts} high={high} missing={missing} wellnessCount={wellnessCount} showRatio={showRatio} t={t} />
-
-      {attention.length > 0 && <Attention rows={attention} lowIds={lowIds} showRatio={showRatio} deviation={deviation} t={t} />}
-
-      <TrendChart weeks={weeks} t={t} locale={locale} />
-
-      <nav aria-label={t("dashboard.filter.label")} className="glass flex max-w-full gap-1 self-start overflow-x-auto rounded-md p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {FILTERS.map(({ key, label, Icon }) => {
-          const active = filter === key;
-          return (
-            <Link
-              key={key}
-              href={key === "all" ? `/team/${teamId}` : `/team/${teamId}?filter=${key}`}
-              aria-current={active ? "page" : undefined}
-              className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3.5 text-sm font-medium transition-colors ${
-                active ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-muted hover:text-[var(--foreground)]"
-              }`}
-            >
-              <Icon size={14} aria-hidden /> {t(label)}
-            </Link>
-          );
-        })}
-      </nav>
+      <Tiles available={available} total={rows.length} alerts={alerts} high={high} missing={missing} wellnessCount={wellnessCount} t={t} />
 
       <div className="flex flex-col gap-3">
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {visible.map((r) => <AthleteCard key={r.user_id} r={r} teamId={teamId} wellness={wellness} consent={consent} player={players?.[r.user_id]} showRatio={showRatio} deviation={deviation} t={t} />)}
+        {showFilters && (
+          <nav aria-label={t("dashboard.filter.label")} className="flex flex-wrap gap-2">
+            {FILTERS.map(({ key, label, Icon }) => {
+              const active = filter === key;
+              return (
+                <Link
+                  key={key}
+                  href={key === "all" ? `/team/${teamId}` : `/team/${teamId}?filter=${key}`}
+                  aria-current={active ? "page" : undefined}
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors ${
+                    active
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--primary)]"
+                      : "border-[var(--line)] text-muted hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <Icon size={14} aria-hidden /> {t(label)}
+                  <span className="num text-xs opacity-80">{applyFilter(rows, key).length}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {visible.map((r) => <AthleteRowItem key={r.user_id} r={r} teamId={teamId} wellness={wellness} consent={consent} player={players?.[r.user_id]} showRatio={showRatio} deviation={deviation} t={t} />)}
         </ul>
         {!visible.length && (
           rows.length ? (
@@ -409,6 +463,8 @@ export async function StaffDashboard({
           )
         )}
       </div>
+
+      <WeekDetails weeks={weeks} showRatio={showRatio} t={t} locale={locale} />
 
       {showRatio && (
         <Link href="/help#ratio" className="link inline-flex min-h-11 items-center gap-1 self-start text-xs">

@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { Hint } from "@/components/Hint";
-import { dateLocale, SESSION_TYPE_KEY } from "@/lib/i18n";
+import { dateLocale, SESSION_TYPE_KEY, type MessageKey } from "@/lib/i18n";
 import { WorkloadTabs } from "@/components/WorkloadTabs";
-import { WorkloadBoard, type BoardAthlete, type BoardSession, type BoardNote, type BoardWarning } from "@/components/WorkloadBoard";
+import { AthleteRules, Help, WorkloadBoard, type BoardAthlete, type BoardSession, type BoardNote, type BoardWarning } from "@/components/WorkloadBoard";
 import { WeekRulesForm, WorkloadSettingsForm, type RulesValues } from "@/components/WeekRulesForm";
 import { can } from "@/lib/roles";
 import {
@@ -43,12 +43,6 @@ const toRules = (r: RuleRow | null | undefined): WeekRules | null =>
   r ? { maxTrainings: r.max_trainings, maxGym: r.max_gym, maxMatches: r.max_matches, minRestDays: r.min_rest_days } : null;
 
 const STATUS_ORDER: Record<WeekStatus, number> = { over: 0, watch: 1, unknown: 2, ok: 3 };
-const SEGMENTS = [
-  { key: "ok", color: "var(--ok)", label: "workload.summary.ok" },
-  { key: "watch", color: "var(--warn)", label: "workload.summary.watch" },
-  { key: "over", color: "var(--danger)", label: "workload.summary.over" },
-  { key: "unknown", color: "var(--muted)", label: "workload.summary.unknown" },
-] as const;
 
 export default async function WorkloadPage({
   params, searchParams,
@@ -308,9 +302,41 @@ export default async function WorkloadPage({
   const base = `/team/${id}/workload`;
   const nav = "inline-grid size-11 shrink-0 place-items-center rounded-md text-muted transition-colors hover:text-[var(--foreground)]";
 
+  const countCls = (n: number, color: string) => ({ color: n > 0 ? color : undefined });
+  const summaryParts: { key: string; n: number; color: string; label: MessageKey }[] = [
+    { key: "ok", n: statusCount.ok, color: "var(--ok)", label: "workload.summary.ok" },
+    { key: "over", n: statusCount.over, color: "var(--danger)", label: "workload.summary.over" },
+    { key: "watch", n: statusCount.watch, color: "var(--warn)", label: "workload.summary.watch" },
+  ];
+  if (statusCount.unknown > 0) summaryParts.push({ key: "unknown", n: statusCount.unknown, color: "var(--muted)", label: "workload.summary.unknown" });
+
+  const rulesPanel = canRules || canManage ? (
+    <>
+      {canRules && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-x-2">
+            <h2 className="display text-xl">{t("workload.rules.title")}</h2>
+            <Help>
+              <p>{t("workload.rules.intro")}</p>
+              <p className="mt-1">{t("workload.rules.explain")}</p>
+            </Help>
+          </div>
+          <WeekRulesForm teamId={id} userId={null} initial={defaults} />
+        </div>
+      )}
+      {canRules && athletes.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4">
+          <h3 className="eyebrow !font-sans">{t("workload.rules.perAthlete")}</h3>
+          <AthleteRules teamId={id} athletes={athletes} defaults={defaults} />
+        </div>
+      )}
+      {canManage && <WorkloadSettingsForm teamId={id} settings={settings} bare />}
+    </>
+  ) : undefined;
+
   return (
     <section className="flex flex-col gap-5">
-      <WorkloadTabs teamId={id} />
+      <WorkloadTabs teamId={id} rules={rulesPanel} />
       <Hint id="workload-week" text={t("workload.hint")} href="/help#week" linkLabel={t("help.hint.more")} />
 
       <nav aria-label={t("workload.week.nav")} className="flex items-center justify-between gap-2">
@@ -330,30 +356,41 @@ export default async function WorkloadPage({
         </Link>
       </nav>
 
-      <div className="stagger flex flex-col gap-5">
-        <div className="card card-hero flex flex-col gap-4">
-          <p className="eyebrow">{t("workload.summary.title")}</p>
-          {athletes.length > 0 && (
-            <div
+      <div className="flex flex-col gap-4">
+        {athletes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-2">
+            <p
               role="img"
               aria-label={t("workload.summary.aria", statusCount)}
-              className="flex h-3 w-full gap-0.5 overflow-hidden rounded-md"
-              style={{ background: "var(--surface-3)" }}
+              className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-sm"
             >
-              {SEGMENTS.filter((s) => statusCount[s.key] > 0).map((s) => (
-                <span key={s.key} style={{ flex: statusCount[s.key], background: s.color }} />
+              {summaryParts.map((p, i) => (
+                <span key={p.key} aria-hidden className="inline-flex items-baseline gap-1.5">
+                  {i > 0 && <span className="text-muted">·</span>}
+                  <span className="num text-2xl text-muted" style={countCls(p.n, p.color)}>{p.n}</span>
+                  <span className={p.n > 0 ? "font-medium" : "text-muted"} style={countCls(p.n, p.color)}>{t(p.label).toLowerCase()}</span>
+                </span>
               ))}
-            </div>
-          )}
-          <div className="grid grid-cols-4 gap-2">
-            {SEGMENTS.map((s) => (
-              <div key={s.key} className="flex flex-col items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-3 text-center">
-                <p className="num text-2xl" style={{ color: statusCount[s.key] && s.key !== "unknown" ? s.color : undefined }}>{statusCount[s.key]}</p>
-                <p className="text-[11px] leading-tight text-muted">{t(s.label)}</p>
-              </div>
-            ))}
+            </p>
+            <Help>
+              <p>{t("workload.summary.plannedNote")}</p>
+              <p className="mt-1">{t("workload.rules.explain")}</p>
+              <Link href="/help#week" className="link inline-flex min-h-11 items-center">{t("help.hint.more")}</Link>
+            </Help>
           </div>
-          <div className="flex flex-col gap-2">
+        )}
+
+        <WorkloadBoard
+          teamId={id} athletes={athletes} sessions={boardSessions} settings={settings}
+          canRules={canRules} canNotes={canNotes} isHead={kind.includes("head")} today={today}
+        />
+
+        <details className="card group flex flex-col gap-3">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-md [&::-webkit-details-marker]:hidden">
+            <span className="font-semibold">{t("workload.weekDetails.title")}</span>
+            <ChevronDown size={18} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-2 flex flex-col gap-3">
             <p className="text-xs text-muted">{t("workload.summary.sessions")}</p>
             {planned.length ? (
               <div className="flex flex-wrap gap-1.5">
@@ -364,29 +401,14 @@ export default async function WorkloadPage({
             ) : (
               <p className="text-sm text-muted">{t("workload.summary.noSessions")}</p>
             )}
+            <p className="text-sm text-muted">
+              {busiest
+                ? t("workload.summary.busiest", { day: busiest.label, load: busiest.load })
+                : t("workload.summary.busiestNone")}
+            </p>
+            <p className="text-xs text-muted">{t("workload.summary.plannedNote")}</p>
           </div>
-          <p className="text-sm text-muted">
-            {busiest
-              ? t("workload.summary.busiest", { day: busiest.label, load: busiest.load })
-              : t("workload.summary.busiestNone")}
-          </p>
-          <p className="text-xs text-muted">{t("workload.summary.plannedNote")}</p>
-        </div>
-
-        {canRules && (
-          <div className="card flex flex-col gap-3">
-            <h2 className="display text-xl">{t("workload.rules.title")}</h2>
-            <p className="text-sm text-muted">{t("workload.rules.intro")}</p>
-            <WeekRulesForm teamId={id} userId={null} initial={defaults} />
-          </div>
-        )}
-
-        {canManage && <WorkloadSettingsForm teamId={id} settings={settings} />}
-
-        <WorkloadBoard
-          teamId={id} athletes={athletes} sessions={boardSessions} defaults={defaults} settings={settings}
-          canRules={canRules} canNotes={canNotes} isHead={kind.includes("head")} today={today}
-        />
+        </details>
       </div>
     </section>
   );

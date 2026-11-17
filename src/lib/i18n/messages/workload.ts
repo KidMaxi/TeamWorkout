@@ -42,6 +42,10 @@ export default defineMessages(
     "rules.resetDone": "Teamstandaard actief",
     "rules.explain": "Dit zijn regels van de coach plus advies, geen medische beslissingen.",
     "rules.help": "Uitleg",
+    "rules.button": "Regels",
+    "rules.perAthlete": "Eigen regels per speler",
+    "rules.usesDefault": "Teamstandaard",
+    "weekDetails.title": "Weekdetails",
 
     "status.ok": "Op koers",
     "status.watch": "Opletten",
@@ -93,9 +97,8 @@ export default defineMessages(
     "sessions.expand": "Toon week van {name}",
     "sessions.collapse": "Verberg week van {name}",
     "sessions.open": "Open {name}",
-    "sessions.weekBtn": "Week",
 
-    "hint": "Per speler zie je de week per dag: gepland (omlijnd) naast werkelijk (gevuld). Waarschuwingen leggen uit waarom ze er staan en zijn hulp bij je beslissing, geen oordeel. Drempels pas je aan voor je eigen team.",
+    "hint": "Tik op een speler voor de week per dag: gepland (omlijnd) naast werkelijk (gevuld). Waarschuwingen leggen uit waarom ze er staan en zijn hulp bij je beslissing, geen oordeel. Drempels pas je aan voor je eigen team.",
     "summary.busiest": "Drukste dag (gepland, team): {day}, {load}",
     "summary.busiestNone": "Nog geen geplande load met RPE in deze week.",
     "summary.plannedNote": "Gepland = geplande RPE × geplande minuten. Werkelijk = RPE × minuten die de speler zelf invult.",
@@ -215,6 +218,10 @@ export default defineMessages(
     "rules.resetDone": "Team default active",
     "rules.explain": "These are coach-set rules plus advice, not medical decisions.",
     "rules.help": "Help",
+    "rules.button": "Rules",
+    "rules.perAthlete": "Own rules per athlete",
+    "rules.usesDefault": "Team default",
+    "weekDetails.title": "Week details",
 
     "status.ok": "On track",
     "status.watch": "Watch",
@@ -266,9 +273,8 @@ export default defineMessages(
     "sessions.expand": "Show week of {name}",
     "sessions.collapse": "Hide week of {name}",
     "sessions.open": "Open {name}",
-    "sessions.weekBtn": "Week",
 
-    "hint": "For each athlete you see the week per day: planned (outline) next to actual (filled). Warnings explain why they appear and support your decision; they are not a verdict. Adjust the thresholds for your own team.",
+    "hint": "Tap an athlete for the week per day: planned (outline) next to actual (filled). Warnings explain why they appear and support your decision; they are not a verdict. Adjust the thresholds for your own team.",
     "summary.busiest": "Busiest day (planned, team): {day}, {load}",
     "summary.busiestNone": "No planned load with an RPE this week yet.",
     "summary.plannedNote": "Planned = planned RPE × planned minutes. Actual = RPE × minutes the athlete enters.",
