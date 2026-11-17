@@ -268,3 +268,24 @@ export async function deleteAccount(formData: FormData): Promise<DangerResult> {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+// ---- Parents --------------------------------------------------------------
+
+/** A trainer (head, sc, basketball) creates a single-use parent invite code for an athlete of the team. */
+export async function createParentInvite(teamId: string, childId: string): Promise<{ ok: true; code: string } | { ok: false; error: MessageKey }> {
+  if (!UUID_RE.test(teamId) || !UUID_RE.test(childId)) return { ok: false, error: "parent.error.generic" };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "parent.error.notAllowed" };
+  if (!can(await getStaffKinds(supabase, teamId, user.id), "managePlayers")) return { ok: false, error: "parent.error.notAllowed" };
+  const { data, error } = await supabase.rpc("create_parent_invite", { _team: teamId, _child: childId });
+  if (error) {
+    const m = error.message ?? "";
+    if (m.includes("too_many_invites")) return { ok: false, error: "parent.error.tooMany" };
+    if (m.includes("not allowed")) return { ok: false, error: "parent.error.notAllowed" };
+    return { ok: false, error: "parent.error.generic" };
+  }
+  if (typeof data !== "string" || !data) return { ok: false, error: "parent.error.generic" };
+  revalidatePath(`/team/${teamId}/members`);
+  return { ok: true, code: data };
+}

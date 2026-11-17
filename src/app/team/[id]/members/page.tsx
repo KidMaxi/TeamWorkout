@@ -13,6 +13,7 @@ import { ParentConsentForm } from "@/components/ConsentCard";
 import { withdrawParentConsent } from "@/app/consent-actions";
 import { StaffKindSelect } from "@/components/StaffKindSelect";
 import { PlayerInfoForm } from "@/components/PlayerInfoForm";
+import { InviteParent } from "@/components/InviteParent";
 import { byJerseyThenName, isPosition, playerLabel } from "@/lib/positions";
 import { STAFF_KINDS, can, isStaffKind, kindsFromRow, type Capability, type StaffKind } from "@/lib/roles";
 
@@ -55,6 +56,13 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
         ? supabase.from("team_invites").select("code, role, staff_kind, expires_at").eq("team_id", id).gt("expires_at", new Date().toISOString())
         : Promise.resolve({ data: null }),
     ]);
+  // Linked parents per athlete: only a count (parents are not team members, so their names are not readable here).
+  const athleteIds = (members ?? []).filter((m) => m.role === "athlete").map((m) => m.user_id);
+  const { data: parentLinks } = mayPlayers && athleteIds.length
+    ? await supabase.from("parent_links").select("child_user").in("child_user", athleteIds)
+    : { data: null };
+  const parentCount = new Map<string, number>();
+  for (const l of parentLinks ?? []) parentCount.set(l.child_user as string, (parentCount.get(l.child_user as string) ?? 0) + 1);
   const name = new Map(profiles?.map((p) => [p.id, p]));
   const av = new Map(avail?.map((a) => [a.user_id, a]));
   const lim = new Map(limits?.map((l) => [l.user_id, l]));
@@ -212,6 +220,11 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                         {playerLabel(m.jersey_number, isPosition(m.position) ? t(`members.pos.${m.position}`) : null) || <span className="text-muted">{t("profile.player.none")}</span>}
                       </p>
                     )}
+                  </div>
+                )}
+                {m.role === "athlete" && mayPlayers && (
+                  <div className="flex flex-col gap-3 border-t pt-4">
+                    <InviteParent teamId={id} childId={m.user_id} linked={parentCount.get(m.user_id) ?? 0} />
                   </div>
                 )}
                 {m.role === "athlete" && (

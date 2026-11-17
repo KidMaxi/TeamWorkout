@@ -24,7 +24,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   const supabase = await createClient();
   const user = await getAuthUser();
   // Independent reads, one round trip: the team list, the terms version (for the single-team shortcut) and the staff clubs.
-  const [{ t }, { data: memberships }, p, { data: staffRows }, { data: adminRows }] = await Promise.all([
+  const [{ t }, { data: memberships }, p, { data: staffRows }, { data: adminRows }, { data: parentRows }] = await Promise.all([
     getT(),
     supabase.from("team_members").select("role, teams(id, name)").order("joined_at"),
     user ? getProfile(user.id) : Promise.resolve(null),
@@ -32,12 +32,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
     supabase.from("team_members").select("teams(club_id, clubs(name))").eq("role", "staff"),
     // Club admins see the whole academy even without a team of their own.
     user ? supabase.from("club_admins").select("club_id").eq("user_id", user.id) : Promise.resolve({ data: null }),
+    // Parents linked to a child.
+    user ? supabase.from("parent_links").select("child_user").eq("parent_user", user.id).limit(1) : Promise.resolve({ data: null }),
   ]);
+  const isParent = (parentRows?.length ?? 0) > 0;
   const isClubAdmin = (adminRows?.length ?? 0) > 0;
   const showAcademy = isClubAdmin || (staffRows?.length ?? 0) > 0;
 
   // A club admin without any team has nothing to show here: go to the academy overview.
   if (all === undefined && isClubAdmin && !memberships?.length) redirect("/academy");
+
+  // A parent without a team of their own (and no admin role) only sees their child.
+  if (all === undefined && isParent && !isClubAdmin && !memberships?.length) redirect("/parent");
 
   // One team and no explicit "all teams" request: go straight to it (unless updated terms still need accepting).
   if (all === undefined && memberships?.length === 1) {
@@ -154,6 +160,24 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
           <button className="btn inline-flex min-h-11 items-center gap-1.5"><UserPlus size={16} aria-hidden />{t("home.join")}</button>
         </form>
       </section>
+
+      {!memberships?.length && (
+        <Link href="/parent/join" className="card flex min-h-[4.5rem] items-center gap-4 transition-colors hover:border-[var(--accent)]">
+          <Users size={28} aria-hidden className="shrink-0 text-[var(--accent)]" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="display block truncate text-lg">{t("parent.home.card")}</span>
+            <span className="text-sm text-muted">{t("parent.home.cardHint")}</span>
+          </span>
+          <ChevronRight size={20} aria-hidden className="shrink-0 text-[var(--accent)]" />
+        </Link>
+      )}
+      {isParent && (
+        <Link href="/parent" className="card flex min-h-[4.5rem] items-center gap-4 transition-colors hover:border-[var(--accent)]">
+          <User size={28} aria-hidden className="shrink-0 text-[var(--accent)]" />
+          <span className="display min-w-0 flex-1 truncate text-lg">{t("parent.home.children")}</span>
+          <ChevronRight size={20} aria-hidden className="shrink-0 text-[var(--accent)]" />
+        </Link>
+      )}
 
       <LegalLinks className="mt-auto pt-4" />
     </main>

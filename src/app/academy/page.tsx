@@ -94,6 +94,7 @@ export default async function AcademyPage({ searchParams }: { searchParams: Prom
         <Link href={href(nav.thisWeek)} aria-current={nav.isCurrent ? "date" : undefined}
           className={`${linkCls} ${nav.isCurrent ? "!border-[var(--accent)]" : ""}`}>{t("academy.week.this")}</Link>
         <Link href={href(nav.next)} className={linkCls}>{t("academy.week.next")}<ChevronRight size={16} aria-hidden /></Link>
+        <Link href={`/academy/planning?club=${clubId}&week=${nav.start}`} className={linkCls}>{t("acplan.link")}</Link>
         <p className="ml-auto text-sm text-muted">{range}</p>
       </nav>
 

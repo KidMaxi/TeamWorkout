@@ -114,7 +114,7 @@ export async function createSessions(teamId: string, fd: FormData): Promise<Sess
   }
   const seriesId = days.length > 1 ? crypto.randomUUID() : null;
   const rows = days.map((d) => ({
-    team_id: teamId, type: f.type, title: "", starts_at: zonedToUtc(d, f.time).toISOString(),
+    team_id: teamId, type: f.type, title: String(fd.get("title") ?? "").trim().slice(0, 80), starts_at: zonedToUtc(d, f.time).toISOString(),
     planned_duration_min: f.duration, planned_rpe: f.rpe, workout_id: f.workoutId,
     focus: f.focus, location: f.location, coach_note: f.note, series_id: seriesId,
   }));

@@ -162,3 +162,25 @@ Niets wordt in productie gezet zonder dat de database-wijziging eerst getest is.
 - **Demo-data leidt tot verkeerde verwachtingen:** zie sectie 3, punten 2–3: cijfers in de demo zijn niet bruikbaar als specificatie.
 - **Niet gecontroleerd:** de demo is een statische mock; gedrag achter knoppen (opslaan, filters, "Bekijk selectie") is
   niet getest en deels niet geïmplementeerd ("Opslaan in voorbeeld").
+
+
+## 7. Besluiten en voortgang (bijgewerkt 2026-11-17)
+
+Besluiten van de eigenaar: naam **Courtload** (A, alleen de naam; de eigen look blijft); gezondheidsdetails zoals voorgesteld (B);
+leaderboard aan, onder 16 niet (C); planning per eigen team (D); trainers kunnen in meerdere teams en rollen zitten (E);
+trainer vult rugnummer en positie in (G).
+
+| Stap | Stand |
+|---|---|
+| 1 Rollen: meerdere rollen per teamlid, clubbeheerder alleen-lezen zonder gezondheidsdata | database + app klaar, getest (`supabase/tests/roles_matrix.sql`) |
+| 2 Rugnummer en positie (trainer) | database + app klaar |
+| 3 Academy-weekoverzicht (`academy_week_matrix`, `/academy`) | database + scherm klaar |
+| 4 Fit-status (`academy_fit_status`) | database + scherm klaar |
+| 5 Academy-planning (`/academy/planning`) | scherm klaar |
+| 6 Leaderboard (`/leaderboard`) en gelogde sets (`session_set_summary`) | database + leaderboard-scherm klaar; scherm voor gelogde sets per speler nog niet |
+| 7 Ouderrol (invite, `/parent`) | database + schermen klaar |
+| 8 Beheerder | database klaar; uitnodigen van een beheerder in de UI nog niet |
+| 9 Look en mobiel | niet gestart |
+| 10 Pilot | niet gestart |
+
+Bekend: spelers zonder geboortedatum tellen als onder 16 en staan dus niet op het leaderboard.
