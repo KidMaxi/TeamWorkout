@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Clock, Flame, MapPin, TriangleAlert, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame, MapPin, TriangleAlert, Users } from "lucide-react";
 import { SessionTypeIcon } from "@/components/icons";
 import { useT } from "@/lib/i18n/client";
 import { SESSION_TYPE_KEY, dateLocale, type MessageKey } from "@/lib/i18n";
@@ -98,18 +98,16 @@ export function TeamCalendar({ teamId, view, date, today, sessions, showLoad, at
     const cancelled = s.status === "cancelled";
     return (
       <li className={`flex flex-col gap-1 rounded-md border p-2 text-xs ${cancelled ? "opacity-70" : ""}`} style={{ borderLeft: `3px solid ${TYPE_COLOR[s.type]}`, background: "var(--surface-2)" }}>
-        <span className={`flex items-center gap-1.5 font-semibold ${cancelled ? "text-muted line-through" : ""}`}>
-          <SessionTypeIcon type={s.type} size={14} className="shrink-0 text-[var(--accent)]" />
-          <span className="truncate">{t(SESSION_TYPE_KEY[s.type])}</span>
+        <span className={`flex items-center justify-between gap-1.5 font-semibold ${cancelled ? "text-muted line-through" : ""}`}>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <SessionTypeIcon type={s.type} size={14} className="shrink-0 text-[var(--accent)]" />
+            <span className="truncate">{t(SESSION_TYPE_KEY[s.type])}</span>
+          </span>
+          <span className="num shrink-0 !text-xs font-normal text-muted">{s.time}</span>
         </span>
-        <span className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted ${cancelled ? "line-through" : ""}`}>
-          <span className="inline-flex items-center gap-1"><Clock size={11} aria-hidden />{s.time}</span>
-          <span>{s.durationMin} {t("common.min")}</span>
-          {s.rpe ? <span className="font-semibold text-[var(--foreground)]">{t("calendar.rpe", { n: s.rpe })}</span> : null}
+        <span className={`text-muted ${cancelled ? "line-through" : ""}`}>
+          {[`${s.durationMin} ${t("common.min")}`, s.rpe ? t("calendar.rpe", { n: s.rpe }) : null, ...s.focus.map((f) => t(`sessions.focus.${f}` as MessageKey))].filter(Boolean).join(" · ")}
         </span>
-        {s.focus.length > 0 && (
-          <span className={`text-muted ${cancelled ? "line-through" : ""}`}>{s.focus.map((f) => t(`sessions.focus.${f}` as MessageKey)).join(" · ")}</span>
-        )}
         {s.location && <span className="inline-flex items-center gap-1 text-muted"><MapPin size={11} aria-hidden className="shrink-0" /><span className="truncate">{s.location}</span></span>}
         {s.status !== "planned" && (
           <span className={`badge w-fit ${s.status === "completed" ? "badge-ok" : s.status === "adjusted" ? "badge-watch" : "badge-high"}`}>

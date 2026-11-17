@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { Ban, Calendar, Check, ChevronDown, ClipboardList, Clock, Gauge, MapPin, NotebookPen, Pencil, Plus, Repeat, RotateCcw, Tag, Trash2, TriangleAlert, Wrench } from "lucide-react";
+import { Ban, Calendar, Check, ChevronDown, ClipboardList, Clock, Gauge, MapPin, MoreHorizontal, NotebookPen, Pencil, Plus, Repeat, RotateCcw, Tag, Trash2, TriangleAlert, Wrench } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { SESSION_TYPE_KEY, type MessageKey } from "@/lib/i18n";
 import type { SessionType } from "@/lib/load";
@@ -240,8 +241,12 @@ export function PlanSessionCard({ teamId, allowedTypes, workouts, today }: { tea
 type Kind = "edit" | "status" | "delete";
 
 /** Edit / cancel / adjust / restore / delete controls of one session. Rendered only for staff who may plan its type. */
-export function SessionManage({ teamId, session, allowedTypes, workouts, today }: {
+export function SessionManage({ teamId, session, allowedTypes, workouts, today, lead, links = [] }: {
   teamId: string; session: PlannerSession; allowedTypes: SessionType[]; workouts: WorkoutOption[]; today: string;
+  /** Primary action of the row (e.g. "Logged sets"). Without it "Manage" is the primary action; with it manage collapses to a "..." button. */
+  lead?: React.ReactNode;
+  /** Secondary links (iPad mode, review, ...) shown inside the opened panel. */
+  links?: { href: string; label: string }[];
 }) {
   const { t } = useT();
   const refs = { edit: useRef<HTMLDialogElement>(null), status: useRef<HTMLDialogElement>(null), delete: useRef<HTMLDialogElement>(null) };
@@ -251,6 +256,8 @@ export function SessionManage({ teamId, session, allowedTypes, workouts, today }
   const [error, setError] = useState<MessageKey | null>(null);
   const [pending, start] = useTransition();
   const [formKey, setFormKey] = useState(0);
+  const [panel, setPanel] = useState(false);
+  const panelId = `manage-${session.id}`;
 
   const open = (k: Kind) => { setError(null); setScope("this"); refs[k].current?.showModal(); };
   const close = (k: Kind) => refs[k].current?.close();
@@ -276,25 +283,49 @@ export function SessionManage({ teamId, session, allowedTypes, workouts, today }
   const body = target === "cancelled" ? "sessions.dialog.cancelBody" : target === "planned" ? "sessions.dialog.restoreBody" : "sessions.dialog.adjustedBody";
 
   return (
-    <details className="group/m border-t pt-1">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm text-muted [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-2"><Wrench size={14} aria-hidden />{t("sessions.manage")}</span>
-        <ChevronDown size={16} aria-hidden className="transition-transform group-open/m:rotate-180" />
-      </summary>
-      <div className="flex flex-wrap gap-2 pb-1 pt-1">
-        <button type="button" className={btn} onClick={() => open("edit")}><Pencil size={16} aria-hidden />{t("sessions.edit")}</button>
-        {cancelled ? (
-          <button type="button" className={btn} onClick={() => openStatus("planned")}><RotateCcw size={16} aria-hidden />{t("sessions.restore")}</button>
-        ) : (
-          <>
-            <button type="button" className={btn} onClick={() => openStatus("adjusted")}><NotebookPen size={16} aria-hidden />{t("sessions.markAdjusted")}</button>
-            <button type="button" className={btn} onClick={() => openStatus("cancelled")}><Ban size={16} aria-hidden />{t("sessions.cancelSession")}</button>
-          </>
-        )}
+    <div className="border-t pt-1">
+      <div className="flex items-center justify-between gap-2">
+        {lead}
+        <button
+          type="button"
+          aria-expanded={panel}
+          aria-controls={panelId}
+          aria-label={lead ? t("sessions.manage") : undefined}
+          title={lead ? t("sessions.moreActions") : undefined}
+          onClick={() => setPanel((v) => !v)}
+          className={lead
+            ? "ml-auto grid size-11 shrink-0 place-items-center rounded-md text-muted hover:text-[var(--foreground)]"
+            : "flex min-h-11 flex-1 cursor-pointer items-center justify-between gap-2 text-sm text-muted"}
+        >
+          {lead ? <MoreHorizontal size={18} aria-hidden /> : (
+            <>
+              <span className="flex items-center gap-2"><Wrench size={14} aria-hidden />{t("sessions.manage")}</span>
+              <ChevronDown size={16} aria-hidden className={`transition-transform ${panel ? "rotate-180" : ""}`} />
+            </>
+          )}
+        </button>
       </div>
-      {/* destructive action on its own row, away from the edit / cancel buttons */}
-      <div className="mt-1 flex justify-end border-t pb-1 pt-2">
-        <button type="button" className={`${btn} btn-danger`} onClick={() => open("delete")}><Trash2 size={16} aria-hidden />{t("sessions.deleteSession")}</button>
+      <div id={panelId} hidden={!panel}>
+        {links.length > 0 && (
+          <div className="flex flex-wrap gap-x-4 pt-1">
+            {links.map((l) => <Link key={l.href} href={l.href} className="link inline-flex min-h-11 items-center text-sm">{l.label}</Link>)}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2 pb-1 pt-1">
+          <button type="button" className={btn} onClick={() => open("edit")}><Pencil size={16} aria-hidden />{t("sessions.edit")}</button>
+          {cancelled ? (
+            <button type="button" className={btn} onClick={() => openStatus("planned")}><RotateCcw size={16} aria-hidden />{t("sessions.restore")}</button>
+          ) : (
+            <>
+              <button type="button" className={btn} onClick={() => openStatus("adjusted")}><NotebookPen size={16} aria-hidden />{t("sessions.markAdjusted")}</button>
+              <button type="button" className={btn} onClick={() => openStatus("cancelled")}><Ban size={16} aria-hidden />{t("sessions.cancelSession")}</button>
+            </>
+          )}
+        </div>
+        {/* destructive action on its own row, away from the edit / cancel buttons */}
+        <div className="mt-1 flex justify-end border-t pb-1 pt-2">
+          <button type="button" className={`${btn} btn-danger`} onClick={() => open("delete")}><Trash2 size={16} aria-hidden />{t("sessions.deleteSession")}</button>
+        </div>
       </div>
 
       <dialog ref={refs.edit} className={dlg} onClose={() => setFormKey((n) => n + 1)}>
@@ -343,6 +374,6 @@ export function SessionManage({ teamId, session, allowedTypes, workouts, today }
           </div>
         </form>
       </dialog>
-    </details>
+    </div>
   );
 }

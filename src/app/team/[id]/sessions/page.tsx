@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, ChevronDown, ClipboardList, Clock, Flame, Gauge, MapPin, MessageSquare, Play, Repeat, X } from "lucide-react";
+import { Check, ChevronDown, Clock, Gauge, MessageSquare, Play, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionType } from "@/lib/load";
 import { SessionTypeIcon } from "@/components/icons";
@@ -13,7 +13,7 @@ import { SessionsTabs } from "@/components/SessionsTabs";
 import { PlanSessionCard, SessionManage } from "@/components/SessionPlanner";
 import { SESSION_TYPE_LIST } from "@/lib/load";
 import { canPlanType } from "@/lib/roles";
-import { TIME_ZONE, isFocus, isStatus, localDay, localTime, type SessionStatus } from "@/lib/session-plan";
+import { TIME_ZONE, addDays, isFocus, isStatus, localDay, localTime, type SessionStatus } from "@/lib/session-plan";
 import type { MessageKey } from "@/lib/i18n";
 
 const STATUS_BADGE: Record<SessionStatus, string> = { planned: "badge-none", completed: "badge-ok", adjusted: "badge-watch", cancelled: "badge-high" };
@@ -67,13 +67,22 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
   const loc = dateLocale(locale);
 
   const workoutList = (workouts ?? []) as { id: string; name: string }[];
-  const all = sessions ?? [];
-  const upcoming = all.filter((s) => new Date(s.starts_at).getTime() > now).reverse();
-  const past = all.filter((s) => new Date(s.starts_at).getTime() <= now);
+  // Athletes only see sessions they take part in; staff see the whole team schedule.
+  const all = (sessions ?? []).filter((s) => !(isAthlete && excluded.has(s.id)));
+  const day = (s: (typeof all)[number]) => localDay(s.starts_at);
+  const soonEnd = addDays(today, 14);
+  const recentStart = addDays(today, -7);
+  // Default view: today + next 14 days and the last 7 days; the rest sits one tap deeper.
+  const coming = all.filter((s) => day(s) >= today && day(s) <= soonEnd).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const recent = all.filter((s) => day(s) < today && day(s) >= recentStart); // already newest first
+  const older = all.filter((s) => day(s) < recentStart);
+  const later = all.filter((s) => day(s) > soonEnd).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const statusSet = new Set(all.map((s) => (isStatus(s.status) ? s.status : "planned")));
+  // No badge when every session has the same status.
+  const hideStatus = statusSet.size <= 1;
 
   function renderSession(s: (typeof all)[number], isPast: boolean) {
     const log = logBySession.get(s.id);
-    const d = new Date(s.starts_at);
     const typeLabel = t(SESSION_TYPE_KEY[s.type as SessionType]);
     const wName = s.type === "gym" && s.workout_id ? workoutName.get(s.workout_id) : undefined;
     const status: SessionStatus = isStatus(s.status) ? s.status : "planned";
@@ -83,80 +92,95 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
     const canManage = canPlan && canPlanType(kind, s.type);
     const adjustedAt = s.updated_at ? new Date(s.updated_at).toLocaleDateString(loc, { day: "numeric", month: "short", timeZone: TIME_ZONE }) : "";
     const adjustedBy = s.updated_by ? adjusterName.get(s.updated_by) : "";
+    const meta = [
+      s.title ? typeLabel : null,
+      `${s.planned_duration_min} ${t("common.min")}`,
+      s.planned_rpe ? `${t("sessions.rpe")} ${s.planned_rpe}` : null,
+      isStaff && s.planned_rpe && !cancelled ? `${s.planned_rpe * s.planned_duration_min} ${t("sessions.load")}` : null,
+      s.location,
+      ...focus.map((f) => t(`sessions.focus.${f}` as MessageKey)),
+      wName,
+      s.series_id ? t("sessions.series") : null,
+    ].filter(Boolean).join(" · ");
+    const gymLinks = isStaff && !!wName && s.type === "gym" && !cancelled;
+    const sets = { href: `/team/${id}/gym/${s.id}`, label: t("gymsum.link") };
+    const extra = [
+      { href: `/team/${id}/kiosk/${s.id}`, label: t("sessions.ipadMode") },
+      { href: `/team/${id}/review/${s.id}`, label: t("sessions.reviewLink") },
+    ];
+    // One primary action per state: planned -> Manage, done gym -> Logged sets (manage moves behind "...").
+    const lead = gymLinks && isPast ? (
+      <Link href={sets.href} className="btn inline-flex min-h-11 items-center">{sets.label}</Link>
+    ) : undefined;
+    const links = gymLinks ? (isPast ? extra : [...extra, sets]) : [];
     return (
-      <li key={s.id} className="card flex flex-col gap-3 text-sm">
+      <li key={s.id} className="card flex flex-col gap-2 text-sm">
         <div className="flex items-start gap-3">
           <span
             aria-hidden
-            className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--accent)]"
+            className="grid size-9 shrink-0 place-items-center rounded-md text-[var(--accent)]"
             style={{ background: "var(--surface-2)" }}
           >
-            <SessionTypeIcon type={s.type as SessionType} size={20} />
+            <SessionTypeIcon type={s.type as SessionType} size={18} />
           </span>
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <p className={`truncate font-semibold ${cancelled ? "text-muted line-through" : ""}`}>
-              {typeLabel}{s.title ? ` · ${s.title}` : ""}
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className="flex items-baseline justify-between gap-2">
+              <span className={`flex min-w-0 items-center gap-2 font-semibold ${cancelled ? "text-muted line-through" : ""}`}>
+                <span className="truncate">{s.title || typeLabel}</span>
+                {!hideStatus && status !== "planned" && <span className={`badge shrink-0 ${STATUS_BADGE[status]}`}>{t(`sessions.status.${status}` as MessageKey)}</span>}
+              </span>
+              <span className="num shrink-0 text-muted">{localTime(s.starts_at).hm}</span>
             </p>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {status !== "planned" && <span className={`badge ${STATUS_BADGE[status]}`}>{t(`sessions.status.${status}` as MessageKey)}</span>}
-              {s.series_id && <span className="chip"><Repeat size={12} aria-hidden />{t("sessions.series")}</span>}
-              <span className="chip"><Clock size={12} aria-hidden />{localTime(s.starts_at).hm}</span>
-              <span className="chip">{s.planned_duration_min} {t("common.min")}{s.planned_rpe ? ` · ${t("sessions.rpe")} ${s.planned_rpe}` : ""}</span>
-              {s.planned_rpe && !cancelled ? (
-                <span className="chip" title={t("sessions.plannedLoad")}>
-                  <Flame size={12} aria-hidden className="text-[var(--accent)]" />{s.planned_rpe * s.planned_duration_min}
-                </span>
-              ) : null}
-              {s.location && <span className="chip max-w-full"><MapPin size={12} aria-hidden className="shrink-0" /><span className="truncate">{s.location}</span></span>}
-              {focus.map((f) => <span key={f} className="chip">{t(`sessions.focus.${f}` as MessageKey)}</span>)}
-              {wName && (
-                <span className="chip max-w-full" title={t("sessions.workout")}>
-                  <ClipboardList size={12} aria-hidden className="shrink-0 text-[var(--accent)]" />
-                  <span className="sr-only">{t("sessions.workout")}: </span>
-                  <span className="truncate">{wName}</span>
-                </span>
-              )}
-            </div>
+            <p className="text-xs text-muted">{meta}</p>
             {s.coach_note && <p className="text-muted">{s.coach_note}</p>}
             {status === "adjusted" && s.updated_at && (
               <p className="text-xs text-muted">
                 {adjustedBy ? t("sessions.adjustedBy", { name: adjustedBy, date: adjustedAt }) : t("sessions.adjustedOn", { date: adjustedAt })}
               </p>
             )}
-            {isStaff && wName && s.type === "gym" && !cancelled && (
-              <div className="flex flex-wrap gap-x-4">
-                <Link href={`/team/${id}/kiosk/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("sessions.ipadMode")}</Link>
-                <Link href={`/team/${id}/review/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("sessions.reviewLink")}</Link>
-                <Link href={`/team/${id}/gym/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("gymsum.link")}</Link>
-              </div>
-            )}
             {canStart && (
-              <Link href={`/team/${id}/workout/${s.id}`} className="btn btn-primary inline-flex min-h-11 w-fit items-center gap-2">
+              <Link href={`/team/${id}/workout/${s.id}`} className="btn btn-primary mt-2 inline-flex min-h-11 w-fit items-center gap-2">
                 <Play size={16} aria-hidden />{t("sessions.startWorkout")}
               </Link>
             )}
           </div>
-          <div className="flex shrink-0 items-start gap-1">
-            <div className="flex w-10 flex-col items-center gap-1 pt-0.5 text-center">
-              <span className="num text-2xl">{d.toLocaleDateString(loc, { day: "numeric", timeZone: TIME_ZONE })}</span>
-              <span className="eyebrow">{d.toLocaleDateString(loc, { month: "short", timeZone: TIME_ZONE }).replace(".", "")}</span>
-            </div>
-          </div>
         </div>
 
-        {canManage && (
+        {canManage ? (
           <SessionManage
             teamId={id}
             allowedTypes={allowedTypes}
             workouts={workoutList}
             today={today}
+            lead={lead}
+            links={links}
             session={{
               id: s.id, type: s.type as SessionType, day: localDay(s.starts_at), time: localTime(s.starts_at).hm,
               duration: s.planned_duration_min, rpe: s.planned_rpe, focus, location: s.location ?? null, note: s.coach_note ?? null,
               workoutId: s.workout_id ?? null, status, inSeries: !!s.series_id,
             }}
           />
-        )}
+        ) : gymLinks ? (
+          <div className="border-t pt-1">
+            {lead}
+            {!isPast && (
+              <details className="group/m">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm text-muted [&::-webkit-details-marker]:hidden">
+                  {t("sessions.moreActions")}
+                  <ChevronDown size={16} aria-hidden className="transition-transform group-open/m:rotate-180" />
+                </summary>
+                <div className="flex flex-wrap gap-x-4">
+                  {links.map((l) => <Link key={l.href} href={l.href} className="link inline-flex min-h-11 items-center text-sm">{l.label}</Link>)}
+                </div>
+              </details>
+            )}
+            {isPast && (
+              <div className="flex flex-wrap gap-x-4">
+                {links.map((l) => <Link key={l.href} href={l.href} className="link inline-flex min-h-11 items-center text-sm">{l.label}</Link>)}
+              </div>
+            )}
+          </div>
+        ) : null}
 
         {cancelled && isPast && <p className="border-t pt-3 text-xs text-muted">{t("sessions.noLogNeeded")}</p>}
 
@@ -237,24 +261,59 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  /** Rows grouped under one heading per day. */
+  function renderDays(list: typeof all) {
+    const days: { day: string; items: typeof all }[] = [];
+    for (const s of list) {
+      const last = days[days.length - 1];
+      if (last && last.day === day(s)) last.items.push(s);
+      else days.push({ day: day(s), items: [s] });
+    }
+    return (
+      <div className="flex flex-col gap-5">
+        {days.map((g) => {
+          const head = new Date(g.items[0].starts_at).toLocaleDateString(loc, { weekday: "long", day: "numeric", month: "long", timeZone: TIME_ZONE });
+          return (
+            <div key={g.day} className="flex flex-col gap-2">
+              <h3 className={`eyebrow !font-sans ${g.day === today ? "!text-[var(--accent)]" : ""}`}>
+                {g.day === today ? `${t("calendar.today")} · ` : ""}{head}
+              </h3>
+              <ul className="flex flex-col gap-2">{g.items.map((s) => renderSession(s, new Date(s.starts_at).getTime() <= now))}</ul>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const folded = (list: typeof all, key: "sessions.older" | "sessions.later") => list.length > 0 && (
+    <details className="group">
+      <summary className="btn flex min-h-11 w-full cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+        <span>{t(key, { n: list.length })}</span>
+        <ChevronDown size={16} aria-hidden className="text-muted transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-4">{renderDays(list)}</div>
+    </details>
+  );
+
   return (
     <section className="flex flex-col gap-6">
       <SessionsTabs teamId={id} />
       {canPlan && <PlanSessionCard teamId={id} allowedTypes={allowedTypes} workouts={workoutList} today={today} />}
 
       <div className="stagger flex flex-col gap-6">
-        {upcoming.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="eyebrow !font-sans">{t("sessions.comingUp")}</h2>
+          {coming.length > 0 ? renderDays(coming) : <p className="text-muted">{t("calendar.empty")}</p>}
+        </div>
+        {later.length > 0 && folded(later, "sessions.later")}
+        {recent.length > 0 && (
           <div className="flex flex-col gap-3">
-            <h2 className="eyebrow !font-sans">{t("sessions.upcoming")}</h2>
-            <ul className="flex flex-col gap-3">{upcoming.map((s) => renderSession(s, false))}</ul>
+            <h2 className="eyebrow !font-sans">{t("sessions.recent")}</h2>
+            {renderDays(recent)}
           </div>
         )}
-        {past.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <h2 className="eyebrow !font-sans">{t("sessions.past")}</h2>
-            <ul className="flex flex-col gap-3">{past.map((s) => renderSession(s, true))}</ul>
-          </div>
-        )}
+        {older.length > 0 && folded(older, "sessions.older")}
         {!all.length && <p className="text-muted">{t("sessions.empty")}</p>}
       </div>
     </section>

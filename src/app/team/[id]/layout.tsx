@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, CircleHelp, Settings } from "lucide-react";
+import { ChevronLeft, CircleHelp, Settings, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { LogoMark } from "@/components/Logo";
@@ -54,12 +54,15 @@ export default async function TeamLayout({
           </Link>
           <h1 className="display truncate text-xl">{team.name}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-0.5">
           <LanguageSwitcher />
-          <Link href="/help" aria-label={t("common.nav.help")} title={t("common.nav.help")} className="-m-2.5 grid size-11 place-items-center text-muted hover:text-[var(--foreground)]">
+          <Link href="/help" aria-label={t("common.nav.help")} title={t("common.nav.help")} className="grid size-11 place-items-center text-muted hover:text-[var(--foreground)]">
             <CircleHelp size={18} aria-hidden />
           </Link>
-          <Link href={`/team/${id}/settings`} aria-label={t("danger.settings.title")} title={t("danger.settings.title")} className="text-muted hover:text-[var(--foreground)]">
+          <Link href="/profile" aria-label={t("common.nav.profile")} title={t("common.nav.profile")} className="grid size-11 place-items-center text-muted hover:text-[var(--foreground)]">
+            <User size={18} aria-hidden />
+          </Link>
+          <Link href={`/team/${id}/settings`} aria-label={t("danger.settings.title")} title={t("danger.settings.title")} className="grid size-11 place-items-center text-muted hover:text-[var(--foreground)]">
             <Settings size={18} aria-hidden />
           </Link>
         </div>
