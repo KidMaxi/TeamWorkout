@@ -26,7 +26,7 @@ export default async function KioskGridPage({ params }: { params: Promise<{ id: 
     // Display only: the iPad shows a hint, the release control lives in team settings.
     supabase.rpc("kiosk_locked_users", { _team: id }),
   ]);
-  if (!can(me?.staffKind, "manageLibrary")) notFound();
+  if (!can(me?.staffKinds, "manageLibrary")) notFound();
   if (!session) notFound();
   if (session.type !== "gym" || !session.workout_id) {
     return (

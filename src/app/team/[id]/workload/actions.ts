@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { MessageKey } from "@/lib/i18n";
-import { can, getStaffKind, type Capability, type StaffKind } from "@/lib/roles";
+import { can, getStaffKinds, type Capability } from "@/lib/roles";
 import { todayInTeamZone } from "@/lib/wellness";
 import type { DangerResult } from "@/app/actions";
 
@@ -18,9 +18,9 @@ async function staffContext(teamId: string, capability: Capability = "planRules"
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const kind = await getStaffKind(supabase, teamId, user.id);
+  const kind = await getStaffKinds(supabase, teamId, user.id);
   if (!can(kind, capability)) return null;
-  return { supabase, userId: user.id, kind: kind as StaffKind };
+  return { supabase, userId: user.id, kind };
 }
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;

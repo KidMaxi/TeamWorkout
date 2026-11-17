@@ -4,7 +4,10 @@ export default defineMessages(
   {
     "kind.label": "Functie",
     "kind.change": "Functie van {name} wijzigen",
-    "kind.saved": "Functie opgeslagen",
+    "kind.saved": "Functies opgeslagen",
+    "kind.extra": "Extra functies",
+    "kind.extraHint": "Een lid mag alles wat de gekozen functies samen toestaan.",
+    "kind.save": "Opslaan",
     "kind.invite": "Functie van de nieuwe stafleden",
     "kind.inviteHint": "Bepaalt wat het nieuwe lid mag doen.",
     "error.lastHead": "Er moet minstens één hoofdcoach overblijven.",
@@ -34,7 +37,10 @@ export default defineMessages(
   {
     "kind.label": "Role",
     "kind.change": "Change role of {name}",
-    "kind.saved": "Role saved",
+    "kind.saved": "Roles saved",
+    "kind.extra": "Additional roles",
+    "kind.extraHint": "A member may do everything the chosen roles allow together.",
+    "kind.save": "Save",
     "kind.invite": "Role of the new staff member",
     "kind.inviteHint": "Decides what the new member may do.",
     "error.lastHead": "The team needs at least one head coach.",

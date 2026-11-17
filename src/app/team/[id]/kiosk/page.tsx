@@ -29,7 +29,7 @@ export default async function KioskPickPage({ params }: { params: Promise<{ id: 
       .lte("starts_at", new Date(now + 36 * 3600_000).toISOString())
       .order("starts_at"),
   ]);
-  if (!can(me?.staffKind, "manageLibrary")) notFound();
+  if (!can(me?.staffKinds, "manageLibrary")) notFound();
   const today = todayInTeamZone();
   const sessions = (rows ?? []).filter((s) => DAY.format(new Date(s.starts_at as string)) === today);
 

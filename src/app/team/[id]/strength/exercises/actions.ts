@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
+import { can, getStaffKinds } from "@/lib/roles";
 import { getLocale } from "@/lib/i18n/server";
 import type { MessageKey } from "@/lib/i18n";
 import { EQUIPMENT, EXERCISE_KINDS, MUSCLES, type Muscle } from "@/lib/exercises";
@@ -22,7 +22,7 @@ async function staffContext(teamId: string) {
   if (!user) return null;
   const [{ data: team }, kind] = await Promise.all([
     supabase.from("teams").select("club_id").eq("id", teamId).single(),
-    getStaffKind(supabase, teamId, user.id),
+    getStaffKinds(supabase, teamId, user.id),
   ]);
   if (!team?.club_id || !can(kind, "manageLibrary")) return null;
   return { supabase, userId: user.id, clubId: team.club_id as string };

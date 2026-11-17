@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { canPlanType, getStaffKind, type StaffKind } from "@/lib/roles";
+import { canPlanType, getStaffKinds, type StaffKind } from "@/lib/roles";
 import { SESSION_TYPE_LIST, type SessionType } from "@/lib/load";
 import type { MessageKey } from "@/lib/i18n";
 import {
@@ -35,7 +35,7 @@ async function loadSession(db: Db, sessionId: unknown): Promise<Row | null> {
 }
 
 /** The session plus, for scope 'series', all later ones of its series. Every target must be plannable by the caller. */
-async function targetsFor(db: Db, row: Row, scope: Scope, kind: StaffKind | null): Promise<Row[] | null> {
+async function targetsFor(db: Db, row: Row, scope: Scope, kind: readonly StaffKind[]): Promise<Row[] | null> {
   let rows: Row[] = [row];
   if (scope === "series" && row.series_id) {
     const { data } = await db.from("sessions").select("id, team_id, type, starts_at, series_id")
@@ -96,7 +96,7 @@ export async function createSessions(teamId: string, fd: FormData): Promise<Sess
   const db = await createClient();
   const uid = await whoAmI(db);
   if (!uid || typeof teamId !== "string" || !/^[0-9a-f-]{36}$/i.test(teamId)) return fail(NOT_ALLOWED);
-  const kind = await getStaffKind(db, teamId, uid);
+  const kind = await getStaffKinds(db, teamId, uid);
   const f = parseFields(fd);
   if (typeof f === "string") return fail(f);
   if (!canPlanType(kind, f.type)) return fail(NOT_ALLOWED);
@@ -134,7 +134,7 @@ export async function updateSession(sessionId: string, scope: Scope, fd: FormDat
   if (!uid || !isScope(scope)) return fail(NOT_ALLOWED);
   const row = await loadSession(db, sessionId);
   if (!row) return fail("sessions.error.notFound");
-  const kind = await getStaffKind(db, row.team_id, uid);
+  const kind = await getStaffKinds(db, row.team_id, uid);
   const f = parseFields(fd);
   if (typeof f === "string") return fail(f);
   if (!canPlanType(kind, row.type) || !canPlanType(kind, f.type)) return fail(NOT_ALLOWED);
@@ -162,7 +162,7 @@ export async function setSessionStatus(sessionId: string, status: SessionStatus,
   if (!uid || !isStatus(status) || !isScope(scope)) return fail(NOT_ALLOWED);
   const row = await loadSession(db, sessionId);
   if (!row) return fail("sessions.error.notFound");
-  const kind = await getStaffKind(db, row.team_id, uid);
+  const kind = await getStaffKinds(db, row.team_id, uid);
   if (!canPlanType(kind, row.type)) return fail(NOT_ALLOWED);
   const trimmed = typeof note === "string" ? note.trim() : "";
   if (trimmed.length > MAX_NOTE) return fail("sessions.error.invalid");
@@ -188,7 +188,7 @@ export async function deleteSession(sessionId: string, scope: Scope): Promise<Se
   if (!uid || !isScope(scope)) return fail(NOT_ALLOWED);
   const row = await loadSession(db, sessionId);
   if (!row) return fail("sessions.error.notFound");
-  const kind = await getStaffKind(db, row.team_id, uid);
+  const kind = await getStaffKinds(db, row.team_id, uid);
   if (!canPlanType(kind, row.type)) return fail(NOT_ALLOWED);
   const targets = await targetsFor(db, row, scope, kind);
   if (!targets) return fail(NOT_ALLOWED);

@@ -60,8 +60,8 @@ export default async function WorkloadPage({
   const { week: weekParam } = await searchParams;
   const supabase = await createClient();
   const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
-  const kind = (await getMembership(id, user!.id))?.staffKind ?? null;
-  if (!kind) notFound();
+  const kind = (await getMembership(id, user!.id))?.staffKinds ?? [];
+  if (kind.length === 0) notFound();
   const canRules = can(kind, "planRules");
   const canNotes = can(kind, "writeNotes");
   const canManage = can(kind, "manageTeam");
@@ -385,7 +385,7 @@ export default async function WorkloadPage({
 
         <WorkloadBoard
           teamId={id} athletes={athletes} sessions={boardSessions} defaults={defaults} settings={settings}
-          canRules={canRules} canNotes={canNotes} isHead={kind === "head"} today={today}
+          canRules={canRules} canNotes={canNotes} isHead={kind.includes("head")} today={today}
         />
       </div>
     </section>

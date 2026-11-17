@@ -18,7 +18,7 @@ export default async function TeamSettings({ params }: { params: Promise<{ id: s
     getMembership(id, user!.id),
   ]);
   if (!team || !me) notFound();
-  const kind = me.staffKind;
+  const kind = me.staffKinds;
   const isHead = can(kind, "manageTeam");
   const canKiosk = can(kind, "manageLibrary");
   const canDelete = isHead && (team.created_by === user!.id || team.created_by === null);

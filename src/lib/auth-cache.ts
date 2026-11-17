@@ -2,7 +2,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale, makeT, type Locale, type TFunction } from "@/lib/i18n";
-import { isStaffKind, type StaffKind } from "@/lib/roles";
+import { kindsFromRow, type StaffKind } from "@/lib/roles";
 
 /**
  * Request-scoped (React cache) lookups shared by layouts and pages, so the same fact is fetched once per request.
@@ -24,16 +24,18 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : undefined };
 });
 
-export type Membership = { role: "staff" | "athlete"; staffKind: StaffKind | null };
+/** staffKind is the primary kind; staffKinds holds all kinds (primary first), [] for athletes. */
+export type Membership = { role: "staff" | "athlete"; staffKind: StaffKind | null; staffKinds: StaffKind[] };
 
-/** The user's role (and staff kind; legacy staff rows without a kind count as head) in a team, or null. */
+/** The user's role and staff kinds (legacy staff rows without a kind count as head) in a team, or null. */
 export const getMembership = cache(async (teamId: string, userId: string): Promise<Membership | null> => {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("team_members").select("role, staff_kind").eq("team_id", teamId).eq("user_id", userId).maybeSingle();
+    .from("team_members").select("role, staff_kind, extra_kinds").eq("team_id", teamId).eq("user_id", userId).maybeSingle();
   if (!data) return null;
-  if (data.role !== "staff") return { role: data.role as "athlete", staffKind: null };
-  return { role: "staff", staffKind: isStaffKind(data.staff_kind) ? data.staff_kind : "head" };
+  if (data.role !== "staff") return { role: data.role as "athlete", staffKind: null, staffKinds: [] };
+  const staffKinds = kindsFromRow(data);
+  return { role: "staff", staffKind: staffKinds[0], staffKinds };
 });
 
 /** Profile columns the shell needs; one query per request, only the columns asked for by the first caller set. */

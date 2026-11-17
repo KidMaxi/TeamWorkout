@@ -33,7 +33,7 @@ export default async function WorkoutsPage({ params }: { params: Promise<{ id: s
   ]);
   if (!team?.club_id || !me) notFound();
   // "isStaff" here means: may edit the library (S&C or head).
-  const isStaff = me.role === "staff" && can(me.staffKind, "manageLibrary");
+  const isStaff = me.role === "staff" && can(me.staffKinds, "manageLibrary");
 
   const [{ data }, { count }] = await Promise.all([
     supabase

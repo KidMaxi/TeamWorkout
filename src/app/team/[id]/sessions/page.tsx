@@ -33,7 +33,7 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
       .eq("team_id", id).order("starts_at", { ascending: false }).limit(60),
   ]);
   const isStaff = me?.role === "staff";
-  const kind = me?.staffKind ?? null;
+  const kind = me?.staffKinds ?? [];
   const allowedTypes = SESSION_TYPE_LIST.filter((ty) => canPlanType(kind, ty));
   const canPlan = allowedTypes.length > 0;
   const today = localDay(new Date().toISOString());

@@ -12,7 +12,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { ParentConsentForm } from "@/components/ConsentCard";
 import { withdrawParentConsent } from "@/app/consent-actions";
 import { StaffKindSelect } from "@/components/StaffKindSelect";
-import { STAFF_KINDS, can, isStaffKind, type Capability, type StaffKind } from "@/lib/roles";
+import { STAFF_KINDS, can, isStaffKind, kindsFromRow, type Capability, type StaffKind } from "@/lib/roles";
 
 function ageOf(birth: string | null | undefined): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(birth ?? "");
@@ -35,7 +35,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const [{ t, locale }, user] = await Promise.all([getT(), getAuthUser()]);
   const me = await getMembership(id, user!.id);
   if (me?.role !== "staff") notFound();
-  const myKind = me.staffKind as StaffKind;
+  const myKind = me.staffKinds;
   const isHead = can(myKind, "manageMembers");
   const mayAvail = can(myKind, "setAvailability");
   const mayLimit = can(myKind, "planRules");
@@ -43,7 +43,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
 
   const [{ data: members }, { data: profiles }, { data: avail }, { data: limits }, { data: invites }] =
     await Promise.all([
-      supabase.from("team_members").select("user_id, role, staff_kind, consent_given, consent_at, consent_by, consent_note").eq("team_id", id).order("joined_at"),
+      supabase.from("team_members").select("user_id, role, staff_kind, extra_kinds, consent_given, consent_at, consent_by, consent_note").eq("team_id", id).order("joined_at"),
       supabase.from("profiles").select("id, full_name, birth_date"),
       supabase.from("availability").select("user_id, status, note").eq("team_id", id),
       supabase.from("athlete_limits").select("user_id, max_weekly_load").eq("team_id", id),
@@ -152,9 +152,18 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                   <Avatar name={display} size={44} />
                   <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span className="max-w-full truncate font-semibold">{display}</span>
-                    <span className={`badge ${m.role === "staff" ? "badge-watch" : "badge-none"}`}>
-                      {m.role === "staff" ? <Shield size={12} aria-hidden /> : <Users size={12} aria-hidden />}
-                      {m.role === "staff" ? t(`common.staffKind.${kindOf(m.staff_kind)}`) : t(ROLE_KEY[m.role as keyof typeof ROLE_KEY])}
+                    <span className="flex flex-wrap gap-1.5">
+                      {m.role === "staff" ? kindsFromRow(m).map((k, i) => (
+                        <span key={k} className={`badge ${i === 0 ? "badge-watch" : "badge-none"}`}>
+                          <Shield size={12} aria-hidden />
+                          {t(`common.staffKind.${k}`)}
+                        </span>
+                      )) : (
+                        <span className="badge badge-none">
+                          <Users size={12} aria-hidden />
+                          {t(ROLE_KEY[m.role as keyof typeof ROLE_KEY])}
+                        </span>
+                      )}
                     </span>
                   </div>
                   {m.role === "athlete" && (
@@ -181,7 +190,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                 </div>
                 {isHead && m.role === "staff" && (
                   <div className="border-t pt-4">
-                    <StaffKindSelect teamId={id} userId={m.user_id} name={display} kind={kindOf(m.staff_kind)} />
+                    <StaffKindSelect teamId={id} userId={m.user_id} name={display} kind={kindsFromRow(m)[0]} extra={kindsFromRow(m).slice(1)} />
                   </div>
                 )}
                 {m.role === "athlete" && (

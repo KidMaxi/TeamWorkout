@@ -22,7 +22,7 @@ export default async function StrengthPage({
   const me = await getMembership(id, user!.id);
   if (!me) notFound();
   const isStaff = me.role === "staff";
-  const canLib = can(me.staffKind, "manageLibrary");
+  const canLib = can(me.staffKinds, "manageLibrary");
 
   // Athletes the viewer may look at: staff sees all athletes of the team, an athlete only themself.
   const loadAthletes = async (): Promise<{ id: string; name: string }[]> => {

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { MessageKey } from "@/lib/i18n";
 import { TERMS_VERSION } from "@/lib/legal";
-import { can, getStaffKind, isStaffKind } from "@/lib/roles";
+import { can, getStaffKinds, isStaffKind } from "@/lib/roles";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -81,7 +81,7 @@ export async function logSession(teamId: string, sessionId: string, formData: Fo
 export async function createInvite(teamId: string, formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !can(await getStaffKind(supabase, teamId, user.id), "manageMembers")) throw new Error("not allowed");
+  if (!user || !can(await getStaffKinds(supabase, teamId, user.id), "manageMembers")) throw new Error("not allowed");
   const role = String(formData.get("role"));
   if (role !== "staff" && role !== "athlete") throw new Error("invalid role");
   const requested = formData.get("staff_kind");
@@ -98,7 +98,7 @@ export async function updateMember(teamId: string, userId: string, formData: For
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const max = formData.get("max_weekly_load");
-  const kind = user ? await getStaffKind(supabase, teamId, user.id) : null;
+  const kind = user ? await getStaffKinds(supabase, teamId, user.id) : null;
   const mayAvail = can(kind, "setAvailability");
   const mayLimit = can(kind, "planRules");
   if (!mayAvail && !mayLimit) throw new Error("not allowed");
@@ -129,13 +129,15 @@ export async function updateMember(teamId: string, userId: string, formData: For
   revalidatePath(`/team/${teamId}`, "layout");
 }
 
-/** Head coach changes the staff kind of a staff member of this team. */
-export async function setStaffKind(teamId: string, userId: string, kind: string): Promise<{ ok: boolean; error?: MessageKey }> {
-  if (!isStaffKind(kind)) return { ok: false, error: "roles.error.invalid" };
+/** Head coach sets the primary role and the additional roles of a staff member of this team. */
+export async function setStaffKinds(teamId: string, userId: string, primary: string, extra: string[]): Promise<{ ok: boolean; error?: MessageKey }> {
+  if (!isStaffKind(primary) || !Array.isArray(extra) || !extra.every((k) => isStaffKind(k) && k !== "head" && k !== primary)) {
+    return { ok: false, error: "roles.error.invalid" };
+  }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !can(await getStaffKind(supabase, teamId, user.id), "manageMembers")) return { ok: false, error: "roles.error.notAllowed" };
-  const { error } = await supabase.rpc("set_staff_kind", { _team: teamId, _user: userId, _kind: kind });
+  if (!user || !can(await getStaffKinds(supabase, teamId, user.id), "manageMembers")) return { ok: false, error: "roles.error.notAllowed" };
+  const { error } = await supabase.rpc("set_staff_kinds", { _team: teamId, _user: userId, _primary: primary, _extra: [...new Set(extra)] });
   if (error) {
     const m = error.message ?? "";
     if (m.includes("last_head")) return { ok: false, error: "roles.error.lastHead" };
@@ -186,7 +188,7 @@ const same = (a: FormDataEntryValue | null, b: string) =>
 export async function deleteTeam(teamId: string, formData: FormData): Promise<DangerResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !can(await getStaffKind(supabase, teamId, user.id), "manageTeam")) return { error: "danger.error.notAllowed" };
+  if (!user || !can(await getStaffKinds(supabase, teamId, user.id), "manageTeam")) return { error: "danger.error.notAllowed" };
   const { data: team } = await supabase.from("teams").select("name").eq("id", teamId).single();
   if (!team) return { error: "danger.error.notAllowed" };
   if (!same(formData.get("confirm"), team.name)) return { error: "danger.error.mismatch" };
@@ -202,7 +204,7 @@ export async function removeMember(teamId: string, userId: string): Promise<Dang
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   // Leaving is always allowed; removing someone else is for the head coach.
-  if (userId !== user?.id && (!user || !can(await getStaffKind(supabase, teamId, user.id), "manageMembers"))) {
+  if (userId !== user?.id && (!user || !can(await getStaffKinds(supabase, teamId, user.id), "manageMembers"))) {
     return { error: "danger.error.notAllowed" };
   }
   const { error } = await supabase.rpc("remove_member", { _team: teamId, _user: userId });
@@ -215,7 +217,7 @@ export async function removeMember(teamId: string, userId: string): Promise<Dang
 export async function deleteInvite(teamId: string, code: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !can(await getStaffKind(supabase, teamId, user.id), "manageMembers")) throw new Error("not allowed");
+  if (!user || !can(await getStaffKinds(supabase, teamId, user.id), "manageMembers")) throw new Error("not allowed");
   const { error } = await supabase.from("team_invites").delete().eq("code", code).eq("team_id", teamId);
   if (error) throw new Error(error.message);
   revalidatePath(`/team/${teamId}/members`);

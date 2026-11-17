@@ -40,7 +40,7 @@ export default async function WorkoutEditorPage({ params }: { params: Promise<{ 
     getMembership(id, user.id),
   ]);
   // Editing is staff only; athletes get the read-only list.
-  if (!team?.club_id || me?.role !== "staff" || !can(me.staffKind, "manageLibrary")) notFound();
+  if (!team?.club_id || me?.role !== "staff" || !can(me.staffKinds, "manageLibrary")) notFound();
 
   const cols = "id, name, equipment, primary_muscle, kind, per_side, archived_at";
   // The workout, the active exercises and the translations are independent: one round trip.

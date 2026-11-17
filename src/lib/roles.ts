@@ -25,23 +25,46 @@ const MATRIX: Record<StaffKind, ReadonlySet<Capability>> = {
   medical: new Set<Capability>(["writeNotes", "setAvailability", "viewHealth"]),
 };
 
-export function can(kind: StaffKind | null | undefined, capability: Capability): boolean {
-  return kind ? MATRIX[kind].has(capability) : false;
+/** One kind, several kinds (a person can hold more than one role), or none. Capabilities are the union. */
+export type KindsInput = StaffKind | readonly StaffKind[] | null | undefined;
+
+const asList = (k: KindsInput): readonly StaffKind[] => (k == null ? [] : typeof k === "string" ? [k] : k);
+
+export function can(kindOrKinds: KindsInput, capability: Capability): boolean {
+  return asList(kindOrKinds).some((k) => MATRIX[k].has(capability));
 }
 
-/** May this kind plan a session of the given type? (gym vs everything else) */
-export function canPlanType(kind: StaffKind | null | undefined, type: string): boolean {
-  return can(kind, type === "gym" ? "planGym" : "planCourt");
+/** May these kinds plan a session of the given type? (gym vs everything else) */
+export function canPlanType(kindOrKinds: KindsInput, type: string): boolean {
+  return can(kindOrKinds, type === "gym" ? "planGym" : "planCourt");
 }
 
-/** The caller's staff kind in a team, or null when not staff of it. Pass an RLS-scoped server client. */
-export async function getStaffKind(
-  supabase: { from: (t: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
-  teamId: string,
-  userId: string,
-): Promise<StaffKind | null> {
+/** Additional roles a person can hold next to the primary one ('head' is never an extra). */
+export const EXTRA_KINDS = ["sc", "basketball", "medical"] as const satisfies readonly StaffKind[];
+
+/**
+ * All kinds from a team_members row: primary first, then the extras (de-duplicated, invalid values dropped,
+ * never 'head', never the primary). Athletes -> []. Legacy staff rows without a kind count as 'head'.
+ */
+export function kindsFromRow(row: { role?: unknown; staff_kind?: unknown; extra_kinds?: unknown } | null | undefined): StaffKind[] {
+  if (row?.role !== "staff") return [];
+  const primary: StaffKind = isStaffKind(row.staff_kind) ? row.staff_kind : "head";
+  const extras = Array.isArray(row.extra_kinds) ? row.extra_kinds : [];
+  const out: StaffKind[] = [primary];
+  for (const k of extras) if (isStaffKind(k) && k !== "head" && !out.includes(k)) out.push(k);
+  return out;
+}
+
+type Db = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/** All staff kinds (primary first) of a user in a team; [] when not staff of it. Pass an RLS-scoped server client. */
+export async function getStaffKinds(supabase: Db, teamId: string, userId: string): Promise<StaffKind[]> {
   const { data } = await supabase
-    .from("team_members").select("role, staff_kind").eq("team_id", teamId).eq("user_id", userId).maybeSingle();
-  if (data?.role !== "staff") return null;
-  return isStaffKind(data.staff_kind) ? data.staff_kind : "head"; // legacy rows without a kind behave as before
+    .from("team_members").select("role, staff_kind, extra_kinds").eq("team_id", teamId).eq("user_id", userId).maybeSingle();
+  return kindsFromRow(data);
+}
+
+/** The primary staff kind in a team, or null when not staff of it. Prefer getStaffKinds for authorisation. */
+export async function getStaffKind(supabase: Db, teamId: string, userId: string): Promise<StaffKind | null> {
+  return (await getStaffKinds(supabase, teamId, userId))[0] ?? null;
 }

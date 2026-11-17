@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
+import { can, getStaffKinds } from "@/lib/roles";
 import type { MessageKey } from "@/lib/i18n";
 import { estimateFiveRM } from "@/lib/strength";
 import { todayInTeamZone } from "@/lib/wellness";
@@ -28,7 +28,7 @@ async function mayManage(supabase: Supabase, teamId: string, userId: string, ath
   const theirs = members?.find((m) => m.user_id === athleteId);
   if (!mine || !theirs) return false;
   if (userId === athleteId) return true;
-  return mine.role === "staff" && can(await getStaffKind(supabase, teamId, userId), "manageLibrary");
+  return mine.role === "staff" && can(await getStaffKinds(supabase, teamId, userId), "manageLibrary");
 }
 
 export async function saveStrengthTest(teamId: string, athleteId: string, formData: FormData): Promise<StrengthResult> {

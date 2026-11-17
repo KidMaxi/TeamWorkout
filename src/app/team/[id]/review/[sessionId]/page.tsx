@@ -55,7 +55,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
       .eq("session_id", sessionId),
     supabase.from("session_logs").select("session_id, user_id, attended, duration_min, rpe, load").eq("session_id", sessionId),
   ]);
-  if (!can(me?.staffKind, "manageLibrary")) notFound();
+  if (!can(me?.staffKinds, "manageLibrary")) notFound();
   if (!session || session.type !== "gym") notFound();
 
   const sessionsHref = `/team/${id}/sessions`;

@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { can, getStaffKind } from "@/lib/roles";
+import { can, getStaffKinds } from "@/lib/roles";
 import type { MessageKey } from "@/lib/i18n";
 import {
   UUID, runDeleteSet, runFinish, runSaveSet, runStart,
@@ -28,7 +28,7 @@ async function context(teamId: string, sessionId: string, userId: string, pin: s
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "run.error.auth" };
 
-  if (!can(await getStaffKind(supabase, teamId, user.id), "manageLibrary")) return { error: "kiosk.error.notAllowed" };
+  if (!can(await getStaffKinds(supabase, teamId, user.id), "manageLibrary")) return { error: "kiosk.error.notAllowed" };
 
   const { data: session } = await supabase
     .from("sessions").select("id, type, workout_id").eq("id", sessionId).eq("team_id", teamId).neq("status", "cancelled").maybeSingle();

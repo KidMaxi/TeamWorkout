@@ -48,7 +48,7 @@ export default async function TeamLayout({
           </Link>
         </div>
       </header>
-      <TeamNav teamId={id} pending={pending} isHead={can(me?.staffKind, "manageMembers")} />
+      <TeamNav teamId={id} pending={pending} isHead={can(me?.staffKinds, "manageMembers")} />
       {children}
     </div>
   );

@@ -47,7 +47,7 @@ export default async function KioskAthletePage({ params }: { params: Promise<{ i
   ]);
 
   // Staff only. The PIN is checked by the server actions, never by this page.
-  if (!can(me?.staffKind, "manageLibrary")) notFound();
+  if (!can(me?.staffKinds, "manageLibrary")) notFound();
   if (athlete?.role !== "athlete") notFound();
   if (!session) notFound();
 
