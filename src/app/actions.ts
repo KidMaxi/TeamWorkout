@@ -32,6 +32,15 @@ export async function joinTeam(formData: FormData) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_team", { _code: String(formData.get("code")).trim() });
   if (error) throw new Error(error.message);
+  // An admin invite returns a team the person is NOT a member of: they are a read-only club admin, so go to the academy.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const [{ data: admin }, { data: membership }] = await Promise.all([
+      supabase.from("club_admins").select("club_id").eq("user_id", user.id).limit(1),
+      supabase.from("team_members").select("user_id").eq("team_id", data).eq("user_id", user.id).maybeSingle(),
+    ]);
+    if (admin?.length && !membership) redirect("/academy");
+  }
   redirect(`/team/${data}`);
 }
 
@@ -86,10 +95,13 @@ export async function createInvite(teamId: string, formData: FormData) {
   const role = String(formData.get("role"));
   if (role !== "staff" && role !== "athlete") throw new Error("invalid role");
   const requested = formData.get("staff_kind");
+  // 'admin' (read-only club admin) is a staff invite that only a head coach may create.
+  const isAdmin = role === "staff" && requested === "admin";
+  if (isAdmin && !can(await getStaffKinds(supabase, teamId, user.id), "manageMembers")) throw new Error("not allowed");
   const { error } = await supabase.from("team_invites").insert({
     team_id: teamId,
     role,
-    staff_kind: role === "staff" ? (isStaffKind(requested) ? requested : "basketball") : null,
+    staff_kind: isAdmin ? "admin" : role === "staff" ? (isStaffKind(requested) ? requested : "basketball") : null,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/team/${teamId}/members`);

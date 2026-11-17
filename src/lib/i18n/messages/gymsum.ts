@@ -1,0 +1,38 @@
+import { defineMessages } from "../define";
+
+export default defineMessages(
+  {
+    title: "Gelogde sets",
+    back: "Terug naar sessies",
+    link: "Gelogde sets",
+    progress: "{done} van {total} spelers klaar",
+    done: "Klaar",
+    busy: "Bezig",
+    notStarted: "Nog niet gestart",
+    line: "{name} · {sets} sets · top {top}",
+    lineOne: "{name} · 1 set · top {top}",
+    topWeightReps: "{kg} kg × {reps}",
+    topWeight: "{kg} kg",
+    topReps: "{reps} herhalingen",
+    topNone: "geen gewicht gelogd",
+    empty: "Er zijn nog geen sets gelogd voor deze sessie.",
+    yourOwn: "Je ziet alleen je eigen sets.",
+  },
+  {
+    title: "Logged sets",
+    back: "Back to sessions",
+    link: "Logged sets",
+    progress: "{done} of {total} players done",
+    done: "Done",
+    busy: "In progress",
+    notStarted: "Not started yet",
+    line: "{name} · {sets} sets · top {top}",
+    lineOne: "{name} · 1 set · top {top}",
+    topWeightReps: "{kg} kg × {reps}",
+    topWeight: "{kg} kg",
+    topReps: "{reps} reps",
+    topNone: "no weight logged",
+    empty: "No sets have been logged for this session yet.",
+    yourOwn: "You only see your own sets.",
+  },
+);

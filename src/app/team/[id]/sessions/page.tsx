@@ -130,6 +130,7 @@ export default async function SessionsPage({ params }: { params: Promise<{ id: s
               <div className="flex flex-wrap gap-x-4">
                 <Link href={`/team/${id}/kiosk/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("sessions.ipadMode")}</Link>
                 <Link href={`/team/${id}/review/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("sessions.reviewLink")}</Link>
+                <Link href={`/team/${id}/gym/${s.id}`} className="link inline-flex min-h-11 items-center text-sm">{t("gymsum.link")}</Link>
               </div>
             )}
             {canStart && (

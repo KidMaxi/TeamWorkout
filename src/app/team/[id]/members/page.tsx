@@ -45,7 +45,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const mayPlayers = can(myKind, "managePlayers");
   const kindOf = (v: unknown): StaffKind => (isStaffKind(v) ? v : "head"); // legacy rows behave as head
 
-  const [{ data: members }, { data: profiles }, { data: avail }, { data: limits }, { data: invites }] =
+  const [{ data: members }, { data: profiles }, { data: avail }, { data: limits }, { data: invites }, { data: teamRow }] =
     await Promise.all([
       supabase.from("team_members").select("user_id, role, staff_kind, extra_kinds, jersey_number, position, consent_given, consent_at, consent_by, consent_note").eq("team_id", id).order("joined_at"),
       supabase.from("profiles").select("id, full_name, birth_date"),
@@ -55,7 +55,12 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
       isHead
         ? supabase.from("team_invites").select("code, role, staff_kind, expires_at").eq("team_id", id).gt("expires_at", new Date().toISOString())
         : Promise.resolve({ data: null }),
+      isHead ? supabase.from("teams").select("club_id").eq("id", id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
+  // Club admins (read-only, not team members): only heads see how many there are.
+  const { count: adminCount } = isHead && teamRow?.club_id
+    ? await supabase.from("club_admins").select("user_id", { count: "exact", head: true }).eq("club_id", teamRow.club_id)
+    : { count: null };
   // Linked parents per athlete: only a count (parents are not team members, so their names are not readable here).
   const athleteIds = (members ?? []).filter((m) => m.role === "athlete").map((m) => m.user_id);
   const { data: parentLinks } = mayPlayers && athleteIds.length
@@ -110,6 +115,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
             <span className={label}>{t("roles.kind.invite")}</span>
             <select name="staff_kind" defaultValue="basketball" className="input min-h-11 w-full">
               {STAFF_KINDS.map((k) => <option key={k} value={k}>{t(`common.staffKind.${k}`)}</option>)}
+              <option value="admin">{t("roles.admin.option")}</option>
             </select>
           </label>
           <button className="btn btn-primary inline-flex min-h-11 items-center justify-center gap-2">
@@ -117,6 +123,12 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
           </button>
         </form>
         <p className="-mt-2 text-xs text-muted">{t("roles.kind.inviteHint")} {t("members.days", { n: 14 })}</p>
+        {adminCount !== null && (
+          <p className="text-xs text-muted">
+            <span className="font-semibold text-[var(--foreground)]">{adminCount === 1 ? t("roles.admin.countOne") : t("roles.admin.count", { n: adminCount ?? 0 })}</span>
+            {" "}{t("roles.admin.explain")}
+          </p>
+        )}
 
         {!!invites?.length && (
           <>
@@ -132,7 +144,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                         <span className="select-all break-all font-mono text-xl font-semibold tracking-[0.18em]">{i.code}</span>
                         <span className="flex flex-wrap items-center gap-2">
                           <span className={`badge ${i.role === "staff" ? "badge-watch" : "badge-none"}`}>
-                            {i.role === "staff" ? t(`common.staffKind.${kindOf(i.staff_kind)}`) : t(ROLE_KEY[i.role as keyof typeof ROLE_KEY])}
+                            {i.role === "staff" ? (i.staff_kind === "admin" ? t("roles.admin.badge") : t(`common.staffKind.${kindOf(i.staff_kind)}`)) : t(ROLE_KEY[i.role as keyof typeof ROLE_KEY])}
                           </span>
                           <span className="text-xs text-muted">{left === 1 ? t("members.dayLeft") : t("members.daysLeft", { n: left })}</span>
                         </span>
