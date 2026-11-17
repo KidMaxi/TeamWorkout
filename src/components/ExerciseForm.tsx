@@ -81,7 +81,7 @@ function FormBody({ teamId, exercise, onDone }: { teamId: string; exercise?: Exe
           onClick={onDone}
           aria-label={t("exercises.form.close")}
           title={t("exercises.form.close")}
-          className="-mr-2 -mt-1 inline-grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:text-[var(--foreground)]"
+          className="-mr-2 -mt-1 inline-grid size-11 shrink-0 place-items-center rounded-md text-muted transition-colors hover:text-[var(--foreground)]"
         >
           <X size={20} aria-hidden />
         </button>
@@ -171,7 +171,7 @@ function FormBody({ teamId, exercise, onDone }: { teamId: string; exercise?: Exe
                 type="radio" name="media_kind" value={k} checked={mediaKind === k}
                 onChange={() => setMediaKind(k)} className="peer sr-only"
               />
-              <span className="flex min-h-11 items-center justify-center rounded-md px-1 text-center text-xs font-semibold text-muted peer-checked:bg-[var(--primary)] peer-checked:text-[var(--on-primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]">
+              <span className="flex min-h-11 items-center justify-center rounded-md px-1 text-center text-xs font-semibold text-muted peer-checked:bg-[var(--accent-soft)] peer-checked:text-[var(--primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]">
                 {t(k === "none" ? "exercises.form.mediaNone" : k === "image" ? "exercises.form.mediaImage" : "exercises.form.mediaVideo")}
               </span>
             </label>

@@ -62,7 +62,7 @@ export function AcademyBoard({ rows, fit, dayLabels, todayIndex }: { rows: Acade
   }
 
   const chip = (active: boolean) =>
-    `chip min-h-11 cursor-pointer px-3.5 text-sm transition-colors ${active ? "!border-[var(--accent)] !text-[var(--foreground)]" : ""}`;
+    `chip min-h-11 cursor-pointer px-3.5 text-sm transition-colors ${active ? "!border-[var(--accent)] !bg-[var(--accent-soft)] !text-[var(--primary)]" : ""}`;
   const posText = (p: Player) => {
     const pos = isPosition(p.position) ? t(`members.pos.${p.position}` as MessageKey) : null;
     return playerLabel(null, pos);
@@ -95,11 +95,11 @@ export function AcademyBoard({ rows, fit, dayLabels, todayIndex }: { rows: Acade
         {flags.length === 0 ? (
           <p className="text-sm text-muted">{t("academy.flags.none")}</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col">
             {flags.map((f) => {
               const txt = reasonText(f.status, f.reason, f.detail);
               return (
-                <li key={`${f.teamId}:${f.userId}`} className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-[var(--line)] px-3 py-2">
+                <li key={`${f.teamId}:${f.userId}`} className="flex min-h-11 items-center justify-between gap-3 border-b border-[var(--line)] py-2.5 last:border-b-0">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{f.name} <span className="text-xs font-normal text-muted">· {f.teamName}</span></p>
                     {txt && <p className="break-words text-xs text-muted">{txt}</p>}
@@ -153,11 +153,11 @@ export function AcademyBoard({ rows, fit, dayLabels, todayIndex }: { rows: Acade
             </p>
           </header>
 
-          <ul className="flex flex-col gap-2 sm:hidden">
+          <ul className="flex flex-col sm:hidden">
             {g.players.map((p) => {
               const max = Math.max(1, ...p.day_au);
               return (
-                <li key={p.user_id} className="rounded-md border border-[var(--line)] p-3">
+                <li key={p.user_id} className="border-b border-[var(--line)] py-3 last:border-b-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium">
@@ -174,10 +174,10 @@ export function AcademyBoard({ rows, fit, dayLabels, todayIndex }: { rows: Acade
                   <div className="mt-2 grid grid-cols-7 gap-1" role="img" aria-label={p.day_au.map((v, i) => `${dayLabels[i]} ${v}`).join(", ")}>
                     {p.day_au.map((v, i) => (
                       <div key={i} className="flex flex-col items-center gap-0.5">
-                        <div className="flex h-8 w-full items-end rounded bg-[var(--surface-2)]">
+                        <div className="flex h-8 w-full items-end rounded-sm bg-[var(--surface-2)]">
                           <div
-                            className="w-full rounded"
-                            style={{ height: `${v > 0 ? Math.max(12, Math.round((v / max) * 100)) : 0}%`, background: i === todayIndex ? "var(--accent)" : "color-mix(in srgb, var(--accent) 55%, var(--muted))" }}
+                            className="w-full rounded-t-sm"
+                            style={{ height: `${v > 0 ? Math.max(12, Math.round((v / max) * 100)) : 0}%`, background: i === todayIndex ? "var(--primary)" : "var(--line)" }}
                           />
                         </div>
                         <span className="text-[0.6rem] text-muted">{dayLabels[i]}</span>

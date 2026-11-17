@@ -39,7 +39,7 @@ export function HintCard({ id, text, title, href, linkLabel, label, dismissLabel
         type="button"
         aria-label={dismissLabel}
         onClick={() => { setHidden(true); start(async () => { await dismissHint(id); }); }}
-        className="-m-2 grid size-11 shrink-0 place-items-center rounded-full text-muted hover:text-[var(--foreground)]"
+        className="-m-2 grid size-11 shrink-0 place-items-center rounded-md text-muted hover:text-[var(--foreground)]"
       >
         <X size={16} aria-hidden />
       </button>

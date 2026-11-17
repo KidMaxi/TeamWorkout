@@ -52,7 +52,7 @@ function Done({ name, gridHref }: { name: string; gridHref: string }) {
   }, [gridHref, router]);
   return (
     <section className="rise mx-auto flex w-full max-w-md flex-col items-center gap-5 py-10 text-center" role="status">
-      <span aria-hidden className="grid size-20 place-items-center rounded-full" style={{ background: "var(--ok-bg)", color: "var(--ok)" }}>
+      <span aria-hidden className="grid size-20 place-items-center rounded-md" style={{ background: "var(--ok-bg)", color: "var(--ok)" }}>
         <Check size={40} />
       </span>
       <h2 className="display text-4xl leading-tight">{t("kiosk.done.title", { name })}</h2>

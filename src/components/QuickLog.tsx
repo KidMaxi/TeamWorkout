@@ -153,7 +153,7 @@ function LogCard({
       {saved ? (
         <div className="grid min-h-40 place-items-center" role="status">
           <div className="flex flex-col items-center gap-3">
-            <span className="ql-pop grid size-14 place-items-center rounded-full bg-[var(--ok-bg)] text-[var(--ok)]">
+            <span className="ql-pop grid size-14 place-items-center rounded-md bg-[var(--ok-bg)] text-[var(--ok)]">
               <Check size={28} aria-hidden />
             </span>
             <p className="font-semibold">{t("quicklog.saved")}</p>

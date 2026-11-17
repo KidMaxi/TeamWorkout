@@ -137,7 +137,7 @@ const BADGE: Record<SetType, { letter: string | null; bg: string; fg: string }> 
 function SetBadge({ type, n }: { type: SetType; n: number | undefined }) {
   const b = BADGE[type];
   return (
-    <span aria-hidden className="num grid size-9 place-items-center rounded-full text-base" style={{ background: b.bg, color: b.fg }}>
+    <span aria-hidden className="num grid size-9 place-items-center rounded-md text-base" style={{ background: b.bg, color: b.fg }}>
       {type === "normal" ? (n ?? "·") : b.letter}
     </span>
   );
@@ -651,7 +651,7 @@ export function WorkoutRunner({
       <section className="rise flex flex-col gap-4">
         {header}
         <div className="card card-hero flex flex-col items-start gap-4" role="status">
-          <span aria-hidden className="grid size-11 place-items-center rounded-full" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
+          <span aria-hidden className="grid size-11 place-items-center rounded-md" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
             <WifiOff size={22} />
           </span>
           <h3 className="display text-2xl leading-tight">{t("run.sync.finishTitle")}</h3>
@@ -673,7 +673,7 @@ export function WorkoutRunner({
         {header}
         <div className="card card-hero flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <span aria-hidden className="grid size-11 place-items-center rounded-full" style={{ background: "var(--ok-bg)", color: "var(--ok)" }}>
+            <span aria-hidden className="grid size-11 place-items-center rounded-md" style={{ background: "var(--ok-bg)", color: "var(--ok)" }}>
               <Check size={22} />
             </span>
             <h3 className="display text-2xl">{t("run.summary.title")}</h3>
@@ -713,7 +713,7 @@ export function WorkoutRunner({
           <ol className="flex flex-col gap-2 text-sm">
             {blocks.map((b, i) => (
               <li key={b.id} className="flex items-center gap-3">
-                <span aria-hidden className="num grid size-8 shrink-0 place-items-center rounded-full text-sm" style={{ background: "var(--surface-3)" }}>
+                <span aria-hidden className="num grid size-8 shrink-0 place-items-center rounded-md text-sm" style={{ background: "var(--surface-3)" }}>
                   {String.fromCharCode(65 + (i % 26))}
                 </span>
                 <span className="min-w-0 truncate">{b.exercise.name}</span>
@@ -770,8 +770,8 @@ export function WorkoutRunner({
                 <SkipForward size={14} aria-hidden />{t("run.rest.skip")}
               </button>
             </div>
-            <div aria-hidden className="h-1 overflow-hidden rounded-full" style={{ background: "var(--surface-3)" }}>
-              <div className="h-full rounded-full" style={{ width: `${Math.min(100, (restLeft / rest.total) * 100)}%`, background: "var(--accent)" }} />
+            <div aria-hidden className="h-1 overflow-hidden rounded-md" style={{ background: "var(--surface-3)" }}>
+              <div className="h-full rounded-md" style={{ width: `${Math.min(100, (restLeft / rest.total) * 100)}%`, background: "var(--accent)" }} />
             </div>
           </div>
         )}
@@ -807,7 +807,7 @@ export function WorkoutRunner({
                 >
                   <span
                     aria-hidden
-                    className="num grid size-10 shrink-0 place-items-center rounded-full text-lg"
+                    className="num grid size-10 shrink-0 place-items-center rounded-md text-lg"
                     style={complete ? { background: "var(--ok-bg)", color: "var(--ok)" } : { background: "var(--surface-3)" }}
                   >
                     {complete ? <Check size={18} /> : letter}
@@ -885,7 +885,7 @@ export function WorkoutRunner({
                                 onClick={() => openSheet(block, d)}
                                 aria-label={`${t("run.type.change")}: ${typeLabel}`}
                                 title={t("run.type.change")}
-                                className="grid size-11 shrink-0 place-items-center rounded-full"
+                                className="grid size-11 shrink-0 place-items-center rounded-md"
                               >
                                 <SetBadge type={type} n={n} />
                               </button>
@@ -938,7 +938,7 @@ export function WorkoutRunner({
                               aria-busy={st.busy}
                               aria-label={clean ? t("run.undo") : st.done ? t("run.saveChanges") : t("run.save")}
                               title={clean ? t("run.undo") : st.done ? t("run.saveChanges") : t("run.save")}
-                              className={`grid ${tapSize} shrink-0 place-items-center rounded-full border transition-colors disabled:opacity-60 ${clean ? "" : "btn !p-0"}`}
+                              className={`grid ${tapSize} shrink-0 place-items-center rounded-md border transition-colors disabled:opacity-60 ${clean ? "" : "btn !p-0"}`}
                               style={clean ? { background: "var(--ok)", color: "var(--background)", borderColor: "transparent" } : undefined}
                             >
                               <Check size={22} aria-hidden className={clean ? "" : "text-[var(--accent)]"} />

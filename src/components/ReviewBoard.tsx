@@ -348,13 +348,13 @@ function SetRow({
     <li
       className="flex flex-col gap-2 rounded-md border p-3"
       style={{
-        background: row.dev ? "color-mix(in srgb, var(--warn-bg) 55%, transparent)" : "color-mix(in srgb, var(--surface-2) 45%, transparent)",
+        background: row.dev ? "var(--warn-bg)" : "var(--surface-2)",
         boxShadow: row.dev ? "inset 3px 0 0 var(--warn)" : undefined,
       }}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <span
-          className="inline-grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold"
+          className="inline-grid size-8 shrink-0 place-items-center rounded-md text-xs font-bold"
           style={{ background: style.bg, color: style.fg }}
           title={t(`review.type.${type}`)}
         >

@@ -46,7 +46,7 @@ export function ConfirmButton({ action, icon, label, iconOnly, title, body, requ
         title={iconOnly ? label : undefined}
         className={
           iconOnly
-            ? `inline-grid size-10 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-[var(--danger-bg)] hover:text-danger ${className}`
+            ? `inline-grid size-10 shrink-0 place-items-center rounded-md text-muted transition-colors hover:bg-[var(--danger-bg)] hover:text-danger ${className}`
             : `btn btn-danger inline-flex min-h-11 items-center justify-center gap-2 ${className}`
         }
       >
@@ -57,8 +57,8 @@ export function ConfirmButton({ action, icon, label, iconOnly, title, body, requ
         <form action={formAction} className="flex flex-col gap-4">
           <span
             aria-hidden
-            className="grid size-12 place-items-center rounded-full text-danger"
-            style={{ background: "var(--danger-bg)", boxShadow: "0 0 0 1px color-mix(in srgb, var(--danger) 35%, transparent)" }}
+            className="grid size-12 place-items-center rounded-md border text-danger"
+            style={{ background: "var(--danger-bg)", borderColor: "color-mix(in srgb, var(--danger) 35%, transparent)" }}
           >
             <TriangleAlert size={22} />
           </span>

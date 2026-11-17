@@ -150,7 +150,7 @@ function toPayload(name: string, description: string, blocks: BlockDraft[], byId
 
 const eyebrow = "eyebrow flex items-center gap-1.5";
 const iconBtn =
-  "inline-grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
+  "inline-grid size-11 shrink-0 place-items-center rounded-md text-muted transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
 const bad = "!border-[var(--danger)]";
 
 export function WorkoutEditor({
@@ -518,15 +518,15 @@ function BlockCard({
           const typeName = t(`workouts.type.${s.type}`);
           const rpeLocked = s.type === "warmup" || s.type === "failure";
           return (
-            <li key={s.key} className="flex flex-col gap-2 rounded-md border p-3" style={{ background: "color-mix(in srgb, var(--surface-2) 55%, transparent)" }}>
+            <li key={s.key} className="flex flex-col gap-2 rounded-md border p-3" style={{ background: "var(--surface-2)" }}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <button
                     type="button" onClick={() => setSheetFor(si)} aria-haspopup="dialog"
                     aria-label={`${t("workouts.type.change", { n, type: typeName })} (${L})`}
                     title={t("workouts.type.sheetTitle")}
-                    className="num grid size-11 shrink-0 place-items-center rounded-full text-lg transition-transform active:scale-95"
-                    style={{ color: style.color, background: style.bg, boxShadow: `0 0 0 1px color-mix(in srgb, ${style.color} 45%, transparent)` }}
+                    className="num grid size-11 shrink-0 place-items-center rounded-md border text-lg transition-transform active:scale-95"
+                    style={{ color: style.color, background: style.bg, borderColor: `color-mix(in srgb, ${style.color} 45%, transparent)` }}
                   >
                     {badge}
                   </button>
@@ -697,7 +697,7 @@ function SetTypeSheet({
                   onClick={() => { onPick(k); close(); }}
                   className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-4 text-left font-semibold transition-colors hover:border-[var(--accent)] ${k === current ? "!border-[var(--accent)] bg-[var(--accent-soft)]" : ""}`}
                 >
-                  <span className="num grid size-9 shrink-0 place-items-center rounded-full text-base" style={{ color: st.color, background: st.bg }}>
+                  <span className="num grid size-9 shrink-0 place-items-center rounded-md text-base" style={{ color: st.color, background: st.bg }}>
                     {k === "normal" ? "1" : t(`workouts.type.${k}.badge`)}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{t(`workouts.type.${k}`)}</span>
@@ -798,7 +798,7 @@ function PickerBody({
         <h2 className="display text-2xl leading-tight">{t("workouts.picker.title")}</h2>
         <button
           type="button" onClick={onClose} aria-label={t("workouts.picker.close")} title={t("workouts.picker.close")}
-          className="-mr-2 -mt-1 inline-grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:text-[var(--foreground)]"
+          className="-mr-2 -mt-1 inline-grid size-11 shrink-0 place-items-center rounded-md text-muted transition-colors hover:text-[var(--foreground)]"
         >
           <X size={20} aria-hidden />
         </button>

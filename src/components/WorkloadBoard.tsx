@@ -143,11 +143,11 @@ function DayStrip({ a }: { a: BoardAthlete }) {
             <span className="num text-xs leading-none">{d.num}</span>
             <span className="flex items-end justify-center gap-[3px]" style={{ height: H }} aria-hidden>
               <span
-                className="w-2 rounded-full border"
+                className="w-2 rounded-sm border"
                 style={{ height: hp || 1, borderColor: "var(--accent)", background: hp ? "transparent" : "var(--line)", borderWidth: hp ? 1.5 : 0 }}
               />
               <span
-                className="w-2 rounded-full"
+                className="w-2 rounded-sm"
                 style={{ height: ha || 1, background: ha ? "var(--primary)" : "var(--line)" }}
               />
             </span>
@@ -171,23 +171,23 @@ function WeekTotals({ a }: { a: BoardAthlete }) {
   const diff = diffPct === null ? null : `${diffPct > 0 ? "+" : ""}${Math.round(diffPct)}%`;
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
-          <p className="num text-lg">{nf(planned)}</p>
-          <p className="text-[11px] leading-tight text-muted">{t("workload.totals.planned")}</p>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="flex flex-col gap-1.5 rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-2.5 py-2.5">
+          <p className="text-[10px] font-semibold uppercase leading-tight tracking-wider text-muted">{t("workload.totals.planned")}</p>
+          <p className="num text-3xl">{nf(planned)}</p>
         </div>
-        <div className="rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
-          <p className="num text-lg">{nf(actual)}</p>
-          <p className="text-[11px] leading-tight text-muted">{t("workload.totals.actual")}</p>
+        <div className="flex flex-col gap-1.5 rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-2.5 py-2.5">
+          <p className="text-[10px] font-semibold uppercase leading-tight tracking-wider text-muted">{t("workload.totals.actual")}</p>
+          <p className="num text-3xl">{nf(actual)}</p>
         </div>
-        <div className="rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 px-1 py-2">
-          <p className="num text-lg">{diff ?? "–"}</p>
-          <p className="text-[11px] leading-tight text-muted">{t("workload.totals.diff")}</p>
+        <div className="flex flex-col gap-1.5 rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-2.5 py-2.5">
+          <p className="text-[10px] font-semibold uppercase leading-tight tracking-wider text-muted">{t("workload.totals.diff")}</p>
+          <p className="num text-3xl">{diff ?? "–"}</p>
         </div>
       </div>
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
-        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-3 w-2 rounded-full border-[1.5px]" style={{ borderColor: "var(--accent)" }} />{t("workload.totals.planned")}</span>
-        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-3 w-2 rounded-full" style={{ background: "var(--primary)" }} />{t("workload.totals.actual")}</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-3 w-2 rounded-sm border-[1.5px]" style={{ borderColor: "var(--accent)" }} />{t("workload.totals.planned")}</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-3 w-2 rounded-sm" style={{ background: "var(--primary)" }} />{t("workload.totals.actual")}</span>
         {a.ownAverage !== null && (
           <span className="chip"><TrendingUp size={12} aria-hidden />{t("workload.totals.ownAverage", { n: nf(a.ownAverage), weeks: a.ownAverageWeeks })}</span>
         )}
@@ -414,7 +414,7 @@ function SessionToggle({ teamId, athlete, session, excluded, editable }: {
             if (!r.ok) setFailed(true);
           });
         }}
-        className="-my-1 inline-grid size-11 shrink-0 place-items-center rounded-full transition-colors disabled:opacity-50"
+        className="-my-1 inline-grid size-11 shrink-0 place-items-center rounded-md transition-colors disabled:opacity-50"
       >
         <span
           aria-hidden

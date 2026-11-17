@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getAuthUser, getMembership } from "@/lib/auth-cache";
+import { getAuthUser, getMembership, getProfile } from "@/lib/auth-cache";
 import { StaffDashboard } from "@/components/StaffDashboard";
 import { AthleteDashboard } from "@/components/AthleteDashboard";
 import { WorkloadTabs } from "@/components/WorkloadTabs";
@@ -223,9 +223,17 @@ export default async function TeamOverview({
     counts: { training: counts.training, gym: counts.gym, match: counts.match, restDays: counts.restDays },
   };
 
+  const [profile, { data: teamRow }] = await Promise.all([
+    getProfile(user!.id),
+    supabase.from("teams").select("name").eq("id", id).maybeSingle(),
+  ]);
+  const firstName = (profile?.full_name ?? "").trim().split(/\s+/)[0] || undefined;
+
   return (
     <AthleteDashboard
       teamId={id}
+      firstName={firstName}
+      teamName={(teamRow?.name as string | undefined) ?? undefined}
       availability={availRes.data ? { status: availRes.data.status as Availability, note: availRes.data.note } : null}
       pending={pending}
       weekly={weekly}

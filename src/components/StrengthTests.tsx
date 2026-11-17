@@ -151,7 +151,7 @@ export function StrengthTests({
                           return (
                             <span
                               key={s.id}
-                              className="w-1.5 rounded-full"
+                              className="w-1.5 rounded-sm"
                               style={{ height: `${h}%`, background: last ? "var(--primary)" : "var(--surface-3)" }}
                             />
                           );

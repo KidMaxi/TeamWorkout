@@ -58,7 +58,7 @@ export function AcademyPlanner({ items, days, today, defaultDay, teams }: {
   const grouped = useMemo(() => groupByDay(filterItems(items, teamSel, typeSel), ymds), [items, teamSel, typeSel, ymds]);
   const anyItems = items.length > 0;
   const anyShown = ymds.some((d) => grouped[d].length > 0);
-  const chip = (on: boolean) => `chip min-h-11 px-3.5 text-sm ${on ? "!border-[var(--accent)] !text-[var(--foreground)]" : ""}`;
+  const chip = (on: boolean) => `chip min-h-11 px-3.5 text-sm ${on ? "!border-[var(--accent)] !bg-[var(--accent-soft)] !text-[var(--primary)]" : ""}`;
 
   const dayBlock = (d: PlanDay, withHeader: boolean) => {
     const list = grouped[d.ymd];
@@ -83,9 +83,9 @@ export function AcademyPlanner({ items, days, today, defaultDay, teams }: {
   return (
     <section className="flex flex-col gap-4" aria-label={t("acplan.title")}>
       <div className="flex flex-wrap items-center gap-2">
-        <div role="group" aria-label={t("acplan.view.label")} className="flex gap-2">
+        <div role="group" aria-label={t("acplan.view.label")} className="glass flex w-fit gap-1 rounded-md p-1">
           {(["week", "day"] as const).map((v) => (
-            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={chip(view === v)}>
+            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-medium transition-colors ${view === v ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-muted hover:text-[var(--foreground)]"}`}>
               {t(v === "week" ? "acplan.view.week" : "acplan.view.day")}
             </button>
           ))}
@@ -143,7 +143,7 @@ export function AcademyPlanner({ items, days, today, defaultDay, teams }: {
           <div role="group" aria-label={t("acplan.day.pick")} className="grid grid-cols-7 gap-1.5">
             {days.map((d) => (
               <button key={d.ymd} type="button" aria-pressed={d.ymd === current.ymd} onClick={() => setDay(d.ymd)}
-                className={`chip min-h-11 flex-col !px-0 text-xs ${d.ymd === current.ymd ? "!border-[var(--accent)] !text-[var(--foreground)]" : ""} ${d.ymd === today ? "font-semibold" : ""}`}>
+                className={`chip min-h-11 flex-col !px-0 text-xs ${d.ymd === current.ymd ? "!border-[var(--accent)] !bg-[var(--accent-soft)] !text-[var(--primary)]" : ""} ${d.ymd === today ? "font-semibold" : ""}`}>
                 <span>{d.weekday}</span><span className="num">{d.num}</span>
               </button>
             ))}

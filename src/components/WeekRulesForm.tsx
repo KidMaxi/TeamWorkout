@@ -150,7 +150,7 @@ export function WorkloadSettingsForm({ teamId, settings }: { teamId: string; set
             </label>
           ))}
         </div>
-        <label className="flex min-h-11 items-start gap-3 rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 p-3">
+        <label className="flex min-h-11 items-start gap-3 rounded-md border border-[var(--line)] bg-[var(--surface-2)] p-3">
           <input
             type="checkbox"
             name="show_ratio"

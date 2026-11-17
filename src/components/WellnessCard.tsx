@@ -14,7 +14,7 @@ const STEPS = [1, 2, 3, 4, 5] as const;
 type Draft = Partial<Record<WellnessItem, number>>;
 const PAIN_MAX = 60;
 const pickCls =
-  "grid min-h-12 cursor-pointer place-items-center rounded-full border border-[var(--line)] bg-[var(--surface-2)]/60 px-4 text-base font-medium transition-colors hover:border-[var(--accent)] peer-checked:border-transparent peer-checked:bg-[var(--primary)] peer-checked:text-[var(--on-primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]";
+  "grid min-h-12 cursor-pointer place-items-center rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-4 text-base font-medium transition-colors hover:border-[var(--accent)] peer-checked:border-[var(--accent)] peer-checked:bg-[var(--accent-soft)] peer-checked:text-[var(--primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]";
 
 export function WellnessCard({ teamId, today }: { teamId: string; today: WellnessEntry | null }) {
   const { t } = useT();
@@ -96,7 +96,7 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
             return (
               <li
                 key={k}
-                className="flex flex-col items-center gap-0.5 rounded-md border border-[var(--line)] bg-[var(--surface-2)]/60 py-2"
+                className="flex flex-col items-center gap-0.5 rounded-md border border-[var(--line)] bg-[var(--surface-2)] py-2"
                 aria-label={label}
                 title={label}
               >
@@ -138,7 +138,7 @@ export function WellnessCard({ teamId, today }: { teamId: string; today: Wellnes
                       className="peer sr-only"
                     />
                     <span
-                      className="num grid min-h-12 cursor-pointer place-items-center rounded-full border border-[var(--line)] bg-[var(--surface-2)]/60 text-lg transition-colors hover:border-[var(--accent)] peer-checked:border-transparent peer-checked:bg-[var(--primary)] peer-checked:text-[var(--on-primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]"
+                      className="num grid min-h-12 cursor-pointer place-items-center rounded-md border border-[var(--line)] bg-[var(--surface-2)] text-lg transition-colors hover:border-[var(--accent)] peer-checked:border-[var(--accent)] peer-checked:bg-[var(--accent-soft)] peer-checked:text-[var(--primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]"
                     >
                       {n}
                     </span>

@@ -328,7 +328,7 @@ export function SessionManage({ teamId, session, allowedTypes, workouts, today }
 
       <dialog ref={refs.delete} className={dlg}>
         <form onSubmit={(e) => { e.preventDefault(); run("delete", () => deleteSession(session.id, effScope)); }} className="flex flex-col gap-4">
-          <span aria-hidden className="grid size-12 place-items-center rounded-full text-danger" style={{ background: "var(--danger-bg)", boxShadow: "0 0 0 1px color-mix(in srgb, var(--danger) 35%, transparent)" }}>
+          <span aria-hidden className="grid size-12 place-items-center rounded-md border text-danger" style={{ background: "var(--danger-bg)", borderColor: "color-mix(in srgb, var(--danger) 35%, transparent)" }}>
             <TriangleAlert size={22} />
           </span>
           <h2 className="display text-2xl leading-tight">{t("sessions.dialog.delete")}</h2>
