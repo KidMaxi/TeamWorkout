@@ -262,11 +262,6 @@ export function QuickLog({ teamId, items }: { teamId: string; items: QuickLogIte
 
   return (
     <section className="flex flex-col gap-2" aria-label={t("quicklog.title")}>
-      <style>{`
-        @keyframes ql-pop { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
-        .ql-pop { animation: ql-pop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
-        @media (prefers-reduced-motion: reduce) { .ql-pop { animation: none; } }
-      `}</style>
       <p className="eyebrow px-1">{t("quicklog.title")}</p>
 
       {active ? (
