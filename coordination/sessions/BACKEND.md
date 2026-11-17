@@ -1,7 +1,11 @@
 # Sessiestatus BACKEND
 Bijgewerkt: 2026-11-17
-Rol: BACKEND. Taak: B-01 opgeleverd (READY_FOR_REVIEW), branch feature/B-01-db-tests @ b550eda, worktree /home/user/wt/B-01.
-Volgende: wacht op LEAD-review; daarna B-02 (eerst TASK_PROPOSAL) en B-03a.
+Rol: BACKEND.
+B-01: opgeleverd en door LEAD geïntegreerd (b550eda).
+B-03a: READY_FOR_REVIEW verstuurd (feature/B-03-policy-hygiene @ f5e295a, migratie ook live toegepast).
+B-02: TASK_PROPOSAL verstuurd; wacht op besluit en toewijzing. B-03b/c: voorstellen nog niet geschreven.
 Verwerkte bericht-ID's:
-- (geen berichten ontvangen)
-Eerlijkheid: Supabase MCP werkt tegen de live DB. tools/verify.sh is niet gedraaid (alleen SQL/README gewijzigd).
+- 20261117T181331Z-LEAD-022c3eea
+- 20261117T181522Z-LEAD-88731e16
+- 20261117T182902Z-LEAD-27a636ce
+Eerlijkheid: tools/verify.sh niet gedraaid (alleen SQL). Supabase MCP werkt.
