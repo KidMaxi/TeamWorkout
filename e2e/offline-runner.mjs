@@ -42,6 +42,9 @@ async function scenario(name, fn) {
   }
 }
 
+// Warm up the server (cold start compiles the page and the fake API) so the first scenario is not timing-sensitive.
+for (const u of ['/e2e/runner', '/e2e/runner?persist=1', '/api/e2e/run']) await fetch(BASE + u).catch(() => {});
+
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 
 async function open(query = "") {
