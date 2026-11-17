@@ -18,7 +18,7 @@ if [ "$MODE" = full ]; then
   if BASE_URL="http://localhost:$PORT" node e2e/offline-runner.mjs >/tmp/verify-e2e-$$.log 2>&1; then echo "PASS  offline e2e (7 scenarios)"; RC=0; else echo "FAIL  offline e2e"; tail -20 /tmp/verify-e2e-$$.log; RC=1; fi
   kill "$(cat /tmp/verify-pid-$$)" 2>/dev/null || true
   # next start spawns a child: stop whatever still listens on the port
-  for p in /proc/[0-9]*; do c=$(tr '\0' ' ' <"$p/cmdline" 2>/dev/null); case "$c" in *next-server*) kill "${p#/proc/}" 2>/dev/null;; esac; done
+  for p in /proc/[0-9]*; do [ -r "$p/cmdline" ] || continue; c=$(tr '\0' ' ' <"$p/cmdline" 2>/dev/null) || continue; case "$c" in *next-server*) kill "${p#/proc/}" 2>/dev/null;; esac; done
   exit $RC
 fi
 echo "verify ($MODE): all checks passed. Not covered: real-browser behaviour against Supabase, mobile layout, RLS (see supabase/tests)."
