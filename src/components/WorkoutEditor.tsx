@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Copy, Dumbbell, Info, Plus, Search, StickyNote, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Dumbbell, Info, Plus, Search, StickyNote, Trash2, X } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import type { MessageKey } from "@/lib/i18n";
 import type { Equipment, ExerciseKind, Muscle } from "@/lib/exercises";
@@ -54,7 +54,13 @@ let seq = 0;
 const nextKey = () => `k${++seq}`;
 const untouched = (): SetDraft["touched"] => ({ reps: false, rpe: false, weight: false });
 const newSet = (): SetDraft => ({ key: nextKey(), type: "normal", reps: "", rpe: "", weight: "", rest: "90", custom: false, touched: untouched() });
-const newBlock = (): BlockDraft => ({ key: nextKey(), exerciseId: null, notes: "", sets: [newSet()] });
+/** A new block starts with the usual three sets, so the coach only fills in reps. */
+const newBlock = (): BlockDraft => ({ key: nextKey(), exerciseId: null, notes: "", sets: [newSet(), newSet(), newSet()] });
+/** "N sets x R reps @ kg / RPE" fits one line when every set is a normal set with the same values. */
+function isUniform(sets: SetDraft[]): boolean {
+  const f = sets[0];
+  return !!f && sets.every((s) => s.type === "normal" && s.reps === f.reps && s.rpe === f.rpe && s.weight === f.weight && s.rest === f.rest);
+}
 /** Quick fill: a new set copies the previous one; warm-up and failure continue as normal sets. */
 const followUp = (prev: SetDraft): SetDraft => ({
   ...prev, key: nextKey(), touched: untouched(),
@@ -163,7 +169,9 @@ export function WorkoutEditor({
 
   const [name, setName] = useState(workout?.name ?? "");
   const [description, setDescription] = useState(workout?.description ?? "");
-  const [blocks, setBlocks] = useState<BlockDraft[]>(() => fromWorkout(workout));
+  // A new workout opens with its first exercise row ready.
+  const [blocks, setBlocks] = useState<BlockDraft[]>(() => (workout ? fromWorkout(workout) : [newBlock()]));
+  const [descOpen, setDescOpen] = useState(!!workout?.description);
   const [attempted, setAttempted] = useState(false);
   const [serverError, setServerError] = useState<MessageKey | null>(null);
   const [pending, startTransition] = useTransition();
@@ -219,7 +227,13 @@ export function WorkoutEditor({
     setAttempted(true);
     setServerError(null);
     if (errors.length) {
-      document.getElementById(`${uid}-${errors[0].id}`)?.focus();
+      // The field may sit in a panel that only opens because of this error: try again after the render.
+      const focusFirst = () => {
+        const id = `${uid}-${errors[0].id}`;
+        (document.getElementById(id) ?? document.getElementById(`${id}-all`))?.focus();
+      };
+      focusFirst();
+      requestAnimationFrame(focusFirst);
       return;
     }
     const payload = toPayload(name, description, blocks, byId);
@@ -260,14 +274,25 @@ export function WorkoutEditor({
             aria-invalid={nameErr || undefined} className={`input min-h-11 w-full ${nameErr ? bad : ""}`}
           />
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={eyebrow}>{t("workouts.editor.description")} ({t("common.optional")})</span>
-          <textarea
-            id={`${uid}-description`} value={description} onChange={(e) => setDescription(e.target.value)}
-            rows={3} maxLength={1000} placeholder={t("workouts.editor.descriptionPh")}
-            aria-invalid={errorIds.has("description") || undefined} className={`input w-full ${errorIds.has("description") ? bad : ""}`}
-          />
-        </label>
+        {descOpen || errorIds.has("description") ? (
+          <label className="flex flex-col gap-1.5">
+            <span className={eyebrow}>{t("workouts.editor.description")} ({t("common.optional")})</span>
+            <textarea
+              id={`${uid}-description`} value={description} onChange={(e) => setDescription(e.target.value)}
+              rows={3} maxLength={1000} placeholder={t("workouts.editor.descriptionPh")}
+              aria-invalid={errorIds.has("description") || undefined} className={`input w-full ${errorIds.has("description") ? bad : ""}`}
+            />
+          </label>
+        ) : (
+          <button
+            type="button" onClick={() => { setDescOpen(true); requestAnimationFrame(() => document.getElementById(`${uid}-description`)?.focus()); }}
+            aria-expanded={false}
+            className="flex min-h-11 w-full items-center gap-2 rounded-md px-1 text-left text-muted transition-colors hover:text-[var(--foreground)]"
+          >
+            <Plus size={16} aria-hidden className="shrink-0 text-[var(--accent)]" />
+            <span className="min-w-0 flex-1 truncate">{t("workouts.editor.descriptionAdd")}</span>
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -370,6 +395,10 @@ function BlockCard({
   const [bulk, setBulk] = useState("3");
   const [sheetFor, setSheetFor] = useState<number | null>(null);
   const [noteOpen, setNoteOpen] = useState(block.notes !== "");
+  // Per-set details stay closed unless the sets already differ from each other.
+  const [perSetOpen, setPerSetOpen] = useState(() => !isUniform(block.sets));
+  const [setsText, setSetsText] = useState(String(block.sets.length));
+  const [lenSeen, setLenSeen] = useState(block.sets.length);
   const focusSet = useRef<number | null>(null);
   const L = letter(index);
   const ex = block.exerciseId ? byId.get(block.exerciseId) : undefined;
@@ -378,6 +407,17 @@ function BlockCard({
   const touched = !!ex || block.sets.some((s) => s.reps || s.rpe || s.weight) || block.notes !== "";
   const numbers = setNumbers(block.sets);
   const noteId = `${uid}-b${index}.notes`;
+  const uniform = isUniform(block.sets);
+  const first = block.sets[0];
+  // Errors in fields the one-line view does not show must not hide in the closed panel.
+  const needsPanel = [...errorIds].some((id) => id.startsWith(`b${index}.s`) && !(uniform && /\.s0\.(reps|rpe|weight)$/.test(id)));
+  if (needsPanel && !perSetOpen) setPerSetOpen(true);
+  const panelId = `${uid}-b${index}.sets-panel`;
+  // Keep the count field in step with changes made elsewhere (add/remove a set in the panel).
+  if (lenSeen !== block.sets.length) {
+    setLenSeen(block.sets.length);
+    setSetsText(String(block.sets.length));
+  }
 
   // After "Add set", move focus to the reps field of the new set.
   useEffect(() => {
@@ -423,13 +463,30 @@ function BlockCard({
     if (n < 1) return;
     setSets((sets) => [...sets, ...copies(sets[sets.length - 1], n)]);
   }
+  /** One-line view: a value applies to every set of the block. */
+  function setAll(field: Field, value: string) {
+    setSets((sets) => sets.map((s) => ({ ...s, [field]: value, touched: { ...s.touched, [field]: true } })));
+  }
+  /** One-line view: more sets copy the last one, fewer sets drop from the end. */
+  function resize(n: number) {
+    setSets((sets) => (n > sets.length ? [...sets, ...copies(sets[sets.length - 1], n - sets.length)] : sets.slice(0, n)));
+  }
+  function onCount(v: string) {
+    setSetsText(v);
+    const n = /^\d{1,2}$/.test(v.trim()) ? Number(v.trim()) : NaN;
+    if (n >= 1 && n <= MAX_SETS && n !== block.sets.length) resize(n);
+  }
   function openNote() {
     setNoteOpen((o) => !o);
     if (!noteOpen) requestAnimationFrame(() => document.getElementById(noteId)?.focus());
   }
 
+  const rpeOptionsAll = first && first.rpe !== "" && !RPE_OPTIONS.includes(first.rpe) ? [first.rpe, ...RPE_OPTIONS] : RPE_OPTIONS;
+  const allSets = t("workouts.simple.allSets");
+  const tinyInput = "input num min-h-11 w-full !px-1.5 text-center text-lg";
+
   return (
-    <li className="card flex flex-col gap-4 text-sm">
+    <li className="card flex flex-col gap-3 text-sm">
       <div className="flex items-start gap-2">
         <span
           aria-hidden
@@ -441,38 +498,70 @@ function BlockCard({
           <span className="num text-lg">{L}</span>
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className={eyebrow}>{t("workouts.block.label", { label: L })}</span>
+          <span className="sr-only">{t("workouts.block.label", { label: L })}</span>
           <ExercisePicker
             id={`${uid}-b${index}.ex`} exercises={exercises} selected={ex} label={L}
             invalid={errorIds.has(`b${index}.ex`)}
             onPick={(e) => onChange((b) => ({ ...b, exerciseId: e.id }))}
           />
         </div>
-        <div className="-mr-2 flex shrink-0 items-center">
-          <button type="button" className={iconBtn} disabled={index === 0} onClick={() => onMove(-1)}
-            aria-label={`${t("workouts.block.up")} (${L})`} title={t("workouts.block.up")}>
-            <ArrowUp size={18} aria-hidden />
-          </button>
-          <button type="button" className={iconBtn} disabled={index === count - 1} onClick={() => onMove(1)}
-            aria-label={`${t("workouts.block.down")} (${L})`} title={t("workouts.block.down")}>
-            <ArrowDown size={18} aria-hidden />
-          </button>
-          {touched ? (
-            <ConfirmButton
-              action={async () => { onRemove(); }}
-              icon="trash" iconOnly className="!size-11"
-              label={`${t("workouts.block.remove")} (${L})`}
-              title={t("workouts.block.removeTitle", { label: L })}
-              body={t("workouts.block.removeBody")}
-            />
-          ) : (
-            <button type="button" className={`${iconBtn} hover:!bg-[var(--danger-bg)] hover:!text-danger`} onClick={onRemove}
-              aria-label={`${t("workouts.block.remove")} (${L})`} title={t("workouts.block.remove")}>
-              <Trash2 size={18} aria-hidden />
-            </button>
-          )}
-        </div>
       </div>
+
+      {/* the common case on one line: N sets x R reps @ kg / RPE */}
+      {uniform && first ? (
+        <div className="flex items-end gap-1.5">
+          <label className="flex w-14 shrink-0 flex-col gap-1">
+            <span className="text-xs text-muted">{t("workouts.simple.sets")}</span>
+            <input
+              id={`${uid}-b${index}.count`} value={setsText} onChange={(e) => onCount(e.target.value)}
+              onBlur={() => setSetsText(String(block.sets.length))}
+              inputMode="numeric" enterKeyHint="next" autoComplete="off" maxLength={2}
+              aria-label={`${t("workouts.simple.setsAria")} (${L})`}
+              className={tinyInput}
+            />
+          </label>
+          <span aria-hidden className="grid h-11 w-3 shrink-0 place-items-center text-muted">×</span>
+          <label className="flex w-14 shrink-0 flex-col gap-1">
+            <span className="text-xs text-muted">{t("workouts.simple.reps")}</span>
+            <input
+              id={`${uid}-b${index}.s0.reps-all`} value={first.reps} onChange={(e) => setAll("reps", e.target.value)}
+              inputMode="numeric" enterKeyHint="next" autoComplete="off"
+              aria-label={`${t("workouts.set.reps")}, ${allSets} (${L})`}
+              aria-invalid={errorIds.has(`b${index}.s0.reps`) || undefined}
+              className={`${tinyInput} ${errorIds.has(`b${index}.s0.reps`) ? bad : ""}`}
+            />
+          </label>
+          <span aria-hidden className="grid h-11 w-3 shrink-0 place-items-center text-muted">@</span>
+          {weighted && (
+            <label className="flex min-w-[3.75rem] flex-1 flex-col gap-1">
+              <span className="text-xs text-muted">{t("workouts.simple.kg")}</span>
+              <input
+                id={`${uid}-b${index}.s0.weight-all`} value={first.weight} onChange={(e) => setAll("weight", e.target.value)}
+                inputMode="decimal" enterKeyHint="next" autoComplete="off" placeholder={t("workouts.simple.weightPh")}
+                aria-label={`${t("workouts.set.weight")}, ${allSets} (${L})`}
+                aria-invalid={errorIds.has(`b${index}.s0.weight`) || undefined}
+                className={`${tinyInput} ${errorIds.has(`b${index}.s0.weight`) ? bad : ""}`}
+              />
+            </label>
+          )}
+          <label className="flex min-w-[3.75rem] flex-1 flex-col gap-1">
+            <span className="text-xs text-muted">{t("workouts.set.rpe")}</span>
+            <select
+              id={`${uid}-b${index}.s0.rpe-all`} value={first.rpe} onChange={(e) => setAll("rpe", e.target.value)}
+              aria-label={`${t("workouts.set.rpe")}, ${allSets} (${L})`}
+              aria-invalid={errorIds.has(`b${index}.s0.rpe`) || undefined}
+              className={`input min-h-11 w-full !px-2 ${errorIds.has(`b${index}.s0.rpe`) ? bad : ""}`}
+            >
+              <option value="">{t("workouts.set.rpeNone")}</option>
+              {rpeOptionsAll.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </label>
+        </div>
+      ) : (
+        <p className="rounded-md border px-3 py-2 text-muted" style={{ background: "var(--surface-2)" }}>
+          {t("workouts.simple.custom", { n: block.sets.length })}
+        </p>
+      )}
 
       {ex && (
         <div className="flex flex-col gap-1 text-xs text-muted">
@@ -505,6 +594,43 @@ function BlockCard({
         )}
       </div>
 
+      {/* per-set details and block actions share one row */}
+      <div className="flex items-center gap-1 border-t pt-2">
+        <button
+          type="button" onClick={() => setPerSetOpen((o) => !o)} aria-expanded={perSetOpen} aria-controls={panelId}
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-1 text-left font-semibold transition-colors hover:text-[var(--accent)]"
+        >
+          <ChevronDown size={16} aria-hidden className={`shrink-0 text-muted transition-transform ${perSetOpen ? "rotate-180" : ""}`} />
+          <span className="min-w-0 truncate">{t("workouts.simple.perSet")}</span>
+        </button>
+        <div className="-mr-2 flex shrink-0 items-center">
+          <button type="button" className={iconBtn} disabled={index === 0} onClick={() => onMove(-1)}
+            aria-label={`${t("workouts.block.up")} (${L})`} title={t("workouts.block.up")}>
+            <ArrowUp size={18} aria-hidden />
+          </button>
+          <button type="button" className={iconBtn} disabled={index === count - 1} onClick={() => onMove(1)}
+            aria-label={`${t("workouts.block.down")} (${L})`} title={t("workouts.block.down")}>
+            <ArrowDown size={18} aria-hidden />
+          </button>
+          {touched ? (
+            <ConfirmButton
+              action={async () => { onRemove(); }}
+              icon="trash" iconOnly className="!size-11"
+              label={`${t("workouts.block.remove")} (${L})`}
+              title={t("workouts.block.removeTitle", { label: L })}
+              body={t("workouts.block.removeBody")}
+            />
+          ) : (
+            <button type="button" className={`${iconBtn} hover:!bg-[var(--danger-bg)] hover:!text-danger`} onClick={onRemove}
+              aria-label={`${t("workouts.block.remove")} (${L})`} title={t("workouts.block.remove")}>
+              <Trash2 size={18} aria-hidden />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {perSetOpen && (
+      <div id={panelId} className="flex flex-col gap-3">
       <ol className="flex flex-col gap-3">
         {block.sets.map((s, si) => {
           const n = si + 1;
@@ -627,6 +753,8 @@ function BlockCard({
         </div>
         <p className="text-xs text-muted">{t("workouts.block.bulkHint")}</p>
       </div>
+      </div>
+      )}
 
       {sheetFor !== null && block.sets[sheetFor] && (
         <SetTypeSheet

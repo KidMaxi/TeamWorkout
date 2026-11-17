@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/roles";
 import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
-import { Hint } from "@/components/Hint";
 import { todayInTeamZone } from "@/lib/wellness";
 import { Avatar } from "@/components/Avatar";
 import { StrengthTabs } from "@/components/StrengthTabs";
@@ -13,15 +12,17 @@ export default async function StrengthPage({
   params, searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ athlete?: string }>;
+  searchParams: Promise<{ athlete?: string; tab?: string }>;
 }) {
   const { id } = await params;
-  const { athlete: athleteParam } = await searchParams;
+  const { athlete: athleteParam, tab } = await searchParams;
   const supabase = await createClient();
   const [{ t }, user] = await Promise.all([getT(), getAuthUser()]);
   const me = await getMembership(id, user!.id);
   if (!me) notFound();
   const isStaff = me.role === "staff";
+  // Staff plan workouts most: the bare URL opens Workouts. Their 5RM tab is ?tab=5rm (or ?athlete=...).
+  if (isStaff && !athleteParam && tab !== "5rm") redirect(`/team/${id}/strength/workouts`);
   const canLib = can(me.staffKinds, "manageLibrary");
 
   // Athletes the viewer may look at: staff sees all athletes of the team, an athlete only themself.
@@ -73,8 +74,7 @@ export default async function StrengthPage({
 
   return (
     <section className="flex flex-col gap-4">
-      <StrengthTabs teamId={id} />
-      <Hint id="strength-5rm" text={t("help.hint.strength")} href="/help#gym" linkLabel={t("help.hint.more")} />
+      <StrengthTabs teamId={id} isStaff={isStaff} />
 
       {isStaff && athletes.length > 0 && (
         <nav aria-label={t("strength.athlete.label")} className="-mx-4 overflow-x-auto px-4">
@@ -84,7 +84,7 @@ export default async function StrengthPage({
               return (
                 <li key={a.id}>
                   <Link
-                    href={`/team/${id}/strength?athlete=${a.id}`}
+                    href={`/team/${id}/strength?tab=5rm&athlete=${a.id}`}
                     aria-current={active ? "page" : undefined}
                     className={`flex min-h-11 items-center gap-2 rounded-md border py-1 pl-1 pr-4 text-sm font-medium transition-colors ${
                       active
@@ -113,11 +113,9 @@ export default async function StrengthPage({
         </div>
       ) : (
         <>
-          <h2 className="eyebrow !font-sans">
-            {isStaff ? t("strength.overview.titleFor", { name: chosen.name }) : t("strength.overview.title")}
-          </h2>
           <StrengthTests
             key={chosen.id}
+            title={isStaff ? t("strength.overview.titleFor", { name: chosen.name }) : t("strength.overview.title")}
             teamId={id}
             athleteId={chosen.id}
             today={todayInTeamZone()}

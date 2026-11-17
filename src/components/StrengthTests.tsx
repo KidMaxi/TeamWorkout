@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
-import { Calculator, Check, ChevronDown, Dumbbell, Plus } from "lucide-react";
+import { Fragment, useMemo, useRef, useState, useTransition } from "react";
+import { Calculator, Check, ChevronDown, Plus, X } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { dateLocale, type MessageKey } from "@/lib/i18n";
 import { estimateFiveRM, roundToStep, weightFor } from "@/lib/strength";
@@ -30,8 +30,10 @@ const HISTORY_MAX = 8;
 const label = "eyebrow";
 
 export function StrengthTests({
-  teamId, athleteId, today, exercises, tests, readOnly = false,
+  teamId, athleteId, today, exercises, tests, title, readOnly = false,
 }: {
+  /** Heading shown next to the "+ Test" button. */
+  title: string;
   /** Staff without the manageLibrary capability can look but not enter or delete tests. */
   readOnly?: boolean;
   teamId: string;
@@ -56,6 +58,7 @@ export function StrengthTests({
   // ---- add-test form ----
   const formRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [exerciseId, setExerciseId] = useState(exercises[0]?.id ?? "");
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState(5);
@@ -110,105 +113,36 @@ export function StrengthTests({
   const target = base ? weightFor(base, calcReps, calcRpe) : null;
 
   return (
-    <div className="stagger flex flex-col gap-6">
-      {/* overview */}
-      <ul className="flex flex-col gap-3">
-        {exercises.map((ex) => {
-          const list = byExercise.get(ex.id) ?? [];
-          const cur = list[0];
-          const prev = list.slice(1, 1 + HISTORY_MAX);
-          const series = [...list.slice(0, HISTORY_MAX + 1)].reverse();
-          const lo = Math.min(...series.map((s) => s.five_rm_kg));
-          const hi = Math.max(...series.map((s) => s.five_rm_kg));
-          return (
-            <li key={ex.id} className="card flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="min-w-0 truncate text-xl">{ex.name}</h3>
-                {cur && !readOnly && (
-                  <ConfirmButton
-                    action={deleteStrengthTest.bind(null, teamId, cur.id)}
-                    icon="trash"
-                    iconOnly
-                    label={t("strength.delete.test")}
-                    title={t("strength.delete.title")}
-                    body={t("strength.delete.body")}
-                    className="-mr-2 -mt-2"
-                  />
-                )}
-              </div>
-              {cur ? (
-                <>
-                  <div className="flex items-end justify-between gap-3">
-                    <p className="num text-4xl">
-                      {cur.estimated ? "≈ " : ""}{fmt(cur.five_rm_kg)}
-                      <span className="ml-1 text-base font-semibold text-muted">{t("strength.card.kg")}</span>
-                    </p>
-                    {series.length > 1 && (
-                      <div aria-hidden className="flex h-10 items-end gap-1">
-                        {series.map((s, i) => {
-                          const h = hi === lo ? 70 : 25 + ((s.five_rm_kg - lo) / (hi - lo)) * 75;
-                          const last = i === series.length - 1;
-                          return (
-                            <span
-                              key={s.id}
-                              className="w-1.5 rounded-sm"
-                              style={{ height: `${h}%`, background: last ? "var(--primary)" : "var(--surface-3)" }}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted">
-                    {fmtDate(cur.tested_at)} · {t("strength.card.tested", { weight: fmt(cur.weight_kg), reps: cur.reps, rpe: fmt(cur.rpe) })}
-                  </p>
-                  {prev.length > 0 && (
-                    <details className="group border-t pt-2">
-                      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm text-muted [&::-webkit-details-marker]:hidden">
-                        {t("strength.card.history")}
-                        <ChevronDown size={16} aria-hidden className="transition-transform group-open:rotate-180" />
-                      </summary>
-                      <ul className="flex flex-col">
-                        {prev.map((p) => (
-                          <li key={p.id} className="flex items-center justify-between gap-2 border-t py-1 text-sm first:border-t-0">
-                            <span className="min-w-0 text-muted">
-                              {fmtDate(p.tested_at)}
-                              <span className="block text-xs">{p.weight_kg} × {p.reps} @ {fmt(p.rpe)}</span>
-                            </span>
-                            <span className="num text-lg">{p.estimated ? "≈ " : ""}{fmt(p.five_rm_kg)} {t("strength.card.kg")}</span>
-                            {!readOnly && <ConfirmButton
-                              action={deleteStrengthTest.bind(null, teamId, p.id)}
-                              icon="trash"
-                              iconOnly
-                              label={t("strength.delete.test")}
-                              title={t("strength.delete.title")}
-                              body={t("strength.delete.body")}
-                              className="-mr-2"
-                            />}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-muted">{t("strength.card.noTest")}</p>
-              )}
-              {!readOnly && <button type="button" onClick={() => startAdd(ex.id)} className="btn inline-flex min-h-11 items-center justify-center gap-2 text-sm">
-                <Plus size={16} aria-hidden className="text-[var(--accent)]" />{t("strength.card.addTest")}
-              </button>}
-            </li>
-          );
-        })}
-      </ul>
+    <div className="flex flex-col gap-4">
+      {/* header: title and the one primary action */}
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="eyebrow !font-sans min-w-0 truncate">{title}</h2>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => (open ? setOpen(false) : startAdd(exerciseId || exercises[0]?.id || ""))}
+            aria-expanded={open}
+            aria-controls="strength-test-form"
+            className="btn btn-primary inline-flex min-h-11 shrink-0 items-center gap-1.5 px-4"
+          >
+            <Plus size={18} aria-hidden />{t("strength.action.addTest")}
+          </button>
+        )}
+      </div>
 
       {/* add test */}
-      {!readOnly && <div ref={formRef} className="scroll-mt-4">
-        <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="card group !p-0">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 font-semibold [&::-webkit-details-marker]:hidden">
-            <span className="flex items-center gap-2"><Dumbbell size={18} aria-hidden className="text-[var(--accent)]" />{t("strength.form.title")}</span>
-            <ChevronDown size={16} aria-hidden className="text-muted transition-transform group-open:rotate-180" />
-          </summary>
+      {!readOnly && open && (
+        <div ref={formRef} id="strength-test-form" className="card scroll-mt-4 !p-0">
+          <div className="flex min-h-12 items-center justify-between gap-2 px-4 font-semibold">
+            <h3 className="text-xl">{t("strength.form.title")}</h3>
+            <button
+              type="button" onClick={() => setOpen(false)}
+              aria-label={t("common.cancel")} title={t("common.cancel")}
+              className="-mr-2 inline-grid size-11 shrink-0 place-items-center rounded-md text-muted hover:text-[var(--foreground)]"
+            >
+              <X size={18} aria-hidden />
+            </button>
+          </div>
           <form onSubmit={submit} className="grid grid-cols-2 gap-3 border-t p-4 text-sm" aria-busy={pending}>
             <label className="col-span-2 flex flex-col gap-1.5">
               <span className={label}>{t("strength.form.exercise")}</span>
@@ -272,81 +206,207 @@ export function StrengthTests({
               <Check size={18} aria-hidden />{pending ? t("common.loading") : t("strength.form.save")}
             </button>
           </form>
-        </details>
-      </div>}
+        </div>
+      )}
 
-      {/* calculator */}
-      <section className="card card-hero flex flex-col gap-4" aria-labelledby="calc-title">
-        <h2 id="calc-title" className="flex items-center gap-2 text-xl">
-          <Calculator size={18} aria-hidden className="text-[var(--accent)]" />{t("strength.calc.title")}
-        </h2>
-        {!activeCalc || !base ? (
-          <p className="text-sm text-muted">{t("strength.calc.none")}</p>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <label className="col-span-2 flex flex-col gap-1.5">
-                <span className={label}>{t("strength.calc.exercise")}</span>
-                <select value={activeCalc.id} onChange={(e) => setCalcId(e.target.value)} className="input min-h-11 w-full">
-                  {withTest.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className={label}>{t("strength.calc.reps")}</span>
-                <select value={calcReps} onChange={(e) => setCalcReps(Number(e.target.value))} className="input min-h-11 w-full">
-                  {REPS.map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className={label}>{t("strength.calc.rpe")}</span>
-                <select value={calcRpe} onChange={(e) => setCalcRpe(Number(e.target.value))} className="input min-h-11 w-full">
-                  {RPES.map((n) => <option key={n} value={n}>{fmt(n)}</option>)}
-                </select>
-              </label>
-            </div>
-
-            <div className="text-center" aria-live="polite">
-              <p className={label}>{t("strength.calc.result")}</p>
-              {target !== null ? (
-                <p className="num mt-1 text-6xl">
-                  {fmt(target)}<span className="ml-1 text-xl font-semibold text-muted">{t("strength.card.kg")}</span>
-                </p>
-              ) : (
-                <p className="mt-1 text-muted">{t("strength.calc.outOfTable")}</p>
-              )}
-            </div>
-
-            <div>
-              <p className={`${label} mb-2`}>{t("strength.calc.tableTitle")}</p>
-              <table className="w-full text-center text-sm">
-                <thead>
-                  <tr>
-                    <th scope="col" className="py-1 text-left">{t("strength.calc.reps")}</th>
-                    {TABLE_RPES.map((r) => <th key={r} scope="col" className="py-1">RPE {r}</th>)}
+      {/* overview: one compact table, details one tap deeper */}
+      <div className="card overflow-hidden !p-0">
+        <table className="w-full text-sm">
+          <thead>
+            <tr>
+              <th scope="col" className="py-2 pl-4 pr-2 text-left">{t("strength.col.exercise")}</th>
+              <th scope="col" className="px-2 py-2 text-right">{t("strength.col.fiveRm")}</th>
+              <th scope="col" className="py-2 pl-2 pr-4 text-right">{t("strength.col.date")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {exercises.map((ex) => {
+              const list = byExercise.get(ex.id) ?? [];
+              const cur = list[0];
+              const prev = list.slice(1, 1 + HISTORY_MAX);
+              const series = [...list.slice(0, HISTORY_MAX + 1)].reverse();
+              const lo = Math.min(...series.map((s) => s.five_rm_kg));
+              const hi = Math.max(...series.map((s) => s.five_rm_kg));
+              const isOpen = expanded === ex.id;
+              const panelId = `strength-ex-${ex.id}`;
+              return (
+                <Fragment key={ex.id}>
+                  <tr className="border-t">
+                    <td className="p-0">
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : ex.id)}
+                        aria-expanded={isOpen}
+                        aria-controls={panelId}
+                        className="flex min-h-12 w-full items-center gap-1.5 py-1 pl-4 pr-2 text-left font-semibold"
+                      >
+                        <ChevronDown size={16} aria-hidden className={`shrink-0 text-muted transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        <span className="min-w-0 truncate">{ex.name}</span>
+                      </button>
+                    </td>
+                    <td className="num whitespace-nowrap px-2 text-right text-xl">
+                      {cur ? <>{cur.estimated ? "≈ " : ""}{fmt(cur.five_rm_kg)}<span className="ml-1 text-xs font-semibold text-muted">{t("strength.card.kg")}</span></> : <span className="text-muted">–</span>}
+                    </td>
+                    <td className="whitespace-nowrap py-1 pl-2 pr-4 text-right text-xs text-muted">{cur ? fmtDate(cur.tested_at) : "–"}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {TABLE_REPS.map((n) => (
-                    <tr key={n} className="border-t">
-                      <th scope="row" className="py-1.5 text-left !text-[var(--foreground)]">{n}</th>
-                      {TABLE_RPES.map((r) => {
-                        const w = weightFor(base, n, r);
-                        const on = n === calcReps && r === calcRpe;
-                        return (
-                          <td key={r} className={`num py-1.5 text-base ${on ? "rounded-md bg-[var(--primary)] text-[var(--on-primary)]" : ""}`}>
-                            {w === null ? "–" : fmt(w)}
-                          </td>
-                        );
-                      })}
+                  {isOpen && (
+                    <tr id={panelId} style={{ background: "var(--surface-2)" }}>
+                      <td colSpan={3} className="px-4 py-3">
+                        <div className="flex flex-col gap-3">
+                          {cur ? (
+                            <>
+                              <div className="flex items-end justify-between gap-3">
+                                <p className="text-sm text-muted">
+                                  {t("strength.card.tested", { weight: fmt(cur.weight_kg), reps: cur.reps, rpe: fmt(cur.rpe) })}
+                                </p>
+                                {series.length > 1 && (
+                                  <div aria-hidden className="flex h-8 shrink-0 items-end gap-1">
+                                    {series.map((s, i) => {
+                                      const h = hi === lo ? 70 : 25 + ((s.five_rm_kg - lo) / (hi - lo)) * 75;
+                                      const last = i === series.length - 1;
+                                      return (
+                                        <span
+                                          key={s.id}
+                                          className="w-1.5 rounded-sm"
+                                          style={{ height: `${h}%`, background: last ? "var(--primary)" : "var(--surface-3)" }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                              {prev.length > 0 && (
+                                <div className="flex flex-col">
+                                  <p className={label}>{t("strength.card.history")}</p>
+                                  <ul className="flex flex-col">
+                                    {prev.map((p) => (
+                                      <li key={p.id} className="flex items-center justify-between gap-2 border-t py-1 text-sm first:border-t-0">
+                                        <span className="min-w-0 text-muted">
+                                          {fmtDate(p.tested_at)}
+                                          <span className="block text-xs">{p.weight_kg} × {p.reps} @ {fmt(p.rpe)}</span>
+                                        </span>
+                                        <span className="num text-lg">{p.estimated ? "≈ " : ""}{fmt(p.five_rm_kg)} {t("strength.card.kg")}</span>
+                                        {!readOnly && <ConfirmButton
+                                          action={deleteStrengthTest.bind(null, teamId, p.id)}
+                                          icon="trash"
+                                          iconOnly
+                                          label={t("strength.delete.test")}
+                                          title={t("strength.delete.title")}
+                                          body={t("strength.delete.body")}
+                                          className="-mr-2"
+                                        />}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-sm text-muted">{t("strength.card.noTest")}</p>
+                          )}
+                          {!readOnly && (
+                            <div className="flex items-center gap-2">
+                              <button type="button" onClick={() => startAdd(ex.id)} className="btn inline-flex min-h-11 flex-1 items-center justify-center gap-2 text-sm">
+                                <Plus size={16} aria-hidden className="text-[var(--accent)]" />{t("strength.card.addTest")}
+                              </button>
+                              {cur && (
+                                <ConfirmButton
+                                  action={deleteStrengthTest.bind(null, teamId, cur.id)}
+                                  icon="trash"
+                                  iconOnly
+                                  label={t("strength.delete.test")}
+                                  title={t("strength.delete.title")}
+                                  body={t("strength.delete.body")}
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs text-muted">{t("strength.calc.disclaimer")}</p>
-          </>
-        )}
-      </section>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* weight table (RPE): closed by default */}
+      <details className="card group !p-0">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 font-semibold [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2"><Calculator size={18} aria-hidden className="text-[var(--accent)]" />{t("strength.calc.title")}</span>
+          <ChevronDown size={16} aria-hidden className="text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="flex flex-col gap-4 border-t p-4">
+          {!activeCalc || !base ? (
+            <p className="text-sm text-muted">{t("strength.calc.none")}</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <label className="col-span-2 flex flex-col gap-1.5">
+                  <span className={label}>{t("strength.calc.exercise")}</span>
+                  <select value={activeCalc.id} onChange={(e) => setCalcId(e.target.value)} className="input min-h-11 w-full">
+                    {withTest.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={label}>{t("strength.calc.reps")}</span>
+                  <select value={calcReps} onChange={(e) => setCalcReps(Number(e.target.value))} className="input min-h-11 w-full">
+                    {REPS.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={label}>{t("strength.calc.rpe")}</span>
+                  <select value={calcRpe} onChange={(e) => setCalcRpe(Number(e.target.value))} className="input min-h-11 w-full">
+                    {RPES.map((n) => <option key={n} value={n}>{fmt(n)}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              <div className="text-center" aria-live="polite">
+                <p className={label}>{t("strength.calc.result")}</p>
+                {target !== null ? (
+                  <p className="num mt-1 text-5xl">
+                    {fmt(target)}<span className="ml-1 text-xl font-semibold text-muted">{t("strength.card.kg")}</span>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-muted">{t("strength.calc.outOfTable")}</p>
+                )}
+              </div>
+
+              <div>
+                <p className={`${label} mb-2`}>{t("strength.calc.tableTitle")}</p>
+                <table className="w-full text-center text-sm">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="py-1 text-left">{t("strength.calc.reps")}</th>
+                      {TABLE_RPES.map((r) => <th key={r} scope="col" className="py-1">RPE {r}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TABLE_REPS.map((n) => (
+                      <tr key={n} className="border-t">
+                        <th scope="row" className="py-1.5 text-left !text-[var(--foreground)]">{n}</th>
+                        {TABLE_RPES.map((r) => {
+                          const w = weightFor(base, n, r);
+                          const on = n === calcReps && r === calcRpe;
+                          return (
+                            <td key={r} className={`num py-1.5 text-base ${on ? "rounded-md bg-[var(--primary)] text-[var(--on-primary)]" : ""}`}>
+                              {w === null ? "–" : fmt(w)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted">{t("strength.calc.disclaimer")}</p>
+            </>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

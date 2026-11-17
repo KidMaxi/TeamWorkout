@@ -4,7 +4,6 @@ import { ChevronLeft, CircleHelp, Settings, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser, getMembership, getT } from "@/lib/auth-cache";
 import { LogoMark } from "@/components/Logo";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { can } from "@/lib/roles";
 import { TeamNav } from "@/components/TeamNav";
 import { getPendingCount } from "@/lib/pending";
@@ -55,7 +54,6 @@ export default async function TeamLayout({
           <h1 className="display truncate text-xl">{team.name}</h1>
         </div>
         <div className="flex items-center gap-0.5">
-          <LanguageSwitcher />
           <Link href="/help" aria-label={t("common.nav.help")} title={t("common.nav.help")} className="grid size-11 place-items-center text-muted hover:text-[var(--foreground)]">
             <CircleHelp size={18} aria-hidden />
           </Link>

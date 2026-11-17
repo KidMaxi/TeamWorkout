@@ -51,11 +51,11 @@ export default async function WorkoutsPage({ params }: { params: Promise<{ id: s
 
   return (
     <section className="flex flex-col gap-4">
-      <StrengthTabs teamId={id} />
+      <StrengthTabs teamId={id} isStaff={me.role === "staff"} />
       <Hint id="strength-workouts" text={t("help.hint.workouts")} href="/help#gym" linkLabel={t("help.hint.more")} />
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="display text-2xl">{t("workouts.title")}</h2>
+          <h2 className="sr-only">{t("workouts.title")}</h2>
           <p className="text-sm text-muted">{t("workouts.intro")}</p>
         </div>
         {isStaff && workouts.length > 0 && !noExercises && (
@@ -104,7 +104,7 @@ export default async function WorkoutsPage({ params }: { params: Promise<{ id: s
                   </h3>
                   <p className="eyebrow !font-sans">{plural("blocks", blocks.length)} · {plural("sets", sets)}</p>
                 </div>
-                <p className={`line-clamp-2 ${w.description ? "" : "text-muted"}`}>{w.description || t("workouts.noDescription")}</p>
+                {w.description && <p className="line-clamp-2">{w.description}</p>}
                 {names.length > 0 && (
                   <ul className="flex flex-wrap gap-1.5" aria-label={t("workouts.block.exercise")}>
                     {names.slice(0, 5).map((n, i) => <li key={i} className="chip">{n}</li>)}
