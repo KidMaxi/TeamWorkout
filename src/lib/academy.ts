@@ -92,3 +92,43 @@ export function weekNav(weekStart: string, now: Date = new Date()): WeekNav {
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   return { start, end: days[6], prev: addDays(start, -7), next: addDays(start, 7), thisWeek, isCurrent: start === thisWeek, days, todayIndex: days.indexOf(today) };
 }
+
+export type FitStatus = "fit" | "less_fit" | "not_fit" | "unknown";
+export type FitRow = { team_id: string; user_id: string; status: FitStatus; reason_code: string | null; reason_detail: string | null };
+
+const REASONS = ["availability", "pain", "sleep", "soreness", "fatigue", "stress", "mood"] as const;
+export type ReasonCode = (typeof REASONS)[number];
+
+/** Narrow a raw status string; anything unexpected counts as unknown. */
+export const fitStatus = (v: unknown): FitStatus => (v === "fit" || v === "less_fit" || v === "not_fit" ? v : "unknown");
+
+/** Known reason code, or null (admins get no reason, unknown codes are ignored). */
+export const reasonKey = (code: unknown): ReasonCode | null =>
+  typeof code === "string" && (REASONS as readonly string[]).includes(code) ? (code as ReasonCode) : null;
+
+/** Lookup key of a player within a team. */
+export const fitKey = (teamId: string, userId: string): string => `${teamId}:${userId}`;
+
+/** Fit rows indexed by team + user. */
+export function fitMap(fit: readonly FitRow[]): Map<string, FitRow> {
+  const m = new Map<string, FitRow>();
+  for (const f of fit) m.set(fitKey(f.team_id, f.user_id), { ...f, status: fitStatus(f.status) });
+  return m;
+}
+
+export type Flag = { teamId: string; teamName: string; userId: string; name: string; status: "less_fit" | "not_fit"; reason: ReasonCode | null; detail: string | null };
+/** Players that are less_fit or not_fit: not_fit first, then team name, then player name. */
+export function flagList(rows: readonly AcademyRow[], fit: readonly FitRow[]): Flag[] {
+  const m = fitMap(fit);
+  const out: Flag[] = [];
+  for (const r of rows) {
+    const f = m.get(fitKey(r.team_id, r.user_id));
+    if (!f || (f.status !== "less_fit" && f.status !== "not_fit")) continue;
+    out.push({
+      teamId: r.team_id, teamName: r.team_name, userId: r.user_id, name: r.full_name?.trim() || "—",
+      status: f.status, reason: reasonKey(f.reason_code), detail: f.reason_detail?.trim() || null,
+    });
+  }
+  const rank = (s: Flag["status"]) => (s === "not_fit" ? 0 : 1);
+  return out.sort((a, b) => rank(a.status) - rank(b.status) || a.teamName.localeCompare(b.teamName) || a.name.localeCompare(b.name));
+}

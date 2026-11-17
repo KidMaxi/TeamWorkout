@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Dumbbell, LayoutDashboard, User, Users } from "lucide-react";
+import { CalendarDays, Dumbbell, LayoutDashboard, Trophy, User, Users } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 
-export function TeamNav({ teamId, isHead, pending = 0 }: { teamId: string; isHead: boolean; pending?: number }) {
+export function TeamNav({ teamId, isHead, pending = 0, showLeaderboard = false }: { teamId: string; isHead: boolean; pending?: number; showLeaderboard?: boolean }) {
   const { t } = useT();
   const path = usePathname();
   const base = `/team/${teamId}`;
@@ -14,6 +14,7 @@ export function TeamNav({ teamId, isHead, pending = 0 }: { teamId: string; isHea
     { href: base, label: t("common.nav.overview"), Icon: LayoutDashboard, exact: true },
     { href: `${base}/sessions`, label: t("common.nav.sessions"), Icon: CalendarDays },
     { href: `${base}/strength`, label: t("strength.title"), Icon: Dumbbell },
+    ...(showLeaderboard ? [{ href: "/leaderboard", label: t("common.nav.leaderboard"), Icon: Trophy }] : []),
     ...(isHead ? [{ href: `${base}/members`, label: t("common.nav.members"), Icon: Users }] : []),
     { href: "/profile", label: t("common.nav.profile"), Icon: User },
   ];

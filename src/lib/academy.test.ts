@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { AcademyRow } from "./academy.ts";
+import type { AcademyRow, FitRow } from "./academy.ts";
 // @ts-expect-error node needs the .ts extension; tsconfig does not allow it
-import { kpis, dailyTotals, teamSummaries, parseWeekParam, weekNav, currentWeekStart, normalizeDays, avgRound } from "./academy.ts";
+import { kpis, dailyTotals, teamSummaries, parseWeekParam, weekNav, currentWeekStart, normalizeDays, avgRound, flagList, reasonKey, fitStatus } from "./academy.ts";
 
 const R = (team: string, name: string, days: number[], o: Partial<AcademyRow> = {}): AcademyRow => ({
   team_id: team, team_name: `Team ${team}`, user_id: `${team}-${name}`, full_name: name, jersey_number: null, position: null,
@@ -59,4 +59,39 @@ test("weekNav: prev/next, current week and today index in Europe/Amsterdam", () 
   assert.equal(late.todayIndex, -1);
   assert.equal(currentWeekStart(new Date("2026-11-22T23:30:00Z")), "2026-11-23");
   assert.equal(weekNav("2026-03-23", new Date("2026-01-01T12:00:00Z")).next, "2026-03-30"); // across DST
+});
+
+const F = (team: string, name: string, status: FitRow["status"], code: string | null = null, detail: string | null = null): FitRow =>
+  ({ team_id: team, user_id: `${team}-${name}`, status, reason_code: code, reason_detail: detail });
+
+test("reasonKey and fitStatus accept only known values", () => {
+  assert.equal(reasonKey("pain"), "pain");
+  assert.equal(reasonKey("sleep"), "sleep");
+  assert.equal(reasonKey("nope"), null);
+  assert.equal(reasonKey(null), null);
+  assert.equal(fitStatus("not_fit"), "not_fit");
+  assert.equal(fitStatus("weird"), "unknown");
+});
+
+test("flagList keeps only less_fit/not_fit, not_fit first, then team and name", () => {
+  const fit = [
+    F("b", "Bo", "less_fit", "sleep"),
+    F("a", "Al", "fit"),
+    F("b", "Cy", "not_fit", "pain", " linkerknie "),
+    F("a", "Zed", "unknown"),
+    F("a", "Ghost", "not_fit"),
+  ];
+  const list = flagList([...rows, R("a", "Zed", [0, 0, 0, 0, 0, 0, 0])], fit);
+  assert.deepEqual(list.map((f) => [f.name, f.status]), [["Cy", "not_fit"], ["Bo", "less_fit"]]);
+  assert.equal(list[0].reason, "pain");
+  assert.equal(list[0].detail, "linkerknie");
+  assert.equal(list[1].detail, null);
+});
+
+test("flagList without reasons (admin) still lists names and handles empty input", () => {
+  const list = flagList(rows, [F("a", "Al", "not_fit")]);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].reason, null);
+  assert.deepEqual(flagList(rows, []), []);
+  assert.deepEqual(flagList([], [F("a", "Al", "not_fit")]), []);
 });

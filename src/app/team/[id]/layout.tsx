@@ -21,12 +21,16 @@ export default async function TeamLayout({
   const supabase = await createClient();
   // Team name and membership are independent; the page below shares the same cached membership lookup.
   const [{ data: team }, me] = await Promise.all([
-    supabase.from("teams").select("name").eq("id", id).single(),
+    supabase.from("teams").select("name, club_id").eq("id", id).single(),
     getMembership(id, user!.id),
   ]);
   if (!team) notFound();
 
-  const pending = me?.role === "athlete" ? await getPendingCount(supabase, id, user!.id) : 0;
+  // Independent of each other: unread-test count and whether the club leaderboard is open for this user.
+  const [pending, lbAccess] = await Promise.all([
+    me?.role === "athlete" ? getPendingCount(supabase, id, user!.id) : Promise.resolve(0),
+    team.club_id ? supabase.rpc("leaderboard_access", { _club: team.club_id }).then((r) => r.data) : Promise.resolve(false),
+  ]);
 
   return (
     <div className="mx-auto min-h-dvh max-w-3xl px-4 pb-32 pt-5 md:pb-8">
@@ -48,7 +52,7 @@ export default async function TeamLayout({
           </Link>
         </div>
       </header>
-      <TeamNav teamId={id} pending={pending} isHead={can(me?.staffKinds, "manageMembers")} />
+      <TeamNav teamId={id} pending={pending} isHead={can(me?.staffKinds, "manageMembers")} showLeaderboard={lbAccess === true} />
       {children}
     </div>
   );

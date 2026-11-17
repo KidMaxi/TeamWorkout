@@ -5,20 +5,25 @@ import { Search, Users } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { dateLocale, type MessageKey } from "@/lib/i18n";
 import { byJerseyThenName, isPosition, playerLabel } from "@/lib/positions";
-import { avgRound, normalizeDays, type AcademyRow } from "@/lib/academy";
+import { avgRound, fitKey, fitMap, flagList, normalizeDays, reasonKey, type AcademyRow, type FitRow, type FitStatus } from "@/lib/academy";
 
 type SortKey = "week" | "name" | "number";
-type Player = AcademyRow & { name: string };
+type Player = AcademyRow & { name: string; fit: FitRow | null };
+
+const FIT_CLS: Record<Exclude<FitStatus, "unknown">, string> = { fit: "badge badge-ok", less_fit: "badge badge-watch", not_fit: "badge badge-high" };
 
 const fmt = (n: number, loc: string) => n.toLocaleString(loc);
 
 /** Search, team filter and sort for the academy week; one section per team with a table (>=640px) or compact cards (phones). */
-export function AcademyBoard({ rows, dayLabels, todayIndex }: { rows: AcademyRow[]; dayLabels: string[]; todayIndex: number }) {
+export function AcademyBoard({ rows, fit, dayLabels, todayIndex }: { rows: AcademyRow[]; fit: FitRow[]; dayLabels: string[]; todayIndex: number }) {
   const { t, locale } = useT();
   const loc = dateLocale(locale);
   const [q, setQ] = useState("");
   const [team, setTeam] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("week");
+
+  const fits = useMemo(() => fitMap(fit), [fit]);
+  const flags = useMemo(() => flagList(rows, fit), [rows, fit]);
 
   const teams = useMemo(() => {
     const m = new Map<string, string>();
@@ -38,13 +43,13 @@ export function AcademyBoard({ rows, dayLabels, todayIndex }: { rows: AcademyRow
         const all = rows.filter((r) => r.team_id === tm.id);
         const total = all.reduce((s, r) => s + r.week_au, 0);
         const players: Player[] = all
-          .map((r) => ({ ...r, name: r.full_name?.trim() || "—", day_au: normalizeDays(r.day_au) }))
+          .map((r) => ({ ...r, fit: fits.get(fitKey(r.team_id, r.user_id)) ?? null, name: r.full_name?.trim() || "—", day_au: normalizeDays(r.day_au) }))
           .filter((p) => !needle || p.name.toLowerCase().includes(needle))
           .sort(cmp);
         return { ...tm, count: all.length, total, avg: avgRound(total, all.length), players };
       })
       .filter((g) => g.players.length > 0);
-  }, [rows, teams, q, team, sort, loc]);
+  }, [rows, teams, fits, q, team, sort, loc]);
 
   if (rows.length === 0) {
     return (
@@ -63,8 +68,50 @@ export function AcademyBoard({ rows, dayLabels, todayIndex }: { rows: AcademyRow
     return playerLabel(null, pos);
   };
 
+  const reasonText = (status: FitStatus, code: string | null, detail: string | null): string | null => {
+    const c = reasonKey(code);
+    if (!c) return null;
+    const d = detail?.trim();
+    if (c === "pain") return d ? t("academy.reason.painAt", { detail: d }) : t("academy.reason.pain");
+    if (c === "availability") return d || (status === "not_fit" ? t("academy.reason.availNot") : t("academy.reason.availLess"));
+    return t(`academy.reason.${c}` as MessageKey);
+  };
+  const FitChip = ({ status }: { status: FitStatus }) =>
+    status === "unknown"
+      ? <span title={t("academy.fit.unknown")} aria-label={t("academy.fit.unknown")} className="text-muted">—</span>
+      : <span className={FIT_CLS[status]}>{t(`academy.fit.${status}` as MessageKey)}</span>;
+  const PlayerReason = ({ p }: { p: Player }) => {
+    const txt = p.fit ? reasonText(p.fit.status, p.fit.reason_code, p.fit.reason_detail) : null;
+    return txt ? <span className="block break-words text-xs text-[var(--foreground)]">{txt}</span> : null;
+  };
+
   return (
     <div className="flex flex-col gap-5">
+      <section className="card flex flex-col gap-3" aria-labelledby="checkin-title">
+        <header className="flex flex-col gap-0.5">
+          <h2 id="checkin-title" className="display text-lg">{t("academy.flags.title")}</h2>
+          <p className="text-xs text-muted">{t("academy.flags.caption")}</p>
+        </header>
+        {flags.length === 0 ? (
+          <p className="text-sm text-muted">{t("academy.flags.none")}</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {flags.map((f) => {
+              const txt = reasonText(f.status, f.reason, f.detail);
+              return (
+                <li key={`${f.teamId}:${f.userId}`} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-[var(--line)] px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{f.name} <span className="text-xs font-normal text-muted">· {f.teamName}</span></p>
+                    {txt && <p className="break-words text-xs text-muted">{txt}</p>}
+                  </div>
+                  <span className={`shrink-0 ${FIT_CLS[f.status]}`}>{t(`academy.fit.${f.status}` as MessageKey)}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
@@ -117,8 +164,12 @@ export function AcademyBoard({ rows, dayLabels, todayIndex }: { rows: AcademyRow
                         {p.jersey_number != null && <span className="mr-1.5 text-muted">#{p.jersey_number}</span>}{p.name}
                       </p>
                       {posText(p) && <p className="truncate text-xs text-muted">{posText(p)}</p>}
+                      <PlayerReason p={p} />
                     </div>
-                    <p className="num shrink-0 text-2xl">{fmt(p.week_au, loc)}<span className="ml-1 text-xs font-normal text-muted">{t("academy.unit.au")}</span></p>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                    <FitChip status={p.fit?.status ?? "unknown"} />
+                    <p className="num text-2xl">{fmt(p.week_au, loc)}<span className="ml-1 text-xs font-normal text-muted">{t("academy.unit.au")}</span></p>
+                    </div>
                   </div>
                   <div className="mt-2 grid grid-cols-7 gap-1" role="img" aria-label={p.day_au.map((v, i) => `${dayLabels[i]} ${v}`).join(", ")}>
                     {p.day_au.map((v, i) => (
@@ -147,6 +198,7 @@ export function AcademyBoard({ rows, dayLabels, todayIndex }: { rows: AcademyRow
                 <tr className="text-left">
                   <th scope="col" className="eyebrow w-12 py-2 pr-2 font-semibold">{t("academy.col.number")}</th>
                   <th scope="col" className="eyebrow py-2 pr-2 font-semibold">{t("academy.col.player")}</th>
+                  <th scope="col" className="eyebrow px-1.5 py-2 font-semibold">{t("academy.col.fit")}</th>
                   {dayLabels.map((d, i) => (
                     <th key={i} scope="col" className={`eyebrow px-1.5 py-2 text-right font-semibold ${i === todayIndex ? "!text-[var(--accent)]" : ""}`}>{d}</th>
                   ))}
@@ -162,7 +214,9 @@ export function AcademyBoard({ rows, dayLabels, todayIndex }: { rows: AcademyRow
                     <td className="py-2.5 pr-2">
                       <span className="block font-medium">{p.name}</span>
                       {posText(p) && <span className="block text-xs text-muted">{posText(p)}</span>}
+                      <PlayerReason p={p} />
                     </td>
+                    <td className="px-1.5 py-2.5"><FitChip status={p.fit?.status ?? "unknown"} /></td>
                     {p.day_au.map((v, i) => (
                       <td key={i} className={`px-1.5 py-2.5 text-right tabular-nums ${v === 0 ? "text-muted opacity-60" : ""}`}>{fmt(v, loc)}</td>
                     ))}

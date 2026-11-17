@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthUser, getT } from "@/lib/auth-cache";
 import { dateLocale } from "@/lib/i18n";
 import { AcademyBoard } from "@/components/AcademyBoard";
-import { currentWeekStart, dailyTotals, kpis, normalizeDays, parseWeekParam, weekNav, type AcademyRow } from "@/lib/academy";
+import { currentWeekStart, dailyTotals, kpis, normalizeDays, parseWeekParam, weekNav, type AcademyRow, type FitRow } from "@/lib/academy";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Search = { club?: string | string[]; week?: string | string[] };
@@ -38,12 +38,15 @@ export default async function AcademyPage({ searchParams }: { searchParams: Prom
   const clubId = wanted && UUID.test(wanted) && clubs.has(wanted) ? wanted : [...clubs.keys()][0];
   const weekStart = parseWeekParam(sp.week) ?? currentWeekStart();
 
-  const [{ data, error }, { data: clubRow }] = await Promise.all([
+  const [{ data, error }, { data: fitData }, { data: clubRow }] = await Promise.all([
     supabase.rpc("academy_week_matrix", { _club: clubId, _week_start: weekStart }),
+    supabase.rpc("academy_fit_status", { _club: clubId }),
     supabase.from("clubs").select("name").eq("id", clubId).maybeSingle(),
   ]);
   if (error) throw new Error(error.message);
   const rows: AcademyRow[] = ((data ?? []) as AcademyRow[]).map((r) => ({ ...r, day_au: normalizeDays(r.day_au) }));
+  // Fit status is an add-on: if it fails the load overview still renders.
+  const fit = ((fitData ?? []) as FitRow[]);
   const clubName = clubRow?.name || clubs.get(clubId) || "";
 
   const loc = dateLocale(locale);
@@ -122,7 +125,7 @@ export default async function AcademyPage({ searchParams }: { searchParams: Prom
         </div>
       </section>
 
-      <AcademyBoard rows={rows} dayLabels={dayLabels} todayIndex={nav.todayIndex} />
+      <AcademyBoard rows={rows} fit={fit} dayLabels={dayLabels} todayIndex={nav.todayIndex} />
 
       <p className="text-xs text-muted">{t("academy.note")}</p>
     </main>
