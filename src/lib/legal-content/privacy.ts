@@ -8,7 +8,7 @@ export const content: LegalContent = {
   nl: {
     title: "Privacyverklaring",
     intro:
-      "TeamWorkout helpt sportteams om trainingsbelasting te plannen en te volgen. Hieronder leggen we in gewone taal uit welke gegevens we verwerken, waarom, wie ze ziet en welke rechten je hebt. Gaat het om gegevens van minderjarigen of om gezondheidsgegevens, dan lees je daar extra uitleg over.",
+      "Courtload helpt sportteams om trainingsbelasting te plannen en te volgen. Hieronder leggen we in gewone taal uit welke gegevens we verwerken, waarom, wie ze ziet en welke rechten je hebt. Gaat het om gegevens van minderjarigen of om gezondheidsgegevens, dan lees je daar extra uitleg over.",
     sections: [
       {
         id: "roles",
@@ -160,7 +160,7 @@ export const content: LegalContent = {
   en: {
     title: "Privacy statement",
     intro:
-      "TeamWorkout helps sports teams plan and follow training load. Below we explain in plain language which data we process, why, who sees it and what rights you have. There is extra explanation for data about minors and for health data.",
+      "Courtload helps sports teams plan and follow training load. Below we explain in plain language which data we process, why, who sees it and what rights you have. There is extra explanation for data about minors and for health data.",
     sections: [
       {
         id: "roles",

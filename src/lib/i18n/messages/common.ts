@@ -2,7 +2,7 @@ import { defineMessages } from "../define";
 
 export default defineMessages(
   {
-    appName: "TeamWorkout",
+    appName: "Courtload",
     tagline: "Load management voor je team",
     save: "Opslaan",
     saved: "Opgeslagen",
@@ -45,7 +45,7 @@ export default defineMessages(
     "error.home": "Naar het begin",
   },
   {
-    appName: "TeamWorkout",
+    appName: "Courtload",
     tagline: "Load management for your team",
     save: "Save",
     saved: "Saved",

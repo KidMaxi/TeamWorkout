@@ -86,7 +86,7 @@ export default function LoginPage() {
 
         <div className="-mt-6 text-center">
           <h1 className="font-display text-xl font-extrabold uppercase tracking-[0.1em]">
-            Team<span className="text-accent">Workout</span>
+            Court<span className="text-accent">load</span>
           </h1>
           <p className="mt-2 text-sm text-muted">{t("common.tagline")}</p>
         </div>

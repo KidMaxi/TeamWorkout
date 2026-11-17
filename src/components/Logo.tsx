@@ -38,7 +38,7 @@ export function Logo({
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <LogoMark size={size} />
       <span className={wordmarkClassName}>
-        Team<span className="text-accent">Workout</span>
+        Court<span className="text-accent">load</span>
       </span>
     </span>
   );

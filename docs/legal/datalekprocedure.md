@@ -2,7 +2,7 @@
 
 **Let op: dit is een conservatief startpunt (concept). Laat het door een jurist / privacy officer beoordelen vóór gebruik. Vul de contactgegevens in en oefen de procedure.**
 
-Een datalek is elke inbreuk op beveiliging die leidt tot vernietiging, verlies, wijziging of ongeoorloofde verstrekking van of toegang tot persoonsgegevens (art. 4 lid 12 AVG). Bij TeamWorkout zijn gezondheidsgegevens van minderjarigen in het geding: reken op strenge beoordeling.
+Een datalek is elke inbreuk op beveiliging die leidt tot vernietiging, verlies, wijziging of ongeoorloofde verstrekking van of toegang tot persoonsgegevens (art. 4 lid 12 AVG). Bij Courtload zijn gezondheidsgegevens van minderjarigen in het geding: reken op strenge beoordeling.
 
 ## Rollen en termijnen
 - **Exploitant (verwerker)** meldt een lek aan de betreffende club(s) **zonder onredelijke vertraging, doel [24/48] uur** na ontdekking.

@@ -1,4 +1,4 @@
-# TeamWorkout – merkgids
+# Courtload – merkgids
 
 ## Het merkteken
 Drie stijgende balken: een team van drie, en tegelijk trainingsload die opbouwt. De hoogste balk is volledig in accentkleur, de andere twee zijn gedimd (50% en 75%). Geen letters, geen details, zodat het ook op 16 px leesbaar blijft.
@@ -14,7 +14,8 @@ Drie stijgende balken: een team van drie, en tegelijk trainingsload die opbouwt.
 ## Vrije ruimte
 - Houd rondom het merkteken minimaal de breedte van een balk vrij (ca. 1/4 van de hoogte).
 - Ruimte tussen teken en woordmerk: ongeveer 0,3 x de hoogte van het teken.
-- Woordmerk: "Team" in tekstkleur, "Workout" in primair, extra vet.
+- Woordmerk: **COURTLOAD** in hoofdletters, extra vet en ruim gespatieerd: "COURT" in voorgrondkleur (tekstkleur), "LOAD" in het accent (zoals in de Lovable-demo courtstride-player-care). Component: `Logo` in `src/components/Logo.tsx`.
+- Productnaam in lopende tekst: "Courtload" (voorheen TeamWorkout).
 
 ## Minimale grootte
 - Teken alleen: 16 px (favicon); in de app bij voorkeur 24 px of groter.

@@ -7,13 +7,13 @@ const V = LEGAL.termsVersion;
 export const content: LegalContent = {
   nl: {
     title: "Gebruiksvoorwaarden",
-    intro: "Deze voorwaarden gelden voor het gebruik van TeamWorkout. Door een account aan te maken of in te loggen ga je ermee akkoord.",
+    intro: "Deze voorwaarden gelden voor het gebruik van Courtload. Door een account aan te maken of in te loggen ga je ermee akkoord.",
     sections: [
       {
         id: "service",
         title: "De dienst",
         body: [
-          "TeamWorkout is een app waarmee sportteams trainingen plannen, trainingsbelasting volgen en beschikbaarheid, wellness en krachttests bijhouden. Staf en sporters gebruiken de app binnen een team.",
+          "Courtload is een app waarmee sportteams trainingen plannen, trainingsbelasting volgen en beschikbaarheid, wellness en krachttests bijhouden. Staf en sporters gebruiken de app binnen een team.",
           "Hoe we met persoonsgegevens omgaan, staat in de privacyverklaring.",
         ],
       },
@@ -129,13 +129,13 @@ export const content: LegalContent = {
   },
   en: {
     title: "Terms of use",
-    intro: "These terms apply to your use of TeamWorkout. By creating an account or signing in you agree to them.",
+    intro: "These terms apply to your use of Courtload. By creating an account or signing in you agree to them.",
     sections: [
       {
         id: "service",
         title: "The service",
         body: [
-          "TeamWorkout is an app for sports teams to plan training, follow training load and keep track of availability, wellness and strength tests. Staff and athletes use the app within a team.",
+          "Courtload is an app for sports teams to plan training, follow training load and keep track of availability, wellness and strength tests. Staff and athletes use the app within a team.",
           "How we handle personal data is described in the privacy statement.",
         ],
       },

@@ -1,4 +1,4 @@
-# TeamWorkout
+# Courtload
 
 PWA voor het bijhouden van trainingsload (academy, gym, avondtraining, wedstrijd) per team.
 Next.js 15, Supabase (EU, Frankfurt), bedoeld voor Vercel.

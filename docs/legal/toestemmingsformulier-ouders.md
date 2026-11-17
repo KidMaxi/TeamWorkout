@@ -2,7 +2,7 @@
 
 **Let op: dit is een conservatief startpunt (concept). Laat het door een jurist / privacy officer beoordelen en pas het aan vóór gebruik. De club gebruikt en bewaart het formulier.**
 
-**[CLUB]** gebruikt de app TeamWorkout (aangeboden door [NAAM EXPLOITANT]) om de trainingsbelasting van sporters te volgen. Voor sporters onder de 16 jaar vragen wij uw toestemming voor het delen van onderstaande gezondheidsgerelateerde gegevens met onze trainers/staf.
+**[CLUB]** gebruikt de app Courtload (aangeboden door [NAAM EXPLOITANT]) om de trainingsbelasting van sporters te volgen. Voor sporters onder de 16 jaar vragen wij uw toestemming voor het delen van onderstaande gezondheidsgerelateerde gegevens met onze trainers/staf.
 
 **Sporter**: [NAAM], geboortedatum [DATUM], team [TEAM].
 

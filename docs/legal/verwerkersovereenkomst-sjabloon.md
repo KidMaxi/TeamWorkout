@@ -6,10 +6,10 @@ Tussen:
 1. **[CLUB]**, [ADRES], KvK [NUMMER], hierna de **Verwerkingsverantwoordelijke**;
 2. **[NAAM EXPLOITANT]**, [ADRES], KvK [NUMMER], hierna de **Verwerker**.
 
-Datum: [DATUM]. Deze overeenkomst hoort bij [HOOFDOVEREENKOMST / GEBRUIKSVOORWAARDEN TEAMWORKOUT, versie].
+Datum: [DATUM]. Deze overeenkomst hoort bij [HOOFDOVEREENKOMST / GEBRUIKSVOORWAARDEN COURTLOAD, versie].
 
 ## 1. Onderwerp en duur
-1.1 De Verwerker verwerkt persoonsgegevens namens de Verwerkingsverantwoordelijke via de app TeamWorkout (trainingsbelasting, beschikbaarheid, wellness en kracht van sporters), uitsluitend om de dienst te leveren.
+1.1 De Verwerker verwerkt persoonsgegevens namens de Verwerkingsverantwoordelijke via de app Courtload (trainingsbelasting, beschikbaarheid, wellness en kracht van sporters), uitsluitend om de dienst te leveren.
 1.2 De overeenkomst gaat in op [DATUM] en duurt zolang de Verwerker gegevens voor de Verwerkingsverantwoordelijke verwerkt.
 
 ## 2. Aard en doel; gegevens en betrokkenen

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, CircleHelp, KeyRound, LogOut, Plus, Shield, User, UserPlus, Users } from "lucide-react";
+import { ChevronRight, ChartColumn, CircleHelp, KeyRound, LogOut, Plus, Shield, User, UserPlus, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { LogoMark } from "@/components/Logo";
 import { Avatar } from "@/components/Avatar";
@@ -24,13 +24,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   const supabase = await createClient();
   const user = await getAuthUser();
   // Independent reads, one round trip: the team list, the terms version (for the single-team shortcut) and the staff clubs.
-  const [{ t }, { data: memberships }, p, { data: staffRows }] = await Promise.all([
+  const [{ t }, { data: memberships }, p, { data: staffRows }, { data: adminRows }] = await Promise.all([
     getT(),
     supabase.from("team_members").select("role, teams(id, name)").order("joined_at"),
     user ? getProfile(user.id) : Promise.resolve(null),
     // Clubs where the user is staff, so a new team can be added to an existing club.
     supabase.from("team_members").select("teams(club_id, clubs(name))").eq("role", "staff"),
+    // Club admins see the whole academy even without a team of their own.
+    user ? supabase.from("club_admins").select("club_id").eq("user_id", user.id) : Promise.resolve({ data: null }),
   ]);
+  const isClubAdmin = (adminRows?.length ?? 0) > 0;
+  const showAcademy = isClubAdmin || (staffRows?.length ?? 0) > 0;
+
+  // A club admin without any team has nothing to show here: go to the academy overview.
+  if (all === undefined && isClubAdmin && !memberships?.length) redirect("/academy");
 
   // One team and no explicit "all teams" request: go straight to it (unless updated terms still need accepting).
   if (all === undefined && memberships?.length === 1) {
@@ -66,6 +73,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
       </header>
 
       <TermsGate />
+
+      {showAcademy && (
+        <Link href="/academy" className="card card-hero flex min-h-[4.5rem] items-center gap-4 transition-colors hover:border-[var(--accent)]">
+          <ChartColumn size={28} aria-hidden className="shrink-0 text-[var(--accent)]" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="display block truncate text-lg">{t("academy.link")}</span>
+            <span className="text-sm text-muted">{t("academy.linkHint")}</span>
+          </span>
+          <ChevronRight size={20} aria-hidden className="shrink-0 text-[var(--accent)]" />
+        </Link>
+      )}
 
       {memberships?.length ? (
         <ul className="flex flex-col gap-3">

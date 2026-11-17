@@ -1,4 +1,4 @@
-# Juridische documenten TeamWorkout (operationeel)
+# Juridische documenten Courtload (operationeel)
 
 **Let op: dit zijn conservatieve startpunten (concepten), geen juridisch advies. Laat elk document beoordelen door een jurist / privacy officer voordat het wordt gebruikt. Vul alle placeholders ([NAAM EXPLOITANT], [CLUB], [DATUM], ...) in. Niets in deze map is een bewijs dat overeenkomsten, certificeringen of maatregelen bestaan.**
 

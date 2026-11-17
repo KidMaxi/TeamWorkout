@@ -31,9 +31,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : LEGAL.operator.website,
   ),
-  title: "TeamWorkout",
+  title: "Courtload",
   description: "Trainingsload en beschikbaarheid van je team",
-  appleWebApp: { capable: true, title: "TeamWorkout" },
+  appleWebApp: { capable: true, title: "Courtload" },
 };
 
 export const viewport: Viewport = {

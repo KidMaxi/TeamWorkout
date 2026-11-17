@@ -91,7 +91,7 @@ export async function GET() {
     status: 200,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="teamworkout-export-${now.toISOString().slice(0, 10)}.json"`,
+      "Content-Disposition": `attachment; filename="courtload-export-${now.toISOString().slice(0, 10)}.json"`,
       ...NO_STORE,
     },
   });

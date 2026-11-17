@@ -9,7 +9,7 @@
 | Verwerker | [NAAM EXPLOITANT], [ADRES], [KVK], contact [E-MAIL] |
 | Verwerkingsverantwoordelijken (clubs) | [LIJST CLUBS; per club een regel met contact] |
 | FG/DPO | [GEEN / NAAM] |
-| Categorieën verwerking | Hosten en beschikbaar stellen van TeamWorkout voor sporters en staf van de club (Bijlage A van de verwerkersovereenkomst) |
+| Categorieën verwerking | Hosten en beschikbaar stellen van Courtload voor sporters en staf van de club (Bijlage A van de verwerkersovereenkomst) |
 | Doorgiften buiten EER | Vercel is een VS-bedrijf; pushdiensten wereldwijd. Grond: [controleren, zie `sub-verwerkers.md`] |
 | Beveiligingsmaatregelen | Zie Bijlage B van de verwerkersovereenkomst |
 
